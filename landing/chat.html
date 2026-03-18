@@ -1,0 +1,3130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#00ff41">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-name" content="0penw0rld">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <title>00 Chat — 0penw0rld</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green: #00ff41;
+      --green-dim: #00c832;
+      --green-dark: #003d0f;
+      --black: #020a03;
+      --grey: #0a110a;
+      --panel: #060e06;
+    }
+
+    html, body {
+      width: 100%; height: 100%;
+      background: var(--black);
+      font-family: 'Share Tech Mono', monospace;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden;
+    }
+
+    /* ── Rain bg ── */
+    #rain { position:fixed; inset:0; z-index:0; pointer-events:none; opacity:.12; }
+    .scanlines {
+      position:fixed; inset:0; z-index:1; pointer-events:none;
+      background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.12) 2px,rgba(0,0,0,.12) 4px);
+    }
+    .vignette {
+      position:fixed; inset:0; z-index:1; pointer-events:none;
+      background:radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,.9) 100%);
+    }
+
+    /* ── Loading screen ── */
+    #loading {
+      position:fixed; inset:0; z-index:100;
+      background:var(--black);
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:24px;
+    }
+
+    .loader-logo {
+      font-family:'Orbitron',monospace;
+      font-size:64px; font-weight:900;
+      color:var(--green);
+      text-shadow:0 0 20px var(--green),0 0 50px var(--green),0 0 100px rgba(0,255,65,.3);
+      animation:logoPulse 1s ease-in-out infinite;
+    }
+    @keyframes logoPulse {
+      0%,100%{text-shadow:0 0 20px var(--green),0 0 50px var(--green),0 0 100px rgba(0,255,65,.3)}
+      50%{text-shadow:0 0 30px var(--green),0 0 70px var(--green),0 0 140px rgba(0,255,65,.5)}
+    }
+
+    .loader-bar-wrap {
+      width:200px; height:2px; background:rgba(0,255,65,.1); border-radius:2px; overflow:hidden;
+    }
+    .loader-bar {
+      height:100%; background:var(--green);
+      box-shadow:0 0 8px var(--green);
+      animation:loadBar 2.5s ease-in-out forwards;
+    }
+    @keyframes loadBar { from{width:0} to{width:100%} }
+
+    .loader-text {
+      font-size:11px; color:rgba(0,255,65,.5); letter-spacing:3px;
+      animation:loaderText 2.5s steps(1) forwards;
+    }
+
+    .loader-status {
+      font-size:10px; color:rgba(0,255,65,.3); letter-spacing:2px;
+      min-height:14px;
+    }
+
+    /* ── Phone shell ── */
+    .phone-wrap {
+      position:relative; z-index:10;
+      display:flex; align-items:center; justify-content:center;
+    }
+
+    .phone {
+      width:375px; height:780px;
+      background:var(--panel);
+      border-radius:42px;
+      border:2px solid rgba(0,255,65,.2);
+      box-shadow:
+        0 0 0 1px rgba(0,255,65,.05),
+        0 0 40px rgba(0,255,65,.08),
+        0 0 80px rgba(0,255,65,.04),
+        inset 0 0 30px rgba(0,0,0,.5);
+      display:flex; flex-direction:column;
+      overflow:hidden;
+      position:relative;
+    }
+
+    /* Notch */
+    .notch {
+      position:absolute; top:0; left:50%; transform:translateX(-50%);
+      width:120px; height:28px;
+      background:var(--black);
+      border-radius:0 0 18px 18px;
+      z-index:50;
+      display:flex; align-items:center; justify-content:center; gap:8px;
+    }
+    .notch-cam { width:8px; height:8px; border-radius:50%; background:#111; border:1px solid #222; }
+    .notch-speaker { width:40px; height:4px; border-radius:2px; background:#111; }
+
+    /* Status bar */
+    .status-bar {
+      padding:10px 20px 4px;
+      display:flex; align-items:center; justify-content:space-between;
+      font-size:10px; color:rgba(0,255,65,.5);
+      flex-shrink:0; margin-top:14px;
+    }
+    .status-icons { display:flex; gap:6px; align-items:center; }
+
+    /* App header */
+    .app-header {
+      padding:10px 20px 0;
+      display:flex; align-items:center; justify-content:space-between;
+      flex-shrink:0;
+    }
+    .app-title {
+      font-family:'Orbitron',monospace;
+      font-size:18px; font-weight:700;
+      color:var(--green);
+      text-shadow:0 0 10px rgba(0,255,65,.4);
+    }
+    .app-title span { font-size:11px; color:rgba(0,255,65,.4); display:block; letter-spacing:2px; }
+    .header-icon { font-size:18px; cursor:pointer; color:rgba(0,255,65,.6); }
+
+    /* Balance chip */
+    .balance-chip {
+      display:inline-flex; align-items:center; gap:6px;
+      background:rgba(0,255,65,.06); border:1px solid rgba(0,255,65,.2);
+      border-radius:20px; padding:3px 10px; cursor:pointer;
+      font-size:11px; color:var(--green); letter-spacing:1px;
+      transition:.2s;
+    }
+    .balance-chip:hover { background:rgba(0,255,65,.12); border-color:rgba(0,255,65,.4); }
+    .balance-chip.loading { opacity:.4; }
+    .balance-dot { width:6px; height:6px; border-radius:50%; background:var(--green); box-shadow:0 0 4px var(--green); flex-shrink:0; }
+
+    /* Search */
+    .search-wrap { padding:10px 16px; flex-shrink:0; }
+    .search-input {
+      width:100%; background:rgba(0,255,65,.04);
+      border:1px solid rgba(0,255,65,.15); border-radius:8px;
+      padding:8px 12px; color:var(--green);
+      font-family:'Share Tech Mono',monospace; font-size:12px; outline:none;
+    }
+    .search-input::placeholder { color:rgba(0,255,65,.25); }
+    .search-input:focus { border-color:rgba(0,255,65,.4); }
+
+    /* Tabs */
+    .tabs {
+      display:flex; padding:0 16px;
+      border-bottom:1px solid rgba(0,255,65,.1);
+      flex-shrink:0;
+    }
+    .tab {
+      flex:1; padding:10px; text-align:center;
+      font-size:11px; letter-spacing:2px; text-transform:uppercase;
+      color:rgba(0,255,65,.3); cursor:pointer;
+      border-bottom:2px solid transparent; transition:.2s;
+    }
+    .tab.active { color:var(--green); border-bottom-color:var(--green); }
+
+    /* List */
+    .list-wrap { flex:1; overflow-y:auto; scrollbar-width:none; }
+    .list-wrap::-webkit-scrollbar { display:none; }
+
+    .list-item {
+      display:flex; align-items:center; gap:12px;
+      padding:12px 16px; cursor:pointer;
+      border-bottom:1px solid rgba(0,255,65,.05);
+      transition:.15s; position:relative;
+    }
+    .list-item:hover { background:rgba(0,255,65,.04); }
+    .list-item:active { background:rgba(0,255,65,.08); }
+    .list-item .del-btn {
+      opacity:0; transition:opacity .15s;
+      background:none; border:none; cursor:pointer;
+      padding:6px; flex-shrink:0; line-height:0;
+    }
+    .list-item:hover .del-btn { opacity:1; }
+    .list-item .del-btn line { transition:stroke .15s; }
+    .list-item .del-btn:hover line { stroke:var(--green); }
+
+    .avatar {
+      width:44px; height:44px; border-radius:50%;
+      background:rgba(0,255,65,.08);
+      border:1px solid rgba(0,255,65,.2);
+      display:flex; align-items:center; justify-content:center;
+      font-family:'Orbitron',monospace; font-size:14px; font-weight:700;
+      color:var(--green); flex-shrink:0;
+      text-shadow:0 0 8px rgba(0,255,65,.5);
+    }
+    .avatar.group { border-radius:10px; font-size:16px; }
+    .avatar.online::after {
+      content:''; position:absolute;
+      width:10px; height:10px; border-radius:50%;
+      background:var(--green);
+      box-shadow:0 0 6px var(--green);
+      border:2px solid var(--panel);
+      bottom:12px; left:44px;
+    }
+
+    .item-info { flex:1; min-width:0; }
+    .item-name { font-size:13px; color:rgba(0,255,65,.9); margin-bottom:3px; }
+    .item-preview {
+      font-size:11px; color:rgba(0,255,65,.3);
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    .item-preview.encrypted { color:rgba(0,255,65,.2); font-style:italic; }
+
+    .item-meta { text-align:right; flex-shrink:0; }
+    .item-time { font-size:10px; color:rgba(0,255,65,.25); margin-bottom:4px; }
+    .badge {
+      background:var(--green); color:var(--black);
+      font-size:9px; font-weight:700;
+      padding:2px 6px; border-radius:10px;
+      display:inline-block;
+    }
+
+    /* ── Conversation view ── */
+    #conv-view {
+      display:none; flex-direction:column;
+      position:absolute; inset:0;
+      background:var(--panel);
+      border-radius:42px;
+      overflow:hidden;
+      z-index:20;
+    }
+
+    .conv-header {
+      padding:50px 16px 12px;
+      display:flex; align-items:center; gap:12px;
+      border-bottom:1px solid rgba(0,255,65,.1);
+      flex-shrink:0;
+      background:rgba(0,0,0,.3);
+    }
+    .conv-back {
+      color:rgba(0,255,65,.6); cursor:pointer; font-size:18px;
+      padding:4px; transition:.15s;
+    }
+    .conv-back:hover { color:var(--green); }
+    .conv-info { flex:1; }
+    .conv-name { font-size:14px; color:var(--green); }
+    .conv-status { font-size:10px; color:rgba(0,255,65,.35); letter-spacing:1px; margin-top:2px; }
+    .conv-actions { display:flex; gap:14px; color:rgba(0,255,65,.4); font-size:16px; }
+    .pending-banner {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:8px 16px; flex-shrink:0;
+      background:rgba(0,255,65,.04); border-bottom:1px solid rgba(0,255,65,.1);
+      font-size:10px; color:rgba(0,255,65,.5); letter-spacing:1px;
+    }
+    .pending-banner button {
+      background:none; border:1px solid rgba(0,255,65,.3); color:var(--green);
+      font-family:'Share Tech Mono',monospace; font-size:10px; letter-spacing:1px;
+      padding:3px 10px; cursor:pointer; border-radius:4px; transition:.15s;
+    }
+    .pending-banner button:hover { background:rgba(0,255,65,.08); }
+
+    /* Messages */
+    .messages {
+      flex:1; overflow-y:auto; padding:12px 12px;
+      display:flex; flex-direction:column; gap:8px;
+      scrollbar-width:none;
+    }
+    .messages::-webkit-scrollbar { display:none; }
+
+    .msg { display:flex; flex-direction:column; max-width:80%; }
+    .msg.me { align-self:flex-end; align-items:flex-end; }
+    .msg.them { align-self:flex-start; align-items:flex-start; }
+
+    .msg-sender { font-size:9px; color:rgba(0,255,65,.3); margin-bottom:3px; letter-spacing:1px; }
+
+    .msg-bubble {
+      padding:9px 12px; border-radius:14px;
+      font-size:12px; line-height:1.5;
+      position:relative;
+    }
+    .msg.me .msg-bubble {
+      background:rgba(0,255,65,.12);
+      border:1px solid rgba(0,255,65,.2);
+      color:rgba(0,255,65,.9);
+      border-bottom-right-radius:4px;
+    }
+    .msg.them .msg-bubble {
+      background:rgba(0,255,65,.05);
+      border:1px solid rgba(0,255,65,.1);
+      color:rgba(0,255,65,.7);
+      border-bottom-left-radius:4px;
+    }
+
+    .msg-time {
+      font-size:9px; color:rgba(0,255,65,.2);
+      margin-top:3px; padding:0 4px;
+    }
+    .msg.me .msg-time { text-align:right; }
+
+    /* Encrypted indicator */
+    .enc-badge {
+      font-size:8px; color:rgba(0,255,65,.3);
+      letter-spacing:1px; padding:2px 6px;
+      border:1px solid rgba(0,255,65,.1);
+      border-radius:4px; margin:4px auto;
+      text-align:center; align-self:center;
+    }
+
+    /* System msg */
+    .sys-msg {
+      text-align:center; font-size:9px;
+      color:rgba(0,255,65,.2); letter-spacing:1px;
+      padding:4px; align-self:center;
+    }
+
+    /* Typing */
+    .typing-indicator {
+      display:flex; gap:4px; padding:10px 14px;
+      align-self:flex-start;
+    }
+    .typing-dot {
+      width:6px; height:6px; border-radius:50%;
+      background:rgba(0,255,65,.4);
+      animation:typingBounce 1.2s ease-in-out infinite;
+    }
+    .typing-dot:nth-child(2) { animation-delay:.2s; }
+    .typing-dot:nth-child(3) { animation-delay:.4s; }
+    @keyframes typingBounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }
+
+    /* Input */
+    .conv-input-wrap {
+      padding:10px 12px 20px;
+      display:flex; gap:8px; align-items:flex-end;
+      flex-shrink:0;
+      border-top:1px solid rgba(0,255,65,.08);
+      background:rgba(0,0,0,.2);
+    }
+    .conv-input {
+      flex:1; background:rgba(0,255,65,.04);
+      border:1px solid rgba(0,255,65,.15); border-radius:20px;
+      padding:10px 14px; color:var(--green);
+      font-family:'Share Tech Mono',monospace; font-size:12px;
+      outline:none; resize:none; max-height:80px; min-height:38px;
+    }
+    .conv-input:focus { border-color:rgba(0,255,65,.35); }
+    .conv-input::placeholder { color:rgba(0,255,65,.2); }
+    .send-btn {
+      width:38px; height:38px; border-radius:50%;
+      background:rgba(0,255,65,.15);
+      border:1px solid rgba(0,255,65,.3);
+      color:var(--green); font-size:16px;
+      cursor:pointer; display:flex; align-items:center; justify-content:center;
+      transition:.15s; flex-shrink:0;
+    }
+    .send-btn:hover { background:rgba(0,255,65,.25); box-shadow:0 0 12px rgba(0,255,65,.2); }
+
+    /* ── Key / Auth screens ── */
+    .auth-screen {
+      position:absolute; inset:0; z-index:40;
+      background:var(--panel);
+      border-radius:42px;
+      display:flex; flex-direction:column;
+      align-items:center; justify-content:center;
+      padding:32px 24px; gap:0;
+    }
+
+    .auth-logo {
+      font-family:'Orbitron',monospace; font-size:36px; font-weight:900;
+      color:var(--green);
+      text-shadow:0 0 15px var(--green),0 0 40px rgba(0,255,65,.3);
+      margin-bottom:6px;
+    }
+    .auth-subtitle { font-size:10px; color:rgba(0,255,65,.35); letter-spacing:3px; margin-bottom:28px; }
+
+    .auth-label { font-size:10px; color:rgba(0,255,65,.4); letter-spacing:2px; margin-bottom:6px; align-self:flex-start; width:100%; }
+
+    .auth-input {
+      width:100%; background:rgba(0,255,65,.04);
+      border:1px solid rgba(0,255,65,.2); border-radius:8px;
+      padding:11px 14px; color:var(--green);
+      font-family:'Share Tech Mono',monospace; font-size:12px;
+      outline:none; margin-bottom:14px; letter-spacing:1px;
+    }
+    .auth-input:focus { border-color:rgba(0,255,65,.5); box-shadow:0 0 8px rgba(0,255,65,.1); }
+    .auth-input::placeholder { color:rgba(0,255,65,.18); }
+
+    .auth-btn {
+      width:100%; padding:12px;
+      background:rgba(0,255,65,.12);
+      border:1px solid rgba(0,255,65,.3); border-radius:8px;
+      color:var(--green); font-family:'Orbitron',monospace;
+      font-size:12px; font-weight:700; letter-spacing:2px;
+      cursor:pointer; transition:.2s; margin-top:4px;
+    }
+    .auth-btn:hover { background:rgba(0,255,65,.2); box-shadow:0 0 14px rgba(0,255,65,.2); }
+
+    .auth-btn-secondary {
+      background:transparent; border:1px solid rgba(0,255,65,.1);
+      color:rgba(0,255,65,.4); margin-top:8px;
+    }
+    .auth-btn-secondary:hover { background:rgba(0,255,65,.04); color:rgba(0,255,65,.7); }
+
+    .auth-divider { width:100%; height:1px; background:rgba(0,255,65,.08); margin:16px 0; }
+
+    .attempts-bar { display:flex; gap:6px; margin-bottom:16px; }
+    .attempt-dot {
+      width:10px; height:10px; border-radius:50%;
+      border:1px solid rgba(0,255,65,.3);
+      transition:.3s;
+    }
+    .attempt-dot.used { background:#ff003c; border-color:#ff003c; box-shadow:0 0 6px #ff003c; }
+
+    .auth-error {
+      font-size:11px; color:#ff003c;
+      text-align:center; min-height:16px;
+      margin-bottom:8px; letter-spacing:1px;
+      animation:errShake .3s ease;
+    }
+    @keyframes errShake {
+      0%,100%{transform:translateX(0)} 25%{transform:translateX(-4px)} 75%{transform:translateX(4px)}
+    }
+
+    .auth-info {
+      font-size:10px; color:rgba(0,255,65,.25);
+      text-align:center; line-height:1.6; margin-top:12px;
+    }
+
+    /* Wipe screen */
+    .wipe-screen {
+      position:absolute; inset:0; z-index:50;
+      background:var(--black); border-radius:42px;
+      display:none; flex-direction:column;
+      align-items:center; justify-content:center; gap:14px;
+    }
+    .wipe-icon { font-size:48px; animation:wipePulse .5s ease-in-out 3; }
+    @keyframes wipePulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .wipe-title { font-family:'Orbitron',monospace; font-size:18px; color:#ff003c; letter-spacing:3px; text-shadow:0 0 15px #ff003c; }
+    .wipe-sub { font-size:11px; color:rgba(255,0,60,.4); letter-spacing:2px; text-align:center; }
+    .wipe-btn { margin-top:20px; }
+
+    /* Save key toggle */
+    .toggle-row {
+      display:flex; align-items:center; gap:10px;
+      margin-bottom:14px; cursor:pointer;
+    }
+    .toggle { width:36px; height:20px; border-radius:10px; border:1px solid rgba(0,255,65,.3); background:rgba(0,255,65,.05); position:relative; transition:.3s; }
+    .toggle.on { background:rgba(0,255,65,.2); border-color:rgba(0,255,65,.5); }
+    .toggle::after { content:''; position:absolute; top:3px; left:3px; width:12px; height:12px; border-radius:50%; background:rgba(0,255,65,.4); transition:.3s; }
+    .toggle.on::after { left:19px; background:var(--green); box-shadow:0 0 6px var(--green); }
+    .toggle-label { font-size:11px; color:rgba(0,255,65,.5); }
+
+    /* Blink cursor */
+    .blink { animation:blink .8s step-end infinite; }
+    @keyframes blink { 50%{opacity:0} }
+
+    /* ── Keygen panel ── */
+    .keygen-overlay {
+      position:absolute; inset:0; z-index:48;
+      background:rgba(2,10,3,.94);
+      border-radius:42px;
+      display:none; flex-direction:column;
+      padding:28px 22px 24px; gap:12px;
+      overflow-y:auto; scrollbar-width:none;
+      animation:kgFadeIn .2s ease;
+    }
+    @keyframes kgFadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+    .keygen-overlay::-webkit-scrollbar { display:none; }
+
+    .keygen-title {
+      font-family:'Orbitron',monospace; font-size:12px; font-weight:700;
+      color:var(--green); letter-spacing:3px;
+      text-shadow:0 0 10px rgba(0,255,65,.4);
+      text-align:center; padding-bottom:8px;
+      border-bottom:1px solid rgba(0,255,65,.12);
+    }
+    .keygen-field { display:flex; flex-direction:column; gap:5px; }
+    .keygen-lbl { font-size:9px; color:rgba(0,255,65,.4); letter-spacing:2px; }
+    .keygen-val {
+      background:rgba(0,255,65,.04); border:1px solid rgba(0,255,65,.12);
+      border-radius:6px; padding:8px 10px;
+      font-size:9px; color:rgba(0,255,65,.75); word-break:break-all; line-height:1.6;
+    }
+    .keygen-copy {
+      align-self:flex-end; padding:3px 10px;
+      background:transparent; border:1px solid rgba(0,255,65,.2); border-radius:4px;
+      color:rgba(0,255,65,.5); font-family:'Share Tech Mono',monospace;
+      font-size:9px; letter-spacing:1px; cursor:pointer; transition:.2s;
+    }
+    .keygen-copy:hover { background:rgba(0,255,65,.08); color:var(--green); }
+    .keygen-copy.copied { color:var(--green); border-color:rgba(0,255,65,.5); }
+    .keygen-warn {
+      font-size:10px; color:#ff9f00; letter-spacing:.5px;
+      text-align:center; padding:8px 12px;
+      border:1px solid rgba(255,159,0,.25); border-radius:6px;
+      background:rgba(255,159,0,.05); line-height:1.5;
+    }
+    .keygen-spinner {
+      text-align:center; font-size:11px; color:rgba(0,255,65,.4);
+      letter-spacing:2px; padding:24px 0; animation:blink .7s step-end infinite;
+    }
+    .auth-btn-gen {
+      background:transparent; border:1px solid rgba(0,255,65,.2);
+      color:rgba(0,255,65,.45); margin-bottom:8px; font-size:11px; letter-spacing:1px;
+    }
+    .auth-btn-gen:hover { background:rgba(0,255,65,.06); color:var(--green); border-color:rgba(0,255,65,.4); }
+
+    /* ── Word grid (BIP39 mnemonic) ── */
+    .word-grid {
+      display:grid; grid-template-columns:repeat(3,1fr); gap:5px; margin:2px 0;
+    }
+    .word-chip {
+      background:rgba(0,255,65,.05); border:1px solid rgba(0,255,65,.15);
+      border-radius:6px; padding:6px 5px;
+      display:flex; align-items:center; gap:3px;
+      font-size:11px; color:rgba(0,255,65,.85);
+    }
+    .word-num {
+      font-size:8px; color:rgba(0,255,65,.25);
+      min-width:14px; text-align:right; flex-shrink:0;
+    }
+    .auth-textarea {
+      resize:none; height:52px; padding-top:10px; line-height:1.5;
+    }
+    .keygen-details {
+      font-size:10px; color:rgba(0,255,65,.3); letter-spacing:1px; cursor:pointer;
+      border-top:1px solid rgba(0,255,65,.08); padding-top:8px;
+    }
+    .keygen-details summary { list-style:none; outline:none; }
+    .keygen-details summary::-webkit-details-marker { display:none; }
+
+    /* ── Change Identity overlay ── */
+    .ci-overlay {
+      position:absolute; inset:0; z-index:49;
+      background:rgba(2,10,3,.96);
+      border-radius:42px;
+      display:none; flex-direction:column;
+      padding:28px 22px 24px; gap:10px;
+      overflow-y:auto; scrollbar-width:none;
+      animation:kgFadeIn .2s ease;
+    }
+    .ci-overlay::-webkit-scrollbar { display:none; }
+    .ci-section { display:flex; flex-direction:column; gap:6px; }
+    .ci-contact-row {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:7px 10px;
+      background:rgba(0,255,65,.03); border:1px solid rgba(0,255,65,.08);
+      border-radius:6px; font-size:11px; color:rgba(0,255,65,.6);
+    }
+    .ci-contact-status {
+      font-size:9px; letter-spacing:1px;
+    }
+    .ci-contact-status.sent { color:var(--green); }
+    .ci-contact-status.pending { color:rgba(0,255,65,.3); }
+    .ci-warn {
+      font-size:10px; color:#ff9f00; letter-spacing:.5px;
+      text-align:center; padding:8px 12px;
+      border:1px solid rgba(255,159,0,.2); border-radius:6px;
+      background:rgba(255,159,0,.04); line-height:1.5;
+    }
+    .ci-addr-display {
+      background:rgba(0,255,65,.04); border:1px solid rgba(0,255,65,.1);
+      border-radius:6px; padding:8px 10px;
+      font-size:9px; color:rgba(0,255,65,.7);
+      word-break:break-all; line-height:1.6;
+    }
+    /* Desktop: skip loading, hide phone overlays */
+    @media (min-width: 900px) {
+      #loading { display: none !important; }
+      #rain, .scanlines, .vignette { display: none !important; }
+    }
+  </style>
+  <link rel="stylesheet" href="desktop.css">
+</head>
+<body>
+
+<canvas id="rain"></canvas>
+<div class="scanlines"></div>
+<div class="vignette"></div>
+
+<!-- ── LOADING ── -->
+<div id="loading">
+  <div class="loader-logo">00</div>
+  <div class="loader-status" id="loader-status">INITIALIZING<span class="blink">_</span></div>
+  <div class="loader-bar-wrap"><div class="loader-bar"></div></div>
+  <div class="loader-text" id="loader-text">0penw0rld // 00 Chat</div>
+</div>
+
+<!-- ── Desktop Chat View (hidden on mobile) ── -->
+<div id="chat-desktop" style="display:none">
+  <div class="dt-inner">
+    <div class="dt-page-header">
+      <div class="dt-page-title-wrap">
+        <div class="dt-page-icon">💬</div>
+        <div>
+          <div class="dt-page-title">Chat</div>
+          <div class="dt-page-sub" id="dt-chat-sub">Split-Knowledge · BCH + Nostr</div>
+        </div>
+        <div class="swap-info-btn" onclick="toggleChatInfo()" title="How it works" style="cursor:pointer;font-size:18px;opacity:.35;margin-left:4px">ⓘ</div>
+      </div>
+      <div class="dt-page-actions">
+        <button class="dt-action-btn-outline" style="width:auto" onclick="dtChatOpenShare()" title="Share your contact card">◈ Identity</button>
+        <button class="dt-action-btn-outline" style="width:auto" onclick="dtChatChangeIdentity()" title="Change identity">⟳ Change</button>
+      </div>
+    </div>
+
+    <div class="dt-status-bar" id="dt-chat-status-bar">
+      <div style="display:flex;gap:8px;align-items:center">
+        <div class="dt-status-chip" id="dt-status-chat-bch"><span class="dt-status-dot connecting" id="dt-chat-dot-bch"></span><span class="dt-status-label">BCH</span><span class="dt-status-server"><span id="dt-status-chat-bch-val">loading…</span></span></div>
+        <div class="dt-status-chip"><span class="dt-status-dot on"></span><span class="dt-status-label">MSG</span><span class="dt-status-server"><strong id="dt-cost-msg-sat">~2046</strong> sat <span id="dt-cost-msg-usd" style="opacity:.6"></span></span></div>
+        <div class="dt-status-chip"><span class="dt-status-dot on"></span><span class="dt-status-label">IDENTITY</span><span class="dt-status-server"><strong id="dt-cost-ci-sat">~2046</strong> sat/contact <span id="dt-cost-ci-usd" style="opacity:.6"></span></span></div>
+      </div>
+    </div>
+
+    <div class="dt-split" style="height:calc(100vh - 170px)">
+      <!-- Left panel: contact/group list -->
+      <div class="dt-split-left">
+        <div class="dt-split-header" style="flex-direction:column;gap:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center;width:100%;gap:12px">
+            <div class="dt-swap-toggle" id="dt-chat-list-tabs" style="margin:0">
+              <button class="dt-swap-pill active" onclick="dtChatListTab('contacts')">Contacts</button>
+              <button class="dt-swap-pill" onclick="dtChatListTab('groups')">Groups</button>
+            </div>
+            <button class="dt-action-btn-outline" style="width:auto" onclick="dtChatOpenAdd()">+ Add</button>
+          </div>
+        </div>
+        <div class="dt-split-list" id="dt-chat-contact-list"></div>
+      </div>
+      <!-- Right panel: conversation -->
+      <div class="dt-split-right">
+        <div id="dt-chat-conv-empty" style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--dt-text-secondary);font-size:14px">Select a contact to start chatting</div>
+        <div id="dt-chat-conv" style="display:none;flex-direction:column;height:100%">
+          <div style="padding:16px 20px;border-bottom:1px solid var(--dt-border);display:flex;align-items:center;gap:12px">
+            <div class="dt-avatar" id="dt-chat-conv-avatar"></div>
+            <div style="flex:1">
+              <div style="font-weight:600;color:var(--dt-text)" id="dt-chat-conv-name">—</div>
+              <div style="font-size:11px;color:var(--dt-text-secondary)" id="dt-chat-conv-status">—</div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="dt-action-btn-outline" style="padding:4px 10px;font-size:11px" onclick="dtChatDeleteContact()" title="Delete">×</button>
+            </div>
+          </div>
+          <div class="dt-msg-list" id="dt-chat-messages"></div>
+          <div class="dt-msg-input">
+            <input class="dt-form-input" id="dt-chat-msg-input" placeholder="Type a message..." style="flex:1;margin:0" onkeydown="if(event.key==='Enter')dtChatSendMsg()">
+            <button class="dt-msg-send" onclick="dtChatSendMsg()">➤</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Desktop Add Contact overlay -->
+    <div class="dt-overlay" id="dt-chat-add-overlay">
+      <div class="dt-ac-card">
+        <button class="dt-ac-close" onclick="dtChatCloseAdd()">&times;</button>
+        <div class="dt-ac-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+        </div>
+        <div class="dt-ac-title">Add Contact</div>
+        <div class="dt-ac-subtitle">Paste a contact card URL or fill in manually</div>
+        <div class="dt-form-group">
+          <div class="dt-form-lbl">Contact Card URL</div>
+          <div class="dt-ac-url-row">
+            <input class="dt-form-input dt-ac-mono" type="text" id="dt-ac-url" placeholder="chatcash:bitcoincash:q...?pub=...&name=...">
+            <button class="dt-ac-parse-btn" onclick="dtChatParseCard()">Parse</button>
+          </div>
+        </div>
+        <div class="dt-ac-divider"><span>OR FILL MANUALLY</span></div>
+        <div class="dt-form-group">
+          <div class="dt-form-lbl">Name</div>
+          <input class="dt-form-input" type="text" id="dt-ac-name" placeholder="Contact name...">
+        </div>
+        <div class="dt-form-group">
+          <div class="dt-form-lbl">X25519 Public Key</div>
+          <input class="dt-form-input dt-ac-mono" type="text" id="dt-ac-pub" placeholder="64 hex characters...">
+        </div>
+        <div class="dt-form-group">
+          <div class="dt-form-lbl">BCH Address</div>
+          <input class="dt-form-input dt-ac-mono" type="text" id="dt-ac-bch" placeholder="bitcoincash:q...">
+        </div>
+        <div class="dt-ac-error" id="dt-ac-error"></div>
+        <button class="dt-ac-cta" onclick="dtChatSaveContact()">+ Add Contact</button>
+        <button class="dt-ac-cancel" onclick="dtChatCloseAdd()">Cancel</button>
+      </div>
+    </div>
+
+    <!-- Desktop Share Card overlay -->
+    <div class="dt-overlay" id="dt-chat-share-overlay">
+      <div class="dt-ac-card">
+        <button class="dt-ac-close" onclick="dtChatCloseShare()">&times;</button>
+        <div class="dt-ac-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+        </div>
+        <div class="dt-ac-title">My Contact Card</div>
+        <div class="dt-ac-subtitle">Share this card so others can message you</div>
+        <div class="dt-form-group">
+          <div class="dt-form-lbl">Display Name</div>
+          <input class="dt-form-input" id="dt-sc-name" placeholder="anon" oninput="dtChatUpdateShare()">
+        </div>
+        <div class="dt-form-group">
+          <div class="dt-form-lbl">Share URL</div>
+          <div class="dt-ac-url-display" id="dt-sc-url"></div>
+          <div style="display:flex;justify-content:center;margin:16px 0 12px">
+            <canvas id="dt-sc-qr" style="border-radius:10px;image-rendering:pixelated"></canvas>
+          </div>
+          <button class="dt-ac-cancel" onclick="dtChatCopyUrl()">📋 Copy URL</button>
+        </div>
+        <div class="dt-ac-divider"><span>DETAILS</span></div>
+        <div class="dt-form-group">
+          <div class="dt-form-lbl">BCH Address</div>
+          <div class="dt-ac-url-display" id="dt-sc-bch"></div>
+        </div>
+        <div class="dt-form-group">
+          <div class="dt-form-lbl">X25519 Public Key</div>
+          <div class="dt-ac-url-display" id="dt-sc-pub"></div>
+        </div>
+        <button class="dt-ac-cancel" onclick="dtChatCloseShare()">Close</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  if(!window.matchMedia('(min-width:900px)').matches) return;
+  var el=document.getElementById('chat-desktop');if(!el)return;
+  el.style.display='';
+
+  var _activeContact='';
+  var _listMode='contacts';
+  var _bchPriceUsd=0;
+
+  /* ── Fetch BCH price from Kraken ─── */
+  (function fetchBchPrice(){
+    fetch('https://api.kraken.com/0/public/Ticker?pair=BCHUSD')
+      .then(function(r){return r.json();})
+      .then(function(resp){
+        _bchPriceUsd=(resp.result&&resp.result.BCHUSD&&parseFloat(resp.result.BCHUSD.c[0]))||0;
+        if(_bchPriceUsd>0){
+          var MSG_SATS=2046;
+          var CI_SATS=2046;
+          var msgUsd=(MSG_SATS/1e8*_bchPriceUsd);
+          var ciUsd=(CI_SATS/1e8*_bchPriceUsd);
+          var fmt=function(v){return v<0.01?'< $0.01':'$'+v.toFixed(4);};
+          var mu=document.getElementById('dt-cost-msg-usd');
+          var cu=document.getElementById('dt-cost-ci-usd');
+          if(mu) mu.textContent='≈ '+fmt(msgUsd);
+          if(cu) cu.textContent='≈ '+fmt(ciUsd);
+        }
+      })
+      .catch(function(){});
+  })();
+
+  /* ── Change Identity ─── */
+  window.dtChatChangeIdentity=function(){
+    if(window.openChangeIdentity) window.openChangeIdentity();
+  };
+
+  /* ── List tab switching ─── */
+  window.dtChatListTab=function(t){
+    _listMode=t;
+    var btns=document.querySelectorAll('#dt-chat-list-tabs .dt-swap-pill');
+    btns.forEach(function(b){b.classList.toggle('active',b.textContent.toLowerCase()===t);});
+  };
+
+  /* ── Open conversation ─── */
+  window.dtChatOpenConv=function(idx){
+    _activeContact=idx;
+    if(window.openConv) window.openConv(idx);
+    document.getElementById('dt-chat-conv-empty').style.display='none';
+    document.getElementById('dt-chat-conv').style.display='flex';
+  };
+
+  /* ── Send message ─── */
+  window.dtChatSendMsg=function(){
+    var inp=document.getElementById('dt-chat-msg-input');
+    if(!inp||!inp.value.trim()) return;
+    var mi=document.getElementById('msg-input');
+    if(mi) mi.value=inp.value;
+    if(window.sendMsg) window.sendMsg();
+    inp.value='';
+  };
+
+  /* ── Delete contact ─── */
+  window.dtChatDeleteContact=function(){
+    if(window.deleteCurrentContact) window.deleteCurrentContact();
+  };
+
+  /* ── Desktop Add Contact ─── */
+  window.dtChatOpenAdd=function(){
+    ['dt-ac-url','dt-ac-name','dt-ac-pub','dt-ac-bch'].forEach(function(id){document.getElementById(id).value='';});
+    document.getElementById('dt-ac-error').textContent='';
+    document.getElementById('dt-chat-add-overlay').classList.add('active');
+  };
+  window.dtChatCloseAdd=function(){
+    document.getElementById('dt-chat-add-overlay').classList.remove('active');
+  };
+  window.dtChatParseCard=function(){
+    var url=document.getElementById('dt-ac-url').value.trim();
+    if(!url.startsWith('chatcash:')){document.getElementById('dt-ac-error').textContent='Not a chatcash: URL';return;}
+    var rest=url.slice(9);
+    var parts=rest.split('?');
+    var bchAddr=parts[0];var query=parts[1]||'';
+    var params={};
+    query.split('&').forEach(function(p){
+      if(p.indexOf('=')>=0){var kv=p.split('=');params[kv[0]]=decodeURIComponent((kv[1]||'').replace(/\+/g,' '));}
+    });
+    var pubHex=params.pub||'';var name=params.name||bchAddr.slice(0,16);
+    if(!pubHex||pubHex.length!==64){document.getElementById('dt-ac-error').textContent='Invalid pub_hex (64 hex chars required)';return;}
+    document.getElementById('dt-ac-name').value=name;
+    document.getElementById('dt-ac-pub').value=pubHex;
+    document.getElementById('dt-ac-bch').value=bchAddr;
+    document.getElementById('dt-ac-error').textContent='';
+  };
+  window.dtChatSaveContact=function(){
+    // Sync to mobile inputs and call mobile saveContact
+    var name=document.getElementById('dt-ac-name').value.trim();
+    var pub=document.getElementById('dt-ac-pub').value.trim();
+    var bch=document.getElementById('dt-ac-bch').value.trim();
+    var errEl=document.getElementById('dt-ac-error');
+    if(!name){errEl.textContent='Name required';return;}
+    if(!pub||pub.length!==64){errEl.textContent='Invalid pub_hex';return;}
+    if(!bch.startsWith('bitcoincash:')){errEl.textContent='Invalid BCH address';return;}
+    // Sync to mobile form
+    var mi=document.getElementById('ac-name');if(mi)mi.value=name;
+    mi=document.getElementById('ac-pub');if(mi){mi.value=pub;mi.readOnly=false;mi.style.opacity='';}
+    mi=document.getElementById('ac-bch');if(mi)mi.value=bch;
+    if(window.saveContact) window.saveContact();
+    dtChatCloseAdd();
+  };
+
+  /* ── Desktop Share Card ─── */
+  window.dtChatOpenShare=function(){
+    // Read profile data from mobile share card elements
+    var bch=document.getElementById('sc-bch');
+    var pub=document.getElementById('sc-pub');
+    if(bch) document.getElementById('dt-sc-bch').textContent=bch.textContent;
+    if(pub) document.getElementById('dt-sc-pub').textContent=pub.textContent;
+    // Trigger mobile openShareCard to populate data
+    if(window.openShareCard) window.openShareCard();
+    // Copy populated data
+    setTimeout(function(){
+      var bch2=document.getElementById('sc-bch');
+      var pub2=document.getElementById('sc-pub');
+      var url2=document.getElementById('sc-url');
+      if(bch2) document.getElementById('dt-sc-bch').textContent=bch2.textContent;
+      if(pub2) document.getElementById('dt-sc-pub').textContent=pub2.textContent;
+      if(url2) document.getElementById('dt-sc-url').textContent=url2.textContent;
+      // Mirror QR
+      var srcQ=document.getElementById('sc-qr');
+      var dstQ=document.getElementById('dt-sc-qr');
+      if(srcQ&&dstQ){
+        dstQ.width=srcQ.width;dstQ.height=srcQ.height;
+        var ctx=dstQ.getContext('2d');
+        try{ctx.drawImage(srcQ,0,0);}catch(e){}
+      }
+      // Close mobile overlay since it's hidden anyway
+      if(window.closeShareCard) window.closeShareCard();
+    },200);
+    document.getElementById('dt-chat-share-overlay').classList.add('active');
+  };
+  window.dtChatCloseShare=function(){
+    document.getElementById('dt-chat-share-overlay').classList.remove('active');
+  };
+  window.dtChatUpdateShare=function(){
+    var nameInp=document.getElementById('dt-sc-name');
+    var mi=document.getElementById('sc-name');
+    if(mi&&nameInp) mi.value=nameInp.value;
+    if(window.updateShareCard) window.updateShareCard();
+    setTimeout(function(){
+      var url2=document.getElementById('sc-url');
+      if(url2) document.getElementById('dt-sc-url').textContent=url2.textContent;
+      var srcQ=document.getElementById('sc-qr');
+      var dstQ=document.getElementById('dt-sc-qr');
+      if(srcQ&&dstQ){
+        dstQ.width=srcQ.width;dstQ.height=srcQ.height;
+        var ctx=dstQ.getContext('2d');
+        try{ctx.drawImage(srcQ,0,0);}catch(e){}
+      }
+    },200);
+  };
+  window.dtChatCopyUrl=function(){
+    var url=document.getElementById('dt-sc-url');
+    if(url&&navigator.clipboard) navigator.clipboard.writeText(url.textContent);
+  };
+
+  /* ── Chat Info Modal ─── */
+  window.toggleChatInfo=function(){
+    var modal=document.getElementById('chat-info-modal');
+    if(!modal) return;
+    if(modal.parentElement!==document.body) document.body.appendChild(modal);
+    var isOpen=modal.style.display==='flex';
+    modal.style.display=isOpen?'none':'flex';
+  };
+
+  /* ── Poll mobile DOM ─── */
+  setInterval(function(){
+    // Mirror BCH balance chip
+    var mb=document.getElementById('balance-val');
+    var bchChip=document.getElementById('dt-status-chat-bch');
+    var bchDot=document.getElementById('dt-chat-dot-bch');
+    var bchVal=document.getElementById('dt-status-chat-bch-val');
+    if(mb&&bchChip){
+      var bal=mb.textContent||'';
+      var isLoading=!bal||bal.indexOf('--')>=0||bal.indexOf('loading')>=0||bal==='…';
+      var num=parseFloat(bal);
+      var isZero=!isLoading&&(isNaN(num)||num===0);
+      var hasBalance=!isLoading&&!isNaN(num)&&num>0;
+      bchChip.classList.toggle('connecting',isLoading);
+      bchChip.classList.toggle('err',isZero);
+      bchChip.classList.toggle('on',hasBalance);
+      if(bchDot){bchDot.classList.toggle('connecting',isLoading);bchDot.classList.toggle('err',isZero);bchDot.classList.toggle('on',hasBalance);}
+      if(bchVal){var clean=bal.replace(/\s*BCH\s*/i,'').trim();bchVal.textContent=hasBalance?clean:(isLoading?'loading…':'0');}
+    }
+
+    // Mirror Nostr status chip — read from window._nostrStatus()
+    var nChip=document.getElementById('dt-status-chat-nostr');
+    var nDot=document.getElementById('dt-chat-dot-nostr');
+    var nSrv=document.getElementById('dt-status-chat-nostr-server');
+    if(nChip){
+      var ns=typeof window._nostrStatus==='function'?window._nostrStatus():{up:0,total:0};
+      var anyOn=ns.up>0;
+      nChip.classList.toggle('on',anyOn);
+      nChip.classList.toggle('err',!anyOn);
+      if(nDot){nDot.classList.toggle('on',anyOn);nDot.classList.toggle('err',!anyOn);}
+      if(nSrv) nSrv.textContent=ns.up+'/'+ns.total+' relays';
+    }
+
+    // Mirror contact list
+    var ml=document.getElementById('list-'+_listMode);
+    var dl=document.getElementById('dt-chat-contact-list');
+    if(ml&&dl){
+      var items=ml.querySelectorAll('.list-item');
+      if(!items.length){
+        dl.innerHTML='<div style="padding:20px;text-align:center;color:var(--dt-text-secondary);font-size:12px">No '+_listMode+' yet</div>';
+      } else {
+        var html='';
+        items.forEach(function(it,i){
+          var name=it.querySelector('.item-name');
+          var preview=it.querySelector('.item-preview');
+          var time=it.querySelector('.item-time');
+          var badge=it.querySelector('.badge');
+          var avatar=it.querySelector('.avatar');
+          var oc=it.getAttribute('onclick')||'';
+          var idxMatch=oc.match(/openConv\((\d+)\)/);
+          var idx=idxMatch?idxMatch[1]:i;
+          html+='<div class="dt-contact-row'+(''+idx===_activeContact?' active':'')+'" onclick="dtChatOpenConv(\''+idx+'\')">'
+            +'<div class="dt-avatar">'+(avatar?avatar.textContent.trim().charAt(0):(name?name.textContent.charAt(0).toUpperCase():'?'))+'</div>'
+            +'<div class="dt-contact-info"><div class="dt-contact-name">'+(name?name.textContent:'Anon')+'</div>'
+            +'<div class="dt-contact-preview">'+(preview?preview.textContent:'')+'</div></div>'
+            +'<div class="dt-contact-meta">'
+            +(time?'<div class="dt-contact-time">'+time.textContent+'</div>':'')
+            +(badge?'<div class="dt-contact-badge">'+badge.textContent+'</div>':'')
+            +'</div></div>';
+        });
+        dl.innerHTML=html;
+      }
+    }
+
+    // Mirror active conversation
+    var cv=document.getElementById('dt-chat-conv');
+    if(cv&&cv.style.display!=='none'){
+      var cn=document.getElementById('conv-name');
+      var dcn=document.getElementById('dt-chat-conv-name');
+      if(cn&&dcn) dcn.textContent=cn.textContent;
+
+      var cs=document.getElementById('conv-status');
+      var dcs=document.getElementById('dt-chat-conv-status');
+      if(cs&&dcs) dcs.textContent=cs.textContent;
+
+      var ca=document.getElementById('conv-avatar');
+      var dca=document.getElementById('dt-chat-conv-avatar');
+      if(ca&&dca) dca.textContent=ca.textContent.trim().charAt(0);
+
+      // Mirror messages
+      var msgs=document.getElementById('messages');
+      var dmsgs=document.getElementById('dt-chat-messages');
+      if(msgs&&dmsgs){
+        var mobMsgs=msgs.querySelectorAll('.msg,.sys-msg,.enc-badge');
+        var html='';
+        mobMsgs.forEach(function(m){
+          if(m.classList.contains('sys-msg')||m.classList.contains('enc-badge')){
+            html+='<div style="text-align:center;font-size:11px;color:var(--dt-text-secondary);padding:8px;opacity:.6">'+m.textContent+'</div>';
+            return;
+          }
+          var isMe=m.classList.contains('me');
+          var bubble=m.querySelector('.msg-bubble');
+          var time=m.querySelector('.msg-time');
+          var sender=m.querySelector('.msg-sender');
+          html+='<div class="dt-msg '+(isMe?'me':'them')+'">'
+            +(sender?'<div style="font-size:10px;color:var(--dt-text-secondary);margin-bottom:2px">'+sender.textContent+'</div>':'')
+            +'<div class="dt-msg-bubble">'+(bubble?bubble.textContent:'')+'</div>'
+            +(time?'<div class="dt-msg-time">'+time.textContent+'</div>':'')
+            +'</div>';
+        });
+        dmsgs.innerHTML=html;
+      }
+    }
+  },800);
+})();
+</script>
+
+<!-- ── PHONE ── -->
+<div class="phone-wrap">
+  <div class="phone">
+    <div class="notch">
+      <div class="notch-cam"></div>
+      <div class="notch-speaker"></div>
+    </div>
+
+    <!-- Status bar -->
+    <div class="status-bar">
+      <span id="phone-clock">03:41</span>
+      <div class="status-icons">
+        <span>▲▲▲</span>
+        <span>WiFi</span>
+        <span style="color:var(--green);text-shadow:0 0 6px var(--green)">⬛100%</span>
+      </div>
+    </div>
+
+    <!-- App header -->
+    <div class="app-header">
+      <div class="app-title">
+        00 Chat
+        <span>split-knowledge · BCH + Nostr</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+        <div style="display:flex;gap:14px">
+          <div class="header-icon" title="Change Identity" onclick="openChangeIdentity()">⟳</div>
+          <div class="header-icon" title="Add Contact" onclick="openAddContact()">+</div>
+          <div class="header-icon" title="Share My Card" onclick="openShareCard()">◈</div>
+        </div>
+        <div class="balance-chip loading" id="balance-chip" onclick="refreshBalance()" title="Click to refresh">
+          <span class="balance-dot"></span>
+          <span id="balance-val">-- BCH</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Search -->
+    <div class="search-wrap">
+      <input class="search-input" type="text" placeholder="// search...">
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('contacts',this)">Contacts</div>
+      <div class="tab" onclick="switchTab('groups',this)">Groups</div>
+    </div>
+
+    <!-- Lists -->
+    <div class="list-wrap" id="list-contacts">
+      <!-- Contacts rendered by JS -->
+    </div>
+    <div class="list-wrap" id="list-groups" style="display:none">
+      <!-- Groups rendered by JS -->
+    </div>
+
+    <!-- ── WIPE SCREEN ── -->
+    <div class="wipe-screen" id="wipe-screen">
+      <div class="wipe-icon">💀</div>
+      <div class="wipe-title">KEY ERASED</div>
+      <div class="wipe-sub">3 failed attempts detected<br>Private key wiped from memory</div>
+      <div style="font-size:10px;color:rgba(255,0,60,.25);letter-spacing:2px;margin-top:8px">// no recovery possible</div>
+      <button class="auth-btn wipe-btn" style="color:#ff003c;border-color:rgba(255,0,60,.3);background:rgba(255,0,60,.08);width:200px" onclick="resetToImport()">↺ IMPORT NEW KEY</button>
+    </div>
+
+    <!-- ── AUTH: UNLOCK (saved key exists) ── -->
+    <div class="auth-screen" id="auth-unlock" style="display:none">
+      <div class="auth-logo">00</div>
+      <div class="auth-subtitle">// 00 CHAT · UNLOCK</div>
+      <div class="attempts-bar" id="attempts-bar">
+        <div class="attempt-dot" id="dot0"></div>
+        <div class="attempt-dot" id="dot1"></div>
+        <div class="attempt-dot" id="dot2"></div>
+      </div>
+      <div class="auth-error" id="unlock-error"></div>
+      <div class="auth-label">PASSWORD</div>
+      <input class="auth-input" type="password" id="unlock-password" placeholder="enter password..." onkeydown="if(event.key==='Enter')tryUnlock()">
+      <button class="auth-btn" onclick="tryUnlock()">UNLOCK →</button>
+      <button class="auth-btn auth-btn-secondary" onclick="showImport()">Use different key</button>
+      <div style="width:100%;text-align:center;color:rgba(0,255,65,.18);font-size:9px;letter-spacing:3px;margin:2px 0">── OR ──</div>
+      <button class="auth-btn" onclick="connectWalletConnect()" style="background:transparent;border-color:rgba(59,130,246,.35);color:#3b82f6">⛓ WALLETCONNECT</button>
+      <div class="auth-error" id="wc-error-unlock"></div>
+      <div class="auth-info">Key encrypted with AES-256-GCM<br>3 failed attempts = key wipe</div>
+    </div>
+
+    <!-- ── KEYGEN OVERLAY ── -->
+    <div class="keygen-overlay" id="keygen-overlay">
+      <div class="keygen-title">// GENERATE KEYPAIR</div>
+      <div id="keygen-spinner" class="keygen-spinner">GENERATING..._</div>
+
+      <div id="keygen-content" style="display:none;flex-direction:column;gap:12px">
+        <!-- 12 mots BIP39 -->
+        <div class="keygen-lbl">PHRASE — 12 MOTS BIP39</div>
+        <div class="word-grid" id="kg-words"></div>
+        <button class="keygen-copy" style="align-self:center;padding:5px 18px" onclick="kgCopyWords(this)">COPIER LES 12 MOTS</button>
+
+        <!-- Clé hex (secondaire / avancé) -->
+        <details class="keygen-details">
+          <summary>// afficher clé hex (avancé)</summary>
+          <div style="margin-top:8px;display:flex;flex-direction:column;gap:5px">
+            <div class="keygen-lbl">CLÉ PRIVÉE HEX (32 bytes)</div>
+            <div class="keygen-val" id="kg-priv" style="font-size:8px;letter-spacing:.3px"></div>
+            <button class="keygen-copy" onclick="kgCopy('kg-priv',this)">COPY HEX</button>
+          </div>
+        </details>
+
+        <div class="keygen-warn">
+          ⚠ NOTE TES 12 MOTS MAINTENANT<br>
+          Offline · papier · coffre-fort<br>
+          <span style="font-size:9px;opacity:.6">Sans ta phrase, aucun accès possible</span>
+        </div>
+        <button class="auth-btn" style="margin-top:2px" onclick="kgUseKey()">UTILISER CETTE CLÉ →</button>
+        <button class="auth-btn auth-btn-secondary" onclick="closeKeygen()">← ANNULER</button>
+      </div>
+    </div>
+
+    <!-- ── CHANGE IDENTITY OVERLAY ── -->
+    <div class="ci-overlay" id="ci-overlay">
+      <div class="keygen-title">// CHANGE IDENTITY</div>
+
+      <div id="ci-spinner" class="keygen-spinner">GENERATING..._</div>
+
+      <div id="ci-content" style="display:none;flex-direction:column;gap:10px">
+        <div class="ci-section">
+          <div class="keygen-lbl">NOUVELLE CLÉ PUBLIQUE X25519</div>
+          <div class="ci-addr-display" id="ci-new-pub"></div>
+        </div>
+
+        <div class="ci-section">
+          <div class="keygen-lbl">NOUVELLE ADRESSE BCH (réception)</div>
+          <div class="ci-addr-display" id="ci-new-bch"></div>
+          <button class="keygen-copy" style="align-self:flex-end" onclick="kgCopy('ci-new-bch',this)">COPY</button>
+        </div>
+
+        <div class="ci-section">
+          <div class="keygen-lbl">NOTIFIER LES CONTACTS</div>
+          <div id="ci-contacts-list" style="display:flex;flex-direction:column;gap:4px"></div>
+        </div>
+
+        <div class="ci-warn">
+          ⚠ CETTE ACTION EST IRRÉVERSIBLE<br>
+          Une tx BCH sera envoyée à chaque contact<br>
+          <span style="font-size:9px;opacity:.6">Ils mettront à jour ton adresse automatiquement</span>
+        </div>
+
+        <button class="auth-btn" id="ci-broadcast-btn" onclick="ciDoBroadcast()">
+          ⚡ BROADCASTER AUX CONTACTS →
+        </button>
+        <button class="auth-btn auth-btn-secondary" onclick="closeChangeIdentity()">← ANNULER</button>
+      </div>
+
+      <!-- Post-broadcast -->
+      <div id="ci-done" style="display:none;flex-direction:column;gap:12px;align-items:center">
+        <div style="font-size:32px">✓</div>
+        <div style="font-family:'Orbitron',monospace;font-size:12px;color:var(--green);letter-spacing:2px;text-align:center">
+          IDENTITÉ MISE À JOUR
+        </div>
+        <div style="font-size:10px;color:rgba(0,255,65,.4);text-align:center;line-height:1.6">
+          Nouvelle clé active — Contacts notifiés<br>BCH transféré vers la nouvelle adresse
+        </div>
+        <button class="auth-btn" style="width:200px" onclick="closeChangeIdentity()">FERMER</button>
+      </div>
+    </div>
+
+    <!-- ── WC OVERLAY ── -->
+    <div class="keygen-overlay" id="wc-overlay" style="display:none">
+      <!-- Step 1: QR -->
+      <div id="wc-step-qr" style="display:flex;flex-direction:column;align-items:center;gap:16px">
+        <div style="font-family:'Orbitron',monospace;font-size:14px;color:#3b82f6;letter-spacing:2px">⛓ WALLETCONNECT</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.5);letter-spacing:1px">SCAN WITH YOUR BCH WALLET</div>
+        <canvas id="wc-qr" style="border-radius:8px"></canvas>
+        <div style="font-size:9px;color:rgba(255,255,255,.3)">Cashonize · Paytaca · Zapit</div>
+        <button class="auth-btn auth-btn-secondary" onclick="cancelChatWc()" style="max-width:200px">CANCEL</button>
+      </div>
+      <!-- Step 2: Set password for X25519 vault -->
+      <div id="wc-step-pass" style="display:none;flex-direction:column;align-items:center;gap:12px;width:100%;max-width:300px">
+        <div style="font-family:'Orbitron',monospace;font-size:12px;color:#3b82f6;letter-spacing:2px">⛓ CONNECTED</div>
+        <div style="font-size:10px;color:rgba(0,255,65,.5);letter-spacing:1px">SET PASSWORD TO ENCRYPT CHAT KEYS</div>
+        <input class="auth-input" type="password" id="wc-pass" placeholder="min 8 chars..." style="width:100%">
+        <input class="auth-input" type="password" id="wc-pass2" placeholder="confirm..." style="width:100%" onkeydown="if(event.key==='Enter')wcFinalize()">
+        <div class="auth-error" id="wc-pass-error"></div>
+        <button class="auth-btn" onclick="wcFinalize()" style="width:100%">SAVE & ENTER CHAT →</button>
+      </div>
+    </div>
+
+    <!-- ── AUTH: IMPORT KEY (first time) ── -->
+    <div class="auth-screen" id="auth-import" style="display:none">
+      <div class="auth-logo">00</div>
+      <div class="auth-subtitle">// 00 CHAT · SETUP</div>
+      <button class="auth-btn auth-btn-gen" onclick="openKeygen()">⚡ GÉNÉRER UNE NOUVELLE CLÉ</button>
+      <div class="auth-label">CLÉ — 12 MOTS OU HEX</div>
+      <textarea class="auth-input auth-textarea" id="import-key" placeholder="mot1 mot2 ... mot12   ou   4a2f...hex (64 chars)"></textarea>
+      <div class="auth-label">SET PASSWORD</div>
+      <input class="auth-input" type="password" id="import-pass" placeholder="min 8 chars...">
+      <div class="auth-label">CONFIRM PASSWORD</div>
+      <input class="auth-input" type="password" id="import-pass2" placeholder="confirm..." onkeydown="if(event.key==='Enter')importKey()">
+      <div class="auth-error" id="import-error"></div>
+      <div class="toggle-row" onclick="toggleSave()">
+        <div class="toggle on" id="save-toggle"></div>
+        <div class="toggle-label">Save encrypted key locally</div>
+      </div>
+      <button class="auth-btn" onclick="importKey()">IMPORT KEY →</button>
+      <div style="width:100%;text-align:center;color:rgba(0,255,65,.18);font-size:9px;letter-spacing:3px;margin:6px 0">── OR ──</div>
+      <button class="auth-btn" onclick="connectWalletConnect()" style="background:transparent;border-color:rgba(59,130,246,.35);color:#3b82f6">⛓ WALLETCONNECT</button>
+      <div class="auth-error" id="wc-error-import"></div>
+      <div class="auth-info">Key never leaves your device<br>Stored encrypted with your password</div>
+    </div>
+
+    <!-- Conversation view -->
+    <div id="conv-view">
+      <div class="conv-header">
+        <div class="conv-back" onclick="closeConv()">←</div>
+        <div class="avatar" id="conv-avatar" style="width:36px;height:36px;font-size:12px">?</div>
+        <div class="conv-info">
+          <div class="conv-name" id="conv-name">—</div>
+          <div class="conv-status" id="conv-status">—</div>
+        </div>
+        <div class="conv-actions">
+          <span title="Supprimer le contact" onclick="deleteCurrentContact()" style="cursor:pointer;padding:4px;line-height:0;display:inline-flex;opacity:.5" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='.5'"><svg width="13" height="13" viewBox="0 0 11 11"><line x1="1.5" y1="1.5" x2="9.5" y2="9.5" stroke="var(--green)" stroke-width="2.2" stroke-linecap="round"/><line x1="9.5" y1="1.5" x2="1.5" y2="9.5" stroke="var(--green)" stroke-width="2.2" stroke-linecap="round"/></svg></span>
+        </div>
+      </div>
+      <div class="pending-banner" id="pending-banner" style="display:none">
+        <span>// EXPÉDITEUR INCONNU — pas encore dans vos contacts</span>
+        <button onclick="addCurrentContact()">+ AJOUTER</button>
+      </div>
+      <div class="messages" id="messages"></div>
+      <div class="conv-input-wrap">
+        <textarea class="conv-input" placeholder="// type message..." rows="1" id="msg-input" onkeydown="handleSend(event)"></textarea>
+        <button class="send-btn" onclick="sendMsg()">➤</button>
+      </div>
+    </div>
+
+    <!-- ── ADD CONTACT OVERLAY ── -->
+    <div class="ci-overlay" id="add-contact-overlay" style="display:none">
+      <div class="keygen-title">// ADD CONTACT</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div class="keygen-lbl">CONTACT CARD URL (chatcash:...)</div>
+        <input class="auth-input" type="text" id="ac-url" placeholder="chatcash:bitcoincash:q...?pub=...&amp;name=..." style="font-size:9px">
+        <button class="keygen-copy" style="align-self:flex-end;padding:5px 14px" onclick="parseContactCard()">PARSE →</button>
+        <div class="keygen-lbl">NAME</div>
+        <input class="auth-input" type="text" id="ac-name" placeholder="contact name...">
+        <div class="keygen-lbl">X25519 PUB (64 hex)</div>
+        <input class="auth-input" type="text" id="ac-pub" placeholder="64 hex chars..." style="font-size:9px">
+        <div class="keygen-lbl">BCH ADDRESS</div>
+        <input class="auth-input" type="text" id="ac-bch" placeholder="bitcoincash:q..." style="font-size:9px">
+        <div class="auth-error" id="ac-error"></div>
+        <button class="auth-btn" style="margin-top:4px" onclick="saveContact()">+ ADD CONTACT</button>
+        <button class="auth-btn auth-btn-secondary" onclick="closeAddContact()">← CANCEL</button>
+      </div>
+    </div>
+
+    <!-- ── SHARE CARD OVERLAY ── -->
+    <div class="ci-overlay" id="share-card-overlay" style="display:none">
+      <div class="keygen-title">// MY CONTACT CARD</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div class="ci-section">
+          <div class="keygen-lbl">DISPLAY NAME</div>
+          <input class="auth-input" id="sc-name" placeholder="anon" oninput="updateShareCard()" style="font-size:12px">
+        </div>
+        <div class="ci-section">
+          <div class="keygen-lbl">SHARE THIS URL</div>
+          <div class="keygen-val" id="sc-url" style="font-size:8px;word-break:break-all;line-height:1.5;padding:8px;border:1px solid rgba(0,255,65,.15)"></div>
+          <div style="display:flex;justify-content:center;margin:6px 0">
+            <canvas id="sc-qr" style="border-radius:6px;image-rendering:pixelated"></canvas>
+          </div>
+          <button class="keygen-copy" style="align-self:flex-end" onclick="kgCopy('sc-url',this)">COPY URL</button>
+        </div>
+        <div class="ci-section">
+          <div class="keygen-lbl">BCH ADDRESS</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="keygen-val" id="sc-bch" style="font-size:8px;word-break:break-all;flex:1"></div>
+            <span id="sc-bch-qr-icon" onclick="toggleBchQr()" title="QR code BCH" style="cursor:pointer;flex-shrink:0;opacity:.55;transition:opacity .15s">
+              <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="1" y="1" width="8" height="8" rx="1" stroke="#00ff41" stroke-width="1.5" fill="none"/>
+                <rect x="3.5" y="3.5" width="3" height="3" fill="#00ff41"/>
+                <rect x="13" y="1" width="8" height="8" rx="1" stroke="#00ff41" stroke-width="1.5" fill="none"/>
+                <rect x="15.5" y="3.5" width="3" height="3" fill="#00ff41"/>
+                <rect x="1" y="13" width="8" height="8" rx="1" stroke="#00ff41" stroke-width="1.5" fill="none"/>
+                <rect x="3.5" y="15.5" width="3" height="3" fill="#00ff41"/>
+                <rect x="13" y="13" width="3" height="3" fill="#00ff41"/>
+                <rect x="18" y="13" width="3" height="3" fill="#00ff41"/>
+                <rect x="13" y="18" width="3" height="3" fill="#00ff41"/>
+                <rect x="18" y="18" width="3" height="3" fill="#00ff41"/>
+              </svg>
+            </span>
+          </div>
+          <div id="sc-bch-qr-wrap" style="display:none;justify-content:center;margin-top:6px">
+            <canvas id="sc-bch-qr" style="border-radius:6px;image-rendering:pixelated"></canvas>
+          </div>
+        </div>
+        <div class="ci-section">
+          <div class="keygen-lbl">X25519 PUB</div>
+          <div class="keygen-val" id="sc-pub" style="font-size:8px;word-break:break-all"></div>
+        </div>
+        <button class="auth-btn auth-btn-secondary" onclick="closeShareCard()">← CLOSE</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>(function(){var v=localStorage.getItem('00wallet_vault');if(!v){window.location.href='/wallet.html';return;}try{var s=JSON.parse(localStorage.getItem('00_session_auth')||'{}');if(!s.ts||Date.now()-s.ts>30*60*1000){window.location.href='/wallet.html';}}catch(e){window.location.href='/wallet.html';}})();</script>
+<script>
+// ── Boot sequence (regular script — runs even if module fails) ────────────
+(function() {
+  const statuses = ['BOOT 0penw0rld OS...', 'CHECKING SECURE STORAGE...', 'LOADING CCSH PROTOCOL...', 'READY'];
+  let si = 0;
+  const statusEl = document.getElementById('loader-status');
+  const loaderIv = setInterval(() => {
+    if (si < statuses.length) { statusEl.innerHTML = statuses[si] + '<span class="blink">_</span>'; si++; }
+    else clearInterval(loaderIv);
+  }, 480);
+  setTimeout(() => {
+    // Don't hide loading yet — let _appBoot decide
+    if (typeof window._appBoot === 'function') {
+      window._appBoot();
+    } else {
+      // Module failed — hide loading, show import
+      document.getElementById('loading').style.transition = 'opacity .5s';
+      document.getElementById('loading').style.opacity = '0';
+      setTimeout(() => {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('auth-import').style.display = 'flex';
+        const e = document.getElementById('import-error');
+        if (e) e.textContent = '// Servir via HTTP : python3 -m http.server 8080';
+      }, 500);
+    }
+  }, 2200);
+})();
+</script>
+<script src="/ws-bridge.js"></script>
+<script type="module">
+// ════════════════════════════════════════════════════
+// 00 CHAT — Real crypto — BCH on-chain messaging
+// ════════════════════════════════════════════════════
+
+// ── Noble crypto imports ──────────────────────────
+import { secp256k1, schnorr } from 'https://esm.sh/@noble/curves@1.8.1/secp256k1';
+import { x25519    } from 'https://esm.sh/@noble/curves@1.8.1/ed25519';
+import { hmac      } from 'https://esm.sh/@noble/hashes@1.7.1/hmac';
+import { sha256    } from 'https://esm.sh/@noble/hashes@1.7.1/sha256';
+import { sha512    } from 'https://esm.sh/@noble/hashes@1.7.1/sha512';
+import { ripemd160 } from 'https://esm.sh/@noble/hashes@1.7.1/ripemd160';
+import QRCode       from 'https://esm.sh/qrcode@1.5.4';
+
+// ── Byte utils ────────────────────────────────────
+const h2b = h => new Uint8Array(h.match(/../g).map(x => parseInt(x, 16)));
+const b2h = b => Array.from(b, x => x.toString(16).padStart(2, '0')).join('');
+function concat(...arrs) {
+  const r = new Uint8Array(arrs.reduce((s, a) => s + a.length, 0));
+  let o = 0; for (const a of arrs) { r.set(a, o); o += a.length; } return r;
+}
+const u32LE = n => new Uint8Array([n & 0xff, (n >> 8) & 0xff, (n >> 16) & 0xff, (n >> 24) & 0xff]);
+function u64LE(n) {
+  const b = new Uint8Array(8); let v = BigInt(n);
+  for (let i = 0; i < 8; i++) { b[i] = Number(v & 0xffn); v >>= 8n; } return b;
+}
+function writeVarint(n) {
+  if (n < 0xfd) return new Uint8Array([n]);
+  if (n <= 0xffff) return new Uint8Array([0xfd, n & 0xff, (n >> 8) & 0xff]);
+  return new Uint8Array([0xfe, n & 0xff, (n >> 8) & 0xff, (n >> 16) & 0xff, (n >> 24) & 0xff]);
+}
+function readVarint(b, o = 0) {
+  const f = b[o];
+  if (f < 0xfd) return { v: f, l: 1 };
+  if (f === 0xfd) return { v: b[o + 1] | (b[o + 2] << 8), l: 3 };
+  return { v: b[o + 1] | (b[o + 2] << 8) | (b[o + 3] << 16) | (b[o + 4] * 16777216), l: 5 };
+}
+const dsha256 = d => sha256(sha256(d));
+
+// ── BIP32 / BIP44 secp256k1 ───────────────────────
+const N_SECP = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141n;
+function bip32Master(seed) {
+  const I = hmac(sha512, new TextEncoder().encode('Bitcoin seed'), seed);
+  return { priv: I.slice(0, 32), chain: I.slice(32) };
+}
+function _bip32Child(priv, chain, idx, hardened) {
+  const idxBytes = new Uint8Array([idx >>> 24, (idx >>> 16) & 0xff, (idx >>> 8) & 0xff, idx & 0xff]);
+  const data = hardened
+    ? concat(new Uint8Array([0x00]), priv, idxBytes)
+    : concat(secp256k1.getPublicKey(priv, true), idxBytes);
+  const I = hmac(sha512, chain, data);
+  const IL = I.slice(0, 32); const IR = I.slice(32);
+  const child = ((BigInt('0x' + b2h(IL)) + BigInt('0x' + b2h(priv))) % N_SECP).toString(16).padStart(64, '0');
+  return { priv: h2b(child), chain: IR };
+}
+function bip44BchPriv(seed64) {
+  // m/44'/145'/0'/0/0
+  let n = bip32Master(seed64);
+  n = _bip32Child(n.priv, n.chain, 0x8000002c, true); // 44'
+  n = _bip32Child(n.priv, n.chain, 0x80000091, true); // 145' (BCH)
+  n = _bip32Child(n.priv, n.chain, 0x80000000, true); // 0'
+  n = _bip32Child(n.priv, n.chain, 0, false);          // 0
+  n = _bip32Child(n.priv, n.chain, 0, false);          // 0
+  return n.priv; // Uint8Array 32 bytes
+}
+
+// ── BCH / CashAddr ────────────────────────────────
+const _CA_CHARSET = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l';
+function _caPolymod(v) {
+  const g = [0x98f2bc8e61n, 0x79b76d99e2n, 0xf33e5fb3c4n, 0xae2eabe2a8n, 0x1e4f43e470n];
+  let c = 1n;
+  for (const x of v) {
+    const c0 = c >> 35n;
+    c = ((c & 0x07ffffffffn) << 5n) ^ BigInt(x);
+    for (let i = 0; i < 5; i++) if ((c0 >> BigInt(i)) & 1n) c ^= g[i];
+  }
+  return c ^ 1n;
+}
+function _caExpand(prefix) { const r = []; for (const ch of prefix) r.push(ch.charCodeAt(0) & 0x1f); r.push(0); return r; }
+function pubHashToCashAddr(hash20, prefix = 'bitcoincash') {
+  const payload = [0x00, ...hash20]; const d5 = []; let acc = 0, bits = 0;
+  for (const b of payload) { acc = (acc << 8) | b; bits += 8; while (bits >= 5) { bits -= 5; d5.push((acc >> bits) & 0x1f); } }
+  if (bits > 0) d5.push((acc << (5 - bits)) & 0x1f);
+  const chkIn = [..._caExpand(prefix), ...d5, 0, 0, 0, 0, 0, 0, 0, 0];
+  const chk = _caPolymod(chkIn); let chkStr = '';
+  for (let i = 7; i >= 0; i--) chkStr += _CA_CHARSET[Number((chk >> BigInt(i * 5)) & 0x1fn)];
+  return prefix + ':' + d5.map(x => _CA_CHARSET[x]).join('') + chkStr;
+}
+function cashAddrToHash20(addr) {
+  const payload = addr.includes(':') ? addr.split(':')[1] : addr;
+  const d5 = Array.from(payload.slice(0, -8), c => _CA_CHARSET.indexOf(c));
+  let acc = 0, bits = 0; const bytes = [];
+  for (const v of d5) { acc = (acc << 5) | v; bits += 5; while (bits >= 8) { bits -= 8; bytes.push((acc >> bits) & 0xff); } }
+  return new Uint8Array(bytes.slice(1, 21)); // skip version byte
+}
+function privToBchAddr(priv32) {
+  const pub = secp256k1.getPublicKey(priv32, true); // compressed 33 bytes
+  const hash = ripemd160(sha256(pub));
+  return pubHashToCashAddr(Array.from(hash));
+}
+
+// ── Vault: AES-256-GCM + PBKDF2-SHA256 ───────────
+async function _pbkdf2Key(password, salt) {
+  const enc = new TextEncoder();
+  const km = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', hash: 'SHA-256', salt, iterations: 200000 },
+    km, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']
+  );
+}
+async function encryptVault(profile, password) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv   = crypto.getRandomValues(new Uint8Array(12));
+  const key  = await _pbkdf2Key(password, salt);
+  const ct   = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key,
+    new TextEncoder().encode(JSON.stringify(profile)));
+  return JSON.stringify({ v: 1, salt: b2h(salt), iv: b2h(iv), data: b2h(new Uint8Array(ct)) });
+}
+async function decryptVault(enc_json, password) {
+  const { salt, iv, data } = JSON.parse(enc_json);
+  const key = await _pbkdf2Key(password, h2b(salt));
+  const pt  = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: h2b(iv) }, key, h2b(data));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+
+// ── CCSH v1 protocol ──────────────────────────────
+const CCSH_MAGIC = new Uint8Array([0x43, 0x43, 0x53, 0x48]); // "CCSH"
+function packPacket(pkt) {
+  const c = pkt.ciphertext_chunk;
+  return concat(
+    CCSH_MAGIC,
+    new Uint8Array([0x01, pkt.msg_type || 0x01, pkt.flags || 0]),
+    pkt.msg_id, pkt.sender_pub,
+    new Uint8Array([(pkt.chunk_index >> 8) & 0xff, pkt.chunk_index & 0xff]),
+    new Uint8Array([(pkt.chunk_total >> 8) & 0xff, pkt.chunk_total & 0xff]),
+    new Uint8Array([(c.length >> 8) & 0xff, c.length & 0xff]),
+    c
+  );
+}
+function unpackPacket(raw) {
+  if (raw.length < 61) throw new Error('packet too short');
+  if (raw[0] !== 0x43 || raw[1] !== 0x43 || raw[2] !== 0x53 || raw[3] !== 0x48) throw new Error('bad magic');
+  if (raw[4] !== 0x01) throw new Error('bad version');
+  let pos = 7;
+  const msg_id      = raw.slice(pos, pos + 16); pos += 16;
+  const sender_pub  = raw.slice(pos, pos + 32); pos += 32;
+  const chunk_index = (raw[pos] << 8) | raw[pos + 1]; pos += 2;
+  const chunk_total = (raw[pos] << 8) | raw[pos + 1]; pos += 2;
+  const clen        = (raw[pos] << 8) | raw[pos + 1]; pos += 2;
+  return { msg_type: raw[5], msg_id, sender_pub, chunk_index, chunk_total,
+           ciphertext_chunk: raw.slice(pos, pos + clen) };
+}
+// Encrypt text → single-chunk CCSH packet bytes
+async function ccshEncryptMsg(text, recipientPubHex, senderPriv32, senderPub32, msgType = 0x01) {
+  const recipientPub = h2b(recipientPubHex);
+  const ephPriv = crypto.getRandomValues(new Uint8Array(32));
+  const ephPub  = x25519.getPublicKey(ephPriv);
+  const shared  = x25519.getSharedSecret(ephPriv, recipientPub);
+  const aesKey  = sha256(shared);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ck = await crypto.subtle.importKey('raw', aesKey, { name: 'AES-GCM' }, false, ['encrypt']);
+  const ct = new Uint8Array(await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv, tagLength: 128 }, ck, new TextEncoder().encode(text)));
+  const ciphertext_chunk = concat(ephPub, iv, ct);
+  const msg_id = crypto.getRandomValues(new Uint8Array(16));
+  return packPacket({ msg_id, sender_pub: senderPub32, chunk_index: 0, chunk_total: 1,
+                      ciphertext_chunk, msg_type: msgType, flags: 0 });
+}
+// Decrypt CCSH packet → { text, senderPubHex, msgType }
+async function ccshDecryptPacket(raw, myPriv32) {
+  const pkt  = unpackPacket(raw);
+  const cc   = pkt.ciphertext_chunk;
+  const shared = x25519.getSharedSecret(myPriv32, cc.slice(0, 32));
+  const aesKey = sha256(shared);
+  const ck = await crypto.subtle.importKey('raw', aesKey, { name: 'AES-GCM' }, false, ['decrypt']);
+  const pt = new Uint8Array(await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv: cc.slice(32, 44), tagLength: 128 }, ck, cc.slice(44)));
+  return { text: new TextDecoder().decode(pt), senderPubHex: b2h(pkt.sender_pub), msgType: pkt.msg_type };
+}
+
+// ══════════════════════════════════════════════════
+// CCSH v2 — Split-Knowledge Protocol
+// XOR One-Time Pad: chain (OP_RETURN) + relay (Nostr)
+// ══════════════════════════════════════════════════
+const CCSH_V2 = 0x02;
+const MSG_SPLIT_CHAIN = 0x10;
+const MSG_SPLIT_RELAY = 0x11;
+const FLAG_SPLIT = 0x01;
+const NOSTR_KIND_CCSH = 21059; // ephemeral encrypted DM
+
+// ── v2 XOR One-Time Pad ──────────────────────────
+function xorSplit(data) {
+  const pad = crypto.getRandomValues(new Uint8Array(data.length));
+  const shard = new Uint8Array(data.length);
+  for (let i = 0; i < data.length; i++) shard[i] = data[i] ^ pad[i];
+  return [shard, pad];
+}
+function xorMerge(shard, pad) {
+  if (shard.length !== pad.length) throw new Error('XOR length mismatch');
+  const out = new Uint8Array(shard.length);
+  for (let i = 0; i < shard.length; i++) out[i] = shard[i] ^ pad[i];
+  return out;
+}
+
+// ── v2 Dual-channel KDF ──────────────────────────
+function deriveKeyChain(shared) { return sha256(concat(shared, new TextEncoder().encode('ccsh-chain'))); }
+function deriveKeyRelay(shared) { return sha256(concat(shared, new TextEncoder().encode('ccsh-relay'))); }
+
+// ── v2 AES wrap/unwrap ───────────────────────────
+async function aesWrap(data, key) {
+  const nonce = crypto.getRandomValues(new Uint8Array(12));
+  const ck = await crypto.subtle.importKey('raw', key, { name: 'AES-GCM' }, false, ['encrypt']);
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv: nonce, tagLength: 128 }, ck, data));
+  return concat(nonce, ct);
+}
+async function aesUnwrap(blob, key) {
+  if (blob.length < 12) throw new Error('blob too short');
+  const ck = await crypto.subtle.importKey('raw', key, { name: 'AES-GCM' }, false, ['decrypt']);
+  return new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: blob.slice(0, 12), tagLength: 128 }, ck, blob.slice(12)));
+}
+
+// ── v2 Split encrypt/decrypt ─────────────────────
+async function splitEncrypt(plaintext, recipientPubHex) {
+  const recipientPub = h2b(recipientPubHex);
+  // 1. Ephemeral ECDH
+  const ephPriv = crypto.getRandomValues(new Uint8Array(32));
+  const ephPub = x25519.getPublicKey(ephPriv);
+  const shared = x25519.getSharedSecret(ephPriv, recipientPub);
+  // 2. Inner AES (same as v1)
+  const innerKey = sha256(shared);
+  const innerNonce = crypto.getRandomValues(new Uint8Array(12));
+  const ck = await crypto.subtle.importKey('raw', innerKey, { name: 'AES-GCM' }, false, ['encrypt']);
+  const innerCt = concat(innerNonce, new Uint8Array(await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv: innerNonce, tagLength: 128 }, ck, new TextEncoder().encode(plaintext))));
+  // 3. XOR split (One-Time Pad)
+  const [shard, pad] = xorSplit(innerCt);
+  // 4. Dual-channel wrap
+  const chainBlob = await aesWrap(shard, deriveKeyChain(shared));
+  const relayBlob = await aesWrap(pad, deriveKeyRelay(shared));
+  return { chainBlob, relayBlob, ephPub };
+}
+
+async function splitDecrypt(chainBlob, relayBlob, ephPub, myPriv32) {
+  // 1. ECDH
+  const shared = x25519.getSharedSecret(myPriv32, ephPub);
+  // 2. Unwrap both channels
+  const shard = await aesUnwrap(chainBlob, deriveKeyChain(shared));
+  const pad = await aesUnwrap(relayBlob, deriveKeyRelay(shared));
+  // 3. XOR merge
+  const innerCt = xorMerge(shard, pad);
+  // 4. Decrypt inner
+  const innerKey = sha256(shared);
+  const ck = await crypto.subtle.importKey('raw', innerKey, { name: 'AES-GCM' }, false, ['decrypt']);
+  const pt = new Uint8Array(await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv: innerCt.slice(0, 12), tagLength: 128 }, ck, innerCt.slice(12)));
+  return new TextDecoder().decode(pt);
+}
+
+// ── v2 Packet pack/unpack ────────────────────────
+function packV2(pkt) {
+  const c = pkt.ciphertext_chunk;
+  return concat(
+    CCSH_MAGIC,
+    new Uint8Array([CCSH_V2, pkt.msg_type, pkt.flags || FLAG_SPLIT]),
+    pkt.msg_id, pkt.sender_pub,
+    new Uint8Array([(pkt.chunk_index >> 8) & 0xff, pkt.chunk_index & 0xff]),
+    new Uint8Array([(pkt.chunk_total >> 8) & 0xff, pkt.chunk_total & 0xff]),
+    new Uint8Array([(c.length >> 8) & 0xff, c.length & 0xff]),
+    c
+  );
+}
+function unpackAny(raw) {
+  if (raw.length < 61) throw new Error('packet too short');
+  if (raw[0] !== 0x43 || raw[1] !== 0x43 || raw[2] !== 0x53 || raw[3] !== 0x48) throw new Error('bad magic');
+  let pos = 7;
+  const msg_id = raw.slice(pos, pos + 16); pos += 16;
+  const sender_pub = raw.slice(pos, pos + 32); pos += 32;
+  const chunk_index = (raw[pos] << 8) | raw[pos + 1]; pos += 2;
+  const chunk_total = (raw[pos] << 8) | raw[pos + 1]; pos += 2;
+  const clen = (raw[pos] << 8) | raw[pos + 1]; pos += 2;
+  return { version: raw[4], msg_type: raw[5], flags: raw[6], msg_id, sender_pub,
+           chunk_index, chunk_total, ciphertext_chunk: raw.slice(pos, pos + clen) };
+}
+
+// ── Nostr relay manager ──────────────────────────
+const _NOSTR_RELAYS = JSON.parse(localStorage.getItem('00_ep_relays') || 'null') || [
+  'wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.nostr.band', 'wss://relay.snort.social'
+];
+let _nostrSockets = [], _nostrConnected = false, _seenNostrEvents = new Set();
+window._nostrStatus = function(){ var up=_nostrSockets.filter(function(s){return s.connected}).length; return {up:up,total:_NOSTR_RELAYS.length}; };
+let _pendingChainParts = new Map(); // msg_id_hex → { chunks, sender_pub, txid, senderBchAddr, ts }
+let _pendingRelayParts = new Map(); // msg_id_hex → { chunks, ts }
+
+function _deriveNostrPriv(x25519PrivHex) {
+  return sha256(concat(h2b(x25519PrivHex), new TextEncoder().encode('ccsh-nostr')));
+}
+function _nostrPubFromPriv(privBytes) {
+  return b2h(secp256k1.getPublicKey(privBytes, true).slice(1)); // x-only
+}
+
+async function _makeNostrEvent(privBytes, kind, content, tags) {
+  const pub = _nostrPubFromPriv(privBytes);
+  const created_at = Math.floor(Date.now() / 1000);
+  const idHash = sha256(new TextEncoder().encode(JSON.stringify([0, pub, created_at, kind, tags, content])));
+  const sig = b2h(schnorr.sign(idHash, privBytes));
+  return { id: b2h(idHash), pubkey: pub, created_at, kind, tags, content, sig };
+}
+
+function _connectNostrRelay(url) {
+  const entry = { url, ws: null, connected: false };
+  _nostrSockets.push(entry);
+  const ws = new WebSocket(url);
+  entry.ws = ws;
+  ws.onopen = () => {
+    entry.connected = true; _nostrConnected = true;
+    console.log('[nostr] connected', new URL(url).hostname);
+    _subscribeNostrInbox(ws);
+  };
+  ws.onmessage = e => {
+    try {
+      const msg = JSON.parse(e.data);
+      if (msg[0] === 'EVENT' && msg[2]) {
+        if (_seenNostrEvents.has(msg[2].id)) return;
+        _seenNostrEvents.add(msg[2].id);
+        if (_seenNostrEvents.size > 5000) {
+          const arr = [..._seenNostrEvents]; _seenNostrEvents = new Set(arr.slice(-2500));
+        }
+        _handleNostrCcshEvent(msg[2]);
+      }
+    } catch {}
+  };
+  ws.onclose = () => {
+    entry.connected = false;
+    _nostrConnected = _nostrSockets.some(s => s.connected);
+    const idx = _nostrSockets.indexOf(entry);
+    if (idx !== -1) _nostrSockets.splice(idx, 1);
+    setTimeout(() => _connectNostrRelay(url), 5000);
+  };
+  ws.onerror = () => ws.close();
+}
+
+function _subscribeNostrInbox(ws) {
+  if (!ws || ws.readyState !== 1 || !profile) return;
+  const now = Math.floor(Date.now() / 1000);
+  ws.send(JSON.stringify(['REQ', 'ccsh-inbox', {
+    kinds: [NOSTR_KIND_CCSH],
+    '#p': [profile.x25519_pub_hex],
+    since: now - 3600,
+  }]));
+}
+
+function _nostrPublish(event) {
+  let sent = 0;
+  for (const s of _nostrSockets) {
+    if (s.ws && s.ws.readyState === 1) {
+      s.ws.send(JSON.stringify(['EVENT', event]));
+      sent++;
+    }
+  }
+  console.log('[nostr] published to', sent, 'relays');
+}
+
+function _handleNostrCcshEvent(ev) {
+  if (ev.kind !== NOSTR_KIND_CCSH) return;
+  try {
+    const ccshTag = ev.tags.find(t => t[0] === 'ccsh');
+    if (!ccshTag) return;
+    const msgIdHex = ccshTag[1];
+    // Parse relay packets: 2-byte length prefix (BE) + packet
+    const payload = h2b(ev.content);
+    const packets = [];
+    let pos = 0;
+    while (pos < payload.length) {
+      if (pos + 2 > payload.length) break;
+      const pktLen = (payload[pos] << 8) | payload[pos + 1]; pos += 2;
+      if (pos + pktLen > payload.length) break;
+      packets.push(payload.slice(pos, pos + pktLen)); pos += pktLen;
+    }
+    if (!_pendingRelayParts.has(msgIdHex)) {
+      _pendingRelayParts.set(msgIdHex, { chunks: [], ts: Date.now() });
+    }
+    const entry = _pendingRelayParts.get(msgIdHex);
+    for (const pktBytes of packets) {
+      try {
+        const p = unpackAny(pktBytes);
+        if (p.msg_type === MSG_SPLIT_RELAY) {
+          entry.chunks.push({ idx: p.chunk_index, total: p.chunk_total, data: p.ciphertext_chunk });
+        }
+      } catch {}
+    }
+    entry.ts = Date.now();
+    console.log('[nostr] relay chunks for msg_id=' + msgIdHex.slice(0, 12) + '... n=' + entry.chunks.length);
+    _tryDecryptV2(msgIdHex);
+    // Cleanup stale entries
+    const now = Date.now();
+    for (const [k, v] of _pendingRelayParts) { if (now - v.ts > 3600_000) _pendingRelayParts.delete(k); }
+  } catch (e) { console.debug('[nostr] bad CCSH event:', e.message); }
+}
+
+async function _tryDecryptV2(msgIdHex) {
+  const chain = _pendingChainParts.get(msgIdHex);
+  const relay = _pendingRelayParts.get(msgIdHex);
+  if (!chain || !relay) return;
+  if (!chain.chunks.length || !relay.chunks.length) return;
+  if (chain.chunks.length !== chain.chunks[0].total) return;
+  if (relay.chunks.length !== relay.chunks[0].total) return;
+  // Reassemble
+  const chainSorted = [...chain.chunks].sort((a, b) => a.idx - b.idx);
+  const relaySorted = [...relay.chunks].sort((a, b) => a.idx - b.idx);
+  const chainData = chainSorted.length === 1 ? chainSorted[0].data : concat(...chainSorted.map(c => c.data));
+  const relayData = relaySorted.length === 1 ? relaySorted[0].data : concat(...relaySorted.map(c => c.data));
+  if (chainData.length < 32) return;
+  const ephPub = chainData.slice(0, 32);
+  const chainBlob = chainData.slice(32);
+  const myPriv32 = h2b(profile.x25519_priv_hex);
+  try {
+    const text = await splitDecrypt(chainBlob, relayData, ephPub, myPriv32);
+    const senderPubHex = b2h(chain.sender_pub);
+    console.log('[v2] ✓ decrypted msg_id=' + msgIdHex.slice(0, 12) + '... from=' + senderPubHex.slice(0, 16));
+    let contact = findContactByPub(senderPubHex);
+    const time = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    if (!contact) {
+      contact = { name: 'Unknown ' + senderPubHex.slice(0, 8), pub_hex: senderPubHex,
+        bch_address: chain.senderBchAddr || '', avatar: '??', msgs: [], pending: true };
+      contacts.push(contact);
+      saveContacts(); renderContacts();
+    }
+    contact.msgs = contact.msgs || [];
+    if (contact.msgs.some(m => m.txid === chain.txid)) { _pendingChainParts.delete(msgIdHex); _pendingRelayParts.delete(msgIdHex); return; }
+    const msg = { from: 'them', text, time, txid: chain.txid, v2: true };
+    contact.msgs.push(msg);
+    saveContacts(); renderContacts();
+    if (currentConvIdx !== null && contacts[currentConvIdx]?.pub_hex === senderPubHex) appendMsg(msg);
+    _pendingChainParts.delete(msgIdHex);
+    _pendingRelayParts.delete(msgIdHex);
+  } catch (e) { console.debug('[v2] decrypt failed:', e.message); }
+}
+
+function startNostrRelays() {
+  _nostrSockets.forEach(s => { try { s.ws?.close(); } catch {} });
+  _nostrSockets = [];
+  for (const url of _NOSTR_RELAYS) _connectNostrRelay(url);
+}
+
+// ── v2 Send (chain TX + Nostr relay) ─────────────
+async function sendCcshMsgV2(contact, text) {
+  const prof = profile;
+  const myPriv32 = h2b(prof.x25519_priv_hex);
+  const myPub32 = h2b(prof.x25519_pub_hex);
+  // 1. Split encrypt
+  const { chainBlob, relayBlob, ephPub } = await splitEncrypt(text, contact.pub_hex);
+  // 2. Build chain packet (eph_pub prepended to chain_blob)
+  const chainData = concat(ephPub, chainBlob);
+  const msgId = crypto.getRandomValues(new Uint8Array(16));
+  const chainPkt = packV2({
+    msg_id: msgId, sender_pub: myPub32,
+    chunk_index: 0, chunk_total: 1,
+    ciphertext_chunk: chainData,
+    msg_type: MSG_SPLIT_CHAIN, flags: FLAG_SPLIT
+  });
+  // 3. Build BCH TX with chain packet in OP_RETURN
+  let spendPrivHex = prof.bch_priv_hex;
+  let spendAddr = _wcMode ? (_wcBchAddr || prof.bch_address) : prof.bch_address;
+  let addrData = await bcGetAddr(spendAddr);
+  let usingPrev = false;
+  if (!_wcMode && !addrData?.utxo?.length && prof.bch_priv_hex_prev) {
+    spendPrivHex = prof.bch_priv_hex_prev;
+    addrData = await bcGetAddr(prof.bch_address_prev);
+    usingPrev = true;
+  }
+  if (!addrData?.utxo?.length) throw new Error('No UTXOs — fund: ' + spendAddr);
+  const myHash160 = _wcMode ? cashAddrToHash20(prof.bch_address) : ripemd160(sha256(secp256k1.getPublicKey(h2b(spendPrivHex), true)));
+  const myScript = p2pkhScript(myHash160);
+  const changeScript = usingPrev ? p2pkhAddrScript(prof.bch_address) : myScript;
+  // Dynamic fee: ~1.5 sat/byte
+  const estSize = 180 + chainPkt.length;
+  const FEE = BigInt(Math.max(1500, Math.ceil(estSize * 1.5)));
+  const DUST = 546n;
+  let total = 0n; const chosenUtxos = [];
+  for (const u of addrData.utxo) {
+    total += BigInt(u.value); chosenUtxos.push(u);
+    if (total >= DUST + FEE) break;
+  }
+  if (total < DUST + FEE) throw new Error(`Insufficient funds (${total} sats)`);
+  const change = total - DUST - FEE;
+  const outputs = [
+    { value: Number(DUST), script: p2pkhAddrScript(contact.bch_address) },
+    { value: 0, script: opReturnScript(chainPkt) },
+  ];
+  if (change >= DUST) outputs.push({ value: Number(change), script: changeScript });
+  const inputs = chosenUtxos.map(u => ({
+    txidLE: h2b(u.transaction_hash).reverse(),
+    vout: u.index, sequence: 0xffffffff, value: u.value
+  }));
+  let txid;
+  if (_wcMode && _wcClient && _wcSession) {
+    const unsignedHex = b2h(serializeTx(1, 0, inputs.map(inp => ({...inp, scriptSig: new Uint8Array(0)})), outputs));
+    const sourceOutputs = chosenUtxos.map(u => ({
+      outpointIndex: u.index,
+      outpointTransactionHash: '<Uint8Array: 0x' + b2h(h2b(u.transaction_hash).reverse()) + '>',
+      sequenceNumber: 4294967295, unlockingBytecode: '<Uint8Array: 0x>',
+      lockingBytecode: '<Uint8Array: 0x' + b2h(myScript) + '>',
+      valueSatoshis: '<bigint: ' + u.value + 'n>',
+    }));
+    const wcResult = await _wcClient.request({
+      chainId: 'bch:bitcoincash', topic: _wcSession.topic,
+      request: { method: 'bch_signTransaction', params: { transaction: unsignedHex, sourceOutputs, broadcast: false, userPrompt: 'Send split-knowledge message' } },
+    });
+    if (!wcResult || !wcResult.signedTransaction) throw new Error('signing rejected');
+    txid = await bcBroadcast(wcResult.signedTransaction);
+  } else {
+    const bchPriv32 = h2b(spendPrivHex);
+    const bchPub33 = secp256k1.getPublicKey(bchPriv32, true);
+    const signedInputs = [];
+    for (let i = 0; i < inputs.length; i++) {
+      const sighash = bchSighash(1, 0, inputs, outputs, i, myScript, inputs[i].value);
+      const sig = secp256k1.sign(sighash, bchPriv32, { lowS: true });
+      const derSig = concat(sig.toDERRawBytes(), new Uint8Array([0x41]));
+      const scriptSig = concat(new Uint8Array([derSig.length]), derSig, new Uint8Array([bchPub33.length]), bchPub33);
+      signedInputs.push({ ...inputs[i], scriptSig });
+    }
+    txid = await bcBroadcast(b2h(serializeTx(1, 0, signedInputs, outputs)));
+  }
+  // 4. Publish relay half to Nostr
+  const relayPkt = packV2({
+    msg_id: msgId, sender_pub: myPub32,
+    chunk_index: 0, chunk_total: 1,
+    ciphertext_chunk: relayBlob,
+    msg_type: MSG_SPLIT_RELAY, flags: FLAG_SPLIT
+  });
+  const payloadBuf = concat(
+    new Uint8Array([(relayPkt.length >> 8) & 0xff, relayPkt.length & 0xff]),
+    relayPkt
+  );
+  const nostrPriv = _deriveNostrPriv(prof.x25519_priv_hex);
+  const nostrEvent = await _makeNostrEvent(nostrPriv, NOSTR_KIND_CCSH, b2h(payloadBuf), [
+    ['p', contact.pub_hex],
+    ['ccsh', b2h(msgId)],
+    ['expiration', String(Math.floor(Date.now() / 1000) + 3600)],
+  ]);
+  _nostrPublish(nostrEvent);
+  console.log('[v2] ✓ chain TX=' + txid.slice(0, 12) + '... relay=' + nostrEvent.id.slice(0, 12));
+  return txid;
+}
+
+// ── Fulcrum/Electrum WebSocket (BCH) — SharedWorker or fallback ──
+let _fvCall, _fvConnect;
+if (window._wsSharedWorkerAvailable) {
+  _fvCall = (method, params) => window._fvCall(method, params);
+  _fvConnect = () => window._fvConnect();
+} else {
+  const _FV = JSON.parse(localStorage.getItem('00_ep_fulcrum') || 'null') || [
+    'wss://bch.imaginary.cash:50004',
+    'wss://electroncash.de:50004',
+    'wss://bch.loping.net:50004',
+  ];
+  let _fvWs = null, _fvPending = new Map(), _fvId = 0, _fvConnecting = null, _fvSvIdx = 0;
+  _fvConnect = () => {
+    if (_fvConnecting) return _fvConnecting;
+    _fvConnecting = new Promise((res, rej) => {
+      const url = _FV[_fvSvIdx % _FV.length];
+      console.log('[fulcrum] connecting', url);
+      const ws = new WebSocket(url);
+      const t = setTimeout(() => { ws.close(); rej(new Error('timeout')); }, 8000);
+      ws.onopen = () => ws.send(JSON.stringify({ id: 0, method: 'server.version', params: ['00chat', '1.4'] }));
+      ws.onmessage = e => {
+        const j = JSON.parse(e.data);
+        if (j.id === 0) { clearTimeout(t); _fvWs = ws; _fvConnecting = null; res(); return; }
+        const p = _fvPending.get(j.id);
+        if (!p) return;
+        _fvPending.delete(j.id);
+        j.error ? p[1](new Error(j.error.message || j.error)) : p[0](j.result);
+      };
+      ws.onerror = () => { clearTimeout(t); rej(new Error('ws error')); };
+      ws.onclose = () => {
+        _fvWs = null; _fvConnecting = null;
+        for (const [,[,rej]] of _fvPending) rej(new Error('ws closed'));
+        _fvPending.clear();
+      };
+    });
+    _fvConnecting.catch(() => { _fvSvIdx++; _fvConnecting = null; });
+    return _fvConnecting;
+  };
+  _fvCall = async (method, params) => {
+    if (!_fvWs || _fvWs.readyState !== WebSocket.OPEN) await _fvConnect();
+    return new Promise((res, rej) => {
+      const id = ++_fvId;
+      _fvPending.set(id, [res, rej]);
+      _fvWs.send(JSON.stringify({ id, method, params }));
+    });
+  };
+}
+function _addrSH(addr) {
+  const h = cashAddrToHash20(addr);
+  const script = new Uint8Array([0x76, 0xa9, 0x14, ...h, 0x88, 0xac]);
+  return b2h(sha256(script).reverse());
+}
+async function bcGetAddr(addr) {
+  const sh = _addrSH(addr);
+  const [hist, utxos] = await Promise.all([
+    _fvCall('blockchain.scripthash.get_history', [sh]),
+    _fvCall('blockchain.scripthash.listunspent', [sh]),
+  ]);
+  const utxoMapped = (utxos || []).map(u => ({
+    transaction_hash: u.tx_hash,
+    index: u.tx_pos,
+    value: u.value,
+    block_id: u.height === 0 ? -1 : u.height,
+  }));
+  const balance = utxoMapped.reduce((s, u) => s + u.value, 0);
+  const txids = [...new Set((hist || []).map(h => h.tx_hash))].reverse(); // newest first
+  return { address: { balance }, utxo: utxoMapped, transactions: txids };
+}
+async function bcGetTx(txid) {
+  try { return await _fvCall('blockchain.transaction.get', [txid]); } // returns raw hex
+  catch { return null; }
+}
+async function bcSenderAddr(txid) {
+  return extractSenderBchAddr(await bcGetTx(txid));
+}
+async function bcBroadcast(hexTx) {
+  return await _fvCall('blockchain.transaction.broadcast', [hexTx]);
+}
+// ── Balance display ───────────────────────────────
+let _balanceTimer = null;
+async function refreshBalance() {
+  if (!profile?.bch_address) return;
+  const chip = document.getElementById('balance-chip');
+  const val  = document.getElementById('balance-val');
+  chip.classList.add('loading');
+  try {
+    const data = await bcGetAddr(profile.bch_address);
+    let sats = data?.address?.balance ?? 0;
+    // Ajouter solde ancienne adresse si elle existe encore (post-CI)
+    if (profile.bch_address_prev) {
+      const prev = await bcGetAddr(profile.bch_address_prev);
+      sats += prev?.address?.balance ?? 0;
+    }
+    const bch = (sats / 1e8).toFixed(8).replace(/\.?0+$/, v => v === '.' ? '.00' : v);
+    val.textContent = `${bch} BCH`;
+    chip.classList.remove('loading');
+  } catch {
+    val.textContent = '?? BCH';
+    chip.classList.remove('loading');
+  }
+}
+function startBalanceRefresh() {
+  refreshBalance();
+  clearInterval(_balanceTimer);
+  _balanceTimer = setInterval(refreshBalance, 30_000);
+}
+
+
+// ── BCH TX builder ────────────────────────────────
+function p2pkhScript(hash20) {
+  return concat(new Uint8Array([0x76, 0xa9, 0x14]), hash20, new Uint8Array([0x88, 0xac]));
+}
+function p2pkhAddrScript(cashAddr) { return p2pkhScript(cashAddrToHash20(cashAddr)); }
+function opReturnScript(data) {
+  if (data.length <= 75) return concat(new Uint8Array([0x6a, data.length]), data);
+  if (data.length <= 255) return concat(new Uint8Array([0x6a, 0x4c, data.length]), data);
+  return concat(new Uint8Array([0x6a, 0x4d, data.length & 0xff, (data.length >> 8) & 0xff]), data);
+}
+function bchSighash(version, locktime, inputs, outputs, i, utxoScript, utxoValue) {
+  const prevouts = concat(...inputs.map(x => concat(x.txidLE, u32LE(x.vout))));
+  const seqs     = concat(...inputs.map(x => u32LE(x.sequence)));
+  const outsData = concat(...outputs.map(o => concat(u64LE(o.value), writeVarint(o.script.length), o.script)));
+  const inp = inputs[i];
+  const pre = concat(
+    u32LE(version), dsha256(prevouts), dsha256(seqs),
+    inp.txidLE, u32LE(inp.vout),
+    writeVarint(utxoScript.length), utxoScript,
+    u64LE(utxoValue), u32LE(inp.sequence),
+    dsha256(outsData), u32LE(locktime),
+    u32LE(0x41) // SIGHASH_ALL | SIGHASH_FORKID
+  );
+  return dsha256(pre);
+}
+function serializeTx(version, locktime, inputs, outputs) {
+  return concat(
+    u32LE(version),
+    writeVarint(inputs.length),
+    ...inputs.flatMap(inp => [inp.txidLE, u32LE(inp.vout), writeVarint(inp.scriptSig.length), inp.scriptSig, u32LE(inp.sequence)]),
+    writeVarint(outputs.length),
+    ...outputs.flatMap(o => [u64LE(o.value), writeVarint(o.script.length), o.script]),
+    u32LE(locktime)
+  );
+}
+async function sendCcshMsg(contact, text, msgType = 0x01) {
+  const prof     = profile;
+  const myPriv32 = h2b(prof.x25519_priv_hex);
+  const myPub32  = h2b(prof.x25519_pub_hex);
+
+  const pkt = await ccshEncryptMsg(text, contact.pub_hex, myPriv32, myPub32, msgType);
+  if (pkt.length > 220) throw new Error('Message too long (max ~95 chars)');
+
+  // Essaie la nouvelle adresse, fallback sur l'ancienne si 0 UTXO (post-CI)
+  let spendPrivHex = prof.bch_priv_hex;
+  let spendAddr    = _wcMode ? (_wcBchAddr || prof.bch_address) : prof.bch_address;
+  let addrData     = await bcGetAddr(spendAddr);
+  let usingPrev    = false;
+  if (!_wcMode && !addrData?.utxo?.length && prof.bch_priv_hex_prev) {
+    spendPrivHex = prof.bch_priv_hex_prev;
+    addrData     = await bcGetAddr(prof.bch_address_prev);
+    usingPrev    = true;
+  }
+  if (!addrData?.utxo?.length) throw new Error('No UTXOs — fund: ' + spendAddr);
+
+  const myHash160 = _wcMode ? cashAddrToHash20(prof.bch_address) : ripemd160(sha256(secp256k1.getPublicKey(h2b(spendPrivHex), true)));
+  const myScript  = p2pkhScript(myHash160);
+  const changeScript = usingPrev ? p2pkhAddrScript(prof.bch_address) : myScript;
+
+  const FEE = 1500n, DUST = 546n;
+  let total = 0n; const chosenUtxos = [];
+  for (const u of addrData.utxo) {
+    total += BigInt(u.value); chosenUtxos.push(u);
+    if (total >= DUST + FEE) break;
+  }
+  if (total < DUST + FEE) throw new Error(`Insufficient funds (${total} sats). Fund: ${prof.bch_address}`);
+
+  const change = total - DUST - FEE;
+  const outputs = [
+    { value: Number(DUST), script: p2pkhAddrScript(contact.bch_address) },
+    { value: 0, script: opReturnScript(pkt) },
+  ];
+  if (change >= DUST) outputs.push({ value: Number(change), script: changeScript });
+
+  const inputs = chosenUtxos.map(u => ({
+    txidLE: h2b(u.transaction_hash).reverse(),
+    vout: u.index, sequence: 0xffffffff, value: u.value
+  }));
+
+  if (_wcMode && _wcClient && _wcSession) {
+    const unsignedHex = b2h(serializeTx(1, 0, inputs.map(inp => ({...inp, scriptSig: new Uint8Array(0)})), outputs));
+    const sourceOutputs = chosenUtxos.map(u => ({
+      outpointIndex: u.index,
+      outpointTransactionHash: '<Uint8Array: 0x' + b2h(h2b(u.transaction_hash).reverse()) + '>',
+      sequenceNumber: 4294967295,
+      unlockingBytecode: '<Uint8Array: 0x>',
+      lockingBytecode: '<Uint8Array: 0x' + b2h(myScript) + '>',
+      valueSatoshis: '<bigint: ' + u.value + 'n>',
+    }));
+    const wcResult = await _wcClient.request({
+      chainId: 'bch:bitcoincash', topic: _wcSession.topic,
+      request: { method: 'bch_signTransaction', params: { transaction: unsignedHex, sourceOutputs, broadcast: false, userPrompt: 'Send encrypted message' } },
+    });
+    if (!wcResult || !wcResult.signedTransaction) throw new Error('signing rejected');
+    return bcBroadcast(wcResult.signedTransaction);
+  }
+
+  const bchPriv32 = h2b(spendPrivHex);
+  const bchPub33  = secp256k1.getPublicKey(bchPriv32, true);
+  const signedInputs = [];
+  for (let i = 0; i < inputs.length; i++) {
+    const sighash   = bchSighash(1, 0, inputs, outputs, i, myScript, inputs[i].value);
+    const sig       = secp256k1.sign(sighash, bchPriv32, { lowS: true });
+    const derSig    = concat(sig.toDERRawBytes(), new Uint8Array([0x41]));
+    const scriptSig = concat(new Uint8Array([derSig.length]), derSig, new Uint8Array([bchPub33.length]), bchPub33);
+    signedInputs.push({ ...inputs[i], scriptSig });
+  }
+  return bcBroadcast(b2h(serializeTx(1, 0, signedInputs, outputs)));
+}
+
+// Transfère tout le BCH disponible de fromAddr → toAddr (pour CI auto-fund)
+async function _selfTransfer(fromPrivHex, fromAddr, toAddr) {
+  const priv32     = h2b(fromPrivHex);
+  const pub33      = secp256k1.getPublicKey(priv32, true);
+  const hash160    = ripemd160(sha256(pub33));
+  const fromScript = p2pkhScript(hash160);
+  const addrData   = await bcGetAddr(fromAddr);
+  if (!addrData?.utxo?.length) return null;
+  let total = 0n;
+  const utxos = addrData.utxo;
+  for (const u of utxos) total += BigInt(u.value);
+  const FEE = 1500n;
+  if (total <= FEE + 546n) return null;
+  const inputs = utxos.map(u => ({
+    txidLE: h2b(u.transaction_hash).reverse(),
+    vout: u.index, sequence: 0xffffffff, value: u.value
+  }));
+  const outputs = [{ value: Number(total - FEE), script: p2pkhAddrScript(toAddr) }];
+  const signedInputs = [];
+  for (let i = 0; i < inputs.length; i++) {
+    const sighash   = bchSighash(1, 0, inputs, outputs, i, fromScript, inputs[i].value);
+    const sig       = secp256k1.sign(sighash, priv32, { lowS: true });
+    const derSig    = concat(sig.toDERRawBytes(), new Uint8Array([0x41]));
+    const scriptSig = concat(new Uint8Array([derSig.length]), derSig, new Uint8Array([pub33.length]), pub33);
+    signedInputs.push({ ...inputs[i], scriptSig });
+  }
+  return bcBroadcast(b2h(serializeTx(1, 0, signedInputs, outputs)));
+}
+
+// ── TX parser (inbox scanner) ─────────────────────
+function parseTxOpReturns(rawHex) {
+  try {
+    const raw = h2b(rawHex); let pos = 4;
+    let { v: inCount, l } = readVarint(raw, pos); pos += l;
+    for (let i = 0; i < inCount; i++) {
+      pos += 36;
+      const { v: sLen, l: sl } = readVarint(raw, pos); pos += sl + sLen + 4;
+    }
+    const { v: outCount, l: ol } = readVarint(raw, pos); pos += ol;
+    const opReturns = [];
+    for (let i = 0; i < outCount; i++) {
+      pos += 8;
+      const { v: sLen, l: sl } = readVarint(raw, pos); pos += sl;
+      const script = raw.slice(pos, pos + sLen); pos += sLen;
+      if (script[0] === 0x6a) {
+        let pay = null;
+        if (script[1] <= 75) pay = script.slice(2, 2 + script[1]);
+        else if (script[1] === 0x4c) pay = script.slice(3, 3 + script[2]);
+        else if (script[1] === 0x4d) { const dlen = script[2] | (script[3] << 8); pay = script.slice(4, 4 + dlen); }
+        if (pay?.length) opReturns.push(pay);
+      }
+    }
+    return opReturns;
+  } catch { return []; }
+}
+// Adresse BCH de l'expéditeur depuis le scriptSig P2PKH du 1er input (raw hex)
+function extractSenderBchAddr(rawHex) {
+  try {
+    const raw = h2b(rawHex);
+    let pos = 4;
+    const { v: inCount, l } = readVarint(raw, pos); pos += l;
+    if (inCount === 0) return null;
+    pos += 36; // txid (32) + vout (4)
+    const { v: sLen, l: sl } = readVarint(raw, pos); pos += sl;
+    // scriptSig P2PKH: ... <0x21> <33 bytes compressed pubkey>
+    const ss = raw.slice(pos, pos + sLen);
+    if (ss.length < 35 || ss[ss.length - 34] !== 0x21) return null;
+    const pub33 = ss.slice(ss.length - 33);
+    if (pub33[0] !== 0x02 && pub33[0] !== 0x03) return null;
+    return pubHashToCashAddr(Array.from(ripemd160(sha256(pub33))));
+  } catch { return null; }
+}
+
+// ── App state ─────────────────────────────────────
+let profile = null;
+let contacts = [];
+// seenTxids persisté en localStorage pour éviter les doublons après rechargement
+let seenTxids = new Set(JSON.parse(localStorage.getItem('00chat_seen') || '[]'));
+function _persistSeen() {
+  const arr = [...seenTxids];
+  if (arr.length > 500) { seenTxids = new Set(arr.slice(-500)); }
+  localStorage.setItem('00chat_seen', JSON.stringify([...seenTxids]));
+}
+let currentConvIdx = null;
+let _attempts = 0;
+let _saveKey  = true;
+let _sessionPass = null;   // gardé en mémoire pour re-chiffrer le vault après CI
+const MAX_ATTEMPTS = 3;
+
+// ── Contacts (localStorage) ───────────────────────
+function loadContacts() {
+  try { contacts = JSON.parse(localStorage.getItem('00chat_contacts') || '[]'); } catch { contacts = []; }
+  // Dédupliquer les messages existants
+  contacts.forEach(c => {
+    if (!c.msgs?.length) return;
+    const seenTxid    = new Set();
+    const seenContent = new Set();
+    c.msgs = c.msgs.filter(m => {
+      if (m.txid) { if (seenTxid.has(m.txid)) return false; seenTxid.add(m.txid); }
+      else {
+        // Pas de txid → dédup par contenu (cleanup historique sans perte future)
+        const k = `${m.from}|${m.text}`;
+        if (seenContent.has(k)) return false;
+        seenContent.add(k);
+      }
+      return true;
+    });
+  });
+  saveContacts();
+}
+function saveContacts() { localStorage.setItem('00chat_contacts', JSON.stringify(contacts)); }
+function findContactByPub(pubHex) { return contacts.find(c => c.pub_hex === pubHex); }
+
+// ── BIP39 ─────────────────────────────────────────
+let _bip39Words = null, _bip39Loading = null;
+async function loadBip39Words() {
+  if (_bip39Words) return _bip39Words;
+  if (_bip39Loading) return _bip39Loading;
+  _bip39Loading = fetch('https://raw.githubusercontent.com/trezor/python-mnemonic/master/src/mnemonic/wordlist/english.txt')
+    .then(r => r.text())
+    .then(t => { _bip39Words = t.split('\n').map(w => w.trim()).filter(Boolean); return _bip39Words; })
+    .catch(() => null);
+  return _bip39Loading;
+}
+async function bip39Generate() {
+  const words = await loadBip39Words();
+  if (!words || words.length !== 2048) throw new Error('wordlist unavailable');
+  const ent = crypto.getRandomValues(new Uint8Array(16));
+  const hash = await crypto.subtle.digest('SHA-256', ent);
+  const cs = new Uint8Array(hash)[0];
+  const bits = [];
+  for (const b of ent) for (let i = 7; i >= 0; i--) bits.push((b >> i) & 1);
+  for (let i = 7; i >= 4; i--) bits.push((cs >> i) & 1);
+  const indices = [];
+  for (let i = 0; i < 12; i++) {
+    let idx = 0;
+    for (let j = 0; j < 11; j++) idx = (idx << 1) | bits[i * 11 + j];
+    indices.push(idx);
+  }
+  return indices.map(i => words[i]);
+}
+async function bip39Seed(phrase) {
+  const enc = new TextEncoder();
+  const km  = await crypto.subtle.importKey('raw', enc.encode(phrase.normalize('NFKD')), 'PBKDF2', false, ['deriveBits']);
+  const sb  = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', hash: 'SHA-512', salt: enc.encode('mnemonic'.normalize('NFKD')), iterations: 2048 }, km, 512);
+  return new Uint8Array(sb); // 64 bytes
+}
+function deriveProfileFromSeed(seed64) {
+  const x25519Priv = seed64.slice(0, 32);
+  const x25519Pub  = x25519.getPublicKey(x25519Priv);
+  const bchPriv    = bip44BchPriv(seed64);
+  return {
+    x25519_priv_hex: b2h(x25519Priv),
+    x25519_pub_hex:  b2h(x25519Pub),
+    bch_priv_hex:    b2h(bchPriv),
+    bch_address:     privToBchAddr(bchPriv),
+  };
+}
+
+// ── Inbox scanner ─────────────────────────────────
+async function scanInbox() {
+  if (!profile) return;
+  try {
+    const addrData = await bcGetAddr(profile.bch_address);
+
+    // TX confirmées + non-confirmées (UTXOs avec block_id=-1)
+    const confirmedTxids   = addrData?.transactions || [];
+    const unconfirmedTxids = (addrData?.utxo || [])
+      .filter(u => u.block_id === -1 && u.transaction_hash)
+      .map(u => u.transaction_hash);
+    const txids = [...new Set([...unconfirmedTxids, ...confirmedTxids])];
+
+    const myPriv32 = h2b(profile.x25519_priv_hex);
+    console.log('[00chat] scan addr=' + profile.bch_address.slice(0, 20) + '... x25519_pub=' + profile.x25519_pub_hex.slice(0, 16) + '... txs=' + txids.length + ' unseen=' + txids.filter(t => !seenTxids.has(t)).length);
+    for (const txid of txids.slice(0, 20)) {
+      if (seenTxids.has(txid)) continue;
+      seenTxids.add(txid); _persistSeen();
+      const rawHex = await bcGetTx(txid);
+      if (!rawHex) { seenTxids.delete(txid); continue; }
+      for (const payload of parseTxOpReturns(rawHex)) {
+        if (payload[0] !== 0x43 || payload[1] !== 0x43 || payload[2] !== 0x53 || payload[3] !== 0x48) continue;
+        const pktVersion = payload[4];
+
+        // ── v2 SPLIT_CHAIN: store chain half, try match with relay ──
+        if (pktVersion === CCSH_V2) {
+          try {
+            const pkt = unpackAny(payload);
+            if (pkt.msg_type !== MSG_SPLIT_CHAIN) continue;
+            const msgIdHex = b2h(pkt.msg_id);
+            if (!_pendingChainParts.has(msgIdHex)) {
+              _pendingChainParts.set(msgIdHex, {
+                chunks: [], sender_pub: pkt.sender_pub, txid,
+                senderBchAddr: extractSenderBchAddr(rawHex) || '', ts: Date.now()
+              });
+            }
+            const entry = _pendingChainParts.get(msgIdHex);
+            entry.chunks.push({ idx: pkt.chunk_index, total: pkt.chunk_total, data: pkt.ciphertext_chunk });
+            console.log('[v2] chain chunk for msg_id=' + msgIdHex.slice(0, 12) + '... idx=' + pkt.chunk_index + '/' + pkt.chunk_total);
+            await _tryDecryptV2(msgIdHex);
+          } catch (e) { console.debug('[v2] chain parse error:', e.message); }
+          continue;
+        }
+
+        // ── v1 handling ──
+        try {
+          const { text, senderPubHex, msgType } = await ccshDecryptPacket(payload, myPriv32);
+          console.log('[00chat] CCSH v1 decrypted msgType=' + msgType + ' sender=' + senderPubHex.slice(0,16) + '...');
+          let contact = findContactByPub(senderPubHex);
+          const time  = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+          if (msgType === 0x01) {
+            // Expéditeur inconnu → adresse BCH extraite directement du TX (sans appel API)
+            if (!contact) {
+              contact = {
+                name: 'Unknown ' + senderPubHex.slice(0, 8),
+                pub_hex: senderPubHex, bch_address: extractSenderBchAddr(rawHex) || '',
+                avatar: '??', msgs: [], pending: true,
+              };
+              contacts.push(contact);
+              saveContacts();
+              renderContacts();
+              console.log('[00chat] new unknown contact from', senderPubHex.slice(0, 16));
+            }
+            contact.msgs = contact.msgs || [];
+            // Déjà enregistré par txid → skip
+            if (contact.msgs.some(m => m.txid === txid)) continue;
+            // Message sans txid avec même contenu → tagging rétroactif (évite doublon)
+            const untagged = contact.msgs.find(m => !m.txid && m.from === 'them' && m.text === text);
+            if (untagged) { untagged.txid = txid; saveContacts(); continue; }
+            // Nouveau message
+            const msg = { from: 'them', text, time, txid };
+            contact.msgs.push(msg);
+            saveContacts();
+            renderContacts();
+            if (currentConvIdx !== null && contacts[currentConvIdx]?.pub_hex === senderPubHex) appendMsg(msg);
+          } else if (msgType === 0x02) {
+            console.group('[CI] ADDR_CHANGE reçu — txid=' + txid.slice(0, 16) + '...');
+            console.log('[CI]   senderPubHex :', senderPubHex.slice(0, 20) + '...');
+            console.log('[CI]   text brut    :', text);
+            console.log('[CI]   contact trouvé:', contact ? `"${contact.name}"` : 'NON (inconnu)');
+            try {
+              // Format "addr|pub_b64NoPad" (nouveau) ou JSON legacy
+              let newAddr, newPubHex;
+              if (text.includes('|') && !text.startsWith('{')) {
+                const [rawAddr, b64] = text.split('|');
+                newAddr   = 'bitcoincash:' + rawAddr;
+                const pad = b64.length % 4 ? '='.repeat(4 - b64.length % 4) : '';
+                newPubHex = b2h(Uint8Array.from(atob(b64 + pad), c => c.charCodeAt(0)));
+              } else {
+                const data = JSON.parse(text);
+                newAddr   = data.new_bch_address || (data.a ? 'bitcoincash:' + data.a : null);
+                newPubHex = data.new_pub_hex     || (data.p ? b2h(Uint8Array.from(atob(data.p), c => c.charCodeAt(0))) : null);
+              }
+              console.log('[CI]   newAddr  :', newAddr);
+              console.log('[CI]   newPubHex:', newPubHex?.slice(0, 20) + '...');
+              if (contact && newAddr) {
+                console.log('[CI]   avant → bch_address:', contact.bch_address, '| pub_hex:', contact.pub_hex?.slice(0, 20) + '...');
+                contact.bch_address = newAddr;
+                if (newPubHex) contact.pub_hex = newPubHex;
+                saveContacts();
+                console.log('[CI]   ✓ mis à jour → bch_address:', contact.bch_address, '| pub_hex:', contact.pub_hex?.slice(0, 20) + '...');
+              } else if (!contact) {
+                console.warn('[CI]   ⚠ contact introuvable — ADDR_CHANGE ignoré');
+              } else {
+                console.warn('[CI]   ⚠ adresse absente dans le payload');
+              }
+            } catch(e) {
+              console.error('[CI]   ✗ JSON.parse échoué:', e.message, '| texte:', text);
+            }
+            console.groupEnd();
+          }
+        } catch(e) {
+          console.debug('[00chat] not for us or bad packet in', txid.slice(0,8), e.message);
+        }
+      }
+    }
+    // Cleanup stale pending chain parts
+    const now = Date.now();
+    for (const [k, v] of _pendingChainParts) { if (now - v.ts > 3600_000) _pendingChainParts.delete(k); }
+  } catch (e) { console.warn('[00chat] scan error:', e); }
+}
+function startScanner() { scanInbox(); return setInterval(scanInbox, 10_000); }
+
+// ── UI: contacts / groups ─────────────────────────
+function renderContacts() {
+  const el = document.getElementById('list-contacts');
+  if (!contacts.length) {
+    el.innerHTML = `<div style="padding:32px;text-align:center;font-size:11px;color:rgba(0,255,65,.3);letter-spacing:2px;line-height:2.2">
+      // NO CONTACTS<br>
+      <button class="keygen-copy" style="margin-top:10px;padding:6px 16px" onclick="openAddContact()">+ ADD CONTACT</button>
+    </div>`;
+    return;
+  }
+  el.innerHTML = contacts.map((c, i) => {
+    const last = c.msgs?.[c.msgs.length - 1];
+    return `<div class="list-item" onclick="openConv(${i})">
+      <div class="avatar">${c.avatar || c.name.slice(0, 2).toUpperCase()}</div>
+      <div class="item-info">
+        <div class="item-name">${c.name}</div>
+        <div class="item-preview encrypted">${last ? last.text.slice(0, 40) : '[no messages yet]'}</div>
+      </div>
+      <div class="item-meta"><div class="item-time">${last?.time || ''}</div></div>
+      <button class="del-btn" onclick="event.stopPropagation();deleteContact(${i})" title="Supprimer"><svg width="11" height="11" viewBox="0 0 11 11"><line x1="1.5" y1="1.5" x2="9.5" y2="9.5" stroke="rgba(0,255,65,.45)" stroke-width="2.2" stroke-linecap="round"/><line x1="9.5" y1="1.5" x2="1.5" y2="9.5" stroke="rgba(0,255,65,.45)" stroke-width="2.2" stroke-linecap="round"/></svg></button>
+    </div>`;
+  }).join('');
+}
+function renderGroups() {
+  document.getElementById('list-groups').innerHTML =
+    `<div style="padding:32px;text-align:center;font-size:10px;color:rgba(0,255,65,.2);letter-spacing:2px">// GROUP CHAT — COMING SOON</div>`;
+}
+function switchTab(tab, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('list-contacts').style.display = tab === 'contacts' ? '' : 'none';
+  document.getElementById('list-groups').style.display   = tab === 'groups'   ? '' : 'none';
+}
+
+// Wrappers pour les onclick HTML (currentConvIdx hors scope module depuis le DOM)
+function addCurrentContact()    { openAddContact(currentConvIdx); }
+function deleteCurrentContact() { deleteContact(currentConvIdx); }
+
+function deleteContact(idx) {
+  if (idx === null || idx === undefined || !contacts[idx]) return;
+  const c = contacts[idx];
+  if (!confirm(`Supprimer le contact "${c.name}" et tout son historique ?`)) return;
+  contacts.splice(idx, 1);
+  saveContacts();
+  if (currentConvIdx === idx) {
+    currentConvIdx = null;
+    document.getElementById('conv-view').style.display = 'none';
+  } else if (currentConvIdx > idx) {
+    currentConvIdx--;
+  }
+  renderContacts();
+}
+
+// ── UI: conversation ──────────────────────────────
+function openConv(idx) {
+  currentConvIdx = idx;
+  const c = contacts[idx];
+  document.getElementById('conv-avatar').textContent = c.avatar || c.name.slice(0, 2).toUpperCase();
+  document.getElementById('conv-name').textContent   = c.name;
+  document.getElementById('conv-status').textContent = c.bch_address
+    ? c.bch_address.slice(0, 24) + '... · ccsh encrypted'
+    : '● ccsh encrypted';
+  document.getElementById('pending-banner').style.display = c.pending ? 'flex' : 'none';
+  const msgsEl = document.getElementById('messages');
+  msgsEl.innerHTML = `<div class="enc-badge">🔒 SPLIT-KNOWLEDGE · XOR-OTP + AES-256-GCM · BCH + NOSTR</div>`;
+  (c.msgs || []).forEach(m => appendMsg(m, false));
+  document.getElementById('conv-view').style.display = 'flex';
+  setTimeout(() => msgsEl.scrollTop = msgsEl.scrollHeight, 50);
+}
+function appendMsg(m, scroll = true) {
+  const msgsEl = document.getElementById('messages');
+  const div    = document.createElement('div');
+  div.className = `msg ${m.from === 'me' ? 'me' : 'them'}`;
+  div.innerHTML = `<div class="msg-bubble">${m.text}</div><div class="msg-time">${m.time || ''}</div>`;
+  msgsEl.appendChild(div);
+  if (scroll) setTimeout(() => msgsEl.scrollTop = msgsEl.scrollHeight, 50);
+}
+function closeConv() {
+  document.getElementById('conv-view').style.display = 'none';
+  currentConvIdx = null;
+  renderContacts(); renderGroups();
+}
+function handleSend(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); } }
+async function sendMsg() {
+  if (currentConvIdx === null || !profile) return;
+  const contact = contacts[currentConvIdx];
+  const input   = document.getElementById('msg-input');
+  const text    = input.value.trim();
+  if (!text) return;
+  if (!contact.bch_address || !contact.pub_hex) { alert('Contact missing BCH address or pub key'); return; }
+  if (new TextEncoder().encode(text).length > 500) { alert('Message too long — max 500 bytes'); return; }
+  input.value = '';
+  const time = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  const msg  = { from: 'me', text, time: time + ' · sending...', v2: true };
+  appendMsg(msg);
+  try {
+    const txid = await sendCcshMsgV2(contact, text);
+    msg.time   = time + ' · ✓ v2 ' + txid.slice(0, 8) + '...';
+    const bubbles = document.querySelectorAll('#messages .msg.me .msg-time');
+    if (bubbles.length) bubbles[bubbles.length - 1].textContent = msg.time;
+    contact.msgs = contact.msgs || []; contact.msgs.push(msg); saveContacts();
+  } catch (e) {
+    msg.time = '⚠ ' + e.message;
+    const bubbles = document.querySelectorAll('#messages .msg.me .msg-time');
+    if (bubbles.length) bubbles[bubbles.length - 1].textContent = msg.time;
+  }
+}
+
+// ── UI: auth ──────────────────────────────────────
+function updateAttemptDots() {
+  for (let i = 0; i < MAX_ATTEMPTS; i++) {
+    const d = document.getElementById('dot' + i);
+    if (d) d.classList.toggle('used', i < _attempts);
+  }
+}
+function toggleSave() {
+  _saveKey = !_saveKey;
+  document.getElementById('save-toggle').classList.toggle('on', _saveKey);
+}
+function showImport() {
+  document.getElementById('auth-unlock').style.display = 'none';
+  document.getElementById('auth-import').style.display = 'flex';
+}
+function resetToImport() {
+  document.getElementById('wipe-screen').style.display = 'none';
+  document.getElementById('auth-import').style.display = 'flex';
+  ['import-key', 'import-pass', 'import-pass2'].forEach(id => document.getElementById(id).value = '');
+}
+function wipeKey() {
+  localStorage.removeItem('00chat_vault'); localStorage.removeItem('00chat_attempts'); profile = null;
+  document.getElementById('auth-unlock').style.display = 'none';
+  const w = document.getElementById('wipe-screen'); w.style.display = 'flex';
+  w.style.background = '#1a0000'; setTimeout(() => w.style.background = 'var(--black)', 300);
+}
+async function importKey() {
+  const raw   = document.getElementById('import-key').value.trim();
+  const pass  = document.getElementById('import-pass').value;
+  const pass2 = document.getElementById('import-pass2').value;
+  const errEl = document.getElementById('import-error');
+  errEl.textContent = '';
+  if (!raw) { errEl.textContent = '// ERROR: clé requise'; return; }
+  const words = raw.split(/\s+/);
+  const isMnemonic = words.length >= 12;
+  if (!isMnemonic && raw.replace(/^0x/i, '').length < 64) { errEl.textContent = '// ERROR: 12 mots BIP39 ou hex 64 chars'; return; }
+  if (pass.length < 8) { errEl.textContent = '// ERROR: password min 8 chars'; return; }
+  if (pass !== pass2)  { errEl.textContent = '// ERROR: passwords do not match'; return; }
+  try {
+    let seed64;
+    if (isMnemonic) {
+      seed64 = await bip39Seed(raw);
+    } else {
+      const k = h2b(raw.replace(/^0x/i, ''));
+      seed64  = concat(k, new Uint8Array(32)); // pad to 64 bytes
+    }
+    profile = deriveProfileFromSeed(seed64);
+    _sessionPass = pass;
+    if (_saveKey) {
+      localStorage.setItem('00chat_vault', await encryptVault(profile, pass));
+      localStorage.setItem('00chat_attempts', '0');
+    }
+    _attempts = 0;
+    document.getElementById('auth-import').style.display = 'none';
+    bootIntoChat();
+  } catch (e) { errEl.textContent = '// ERROR: ' + e.message; }
+}
+function showUnlock() {
+  _attempts = parseInt(localStorage.getItem('00chat_attempts') || '0');
+  updateAttemptDots();
+  // Hide loading screen before showing unlock
+  const loading = document.getElementById('loading');
+  loading.style.transition = 'opacity .4s'; loading.style.opacity = '0';
+  setTimeout(() => { loading.style.display = 'none'; }, 400);
+  document.getElementById('auth-unlock').style.display = 'flex';
+  setTimeout(() => document.getElementById('unlock-password').focus(), 100);
+}
+async function tryUnlock() {
+  const pass   = document.getElementById('unlock-password').value;
+  const errEl  = document.getElementById('unlock-error');
+  const stored = localStorage.getItem('00chat_vault');
+  if (!stored) { showImport(); return; }
+  try {
+    profile = await decryptVault(stored, pass);
+    _sessionPass = pass;
+    // Shared session — all apps auto-unlock (30 min TTL)
+    localStorage.setItem('00_session_auth', JSON.stringify({ p: btoa(pass), ts: Date.now() }));
+    if (profile.wc_mode) {
+      _wcMode = true;
+      await _restoreChatWcSession();
+    }
+    _attempts = 0; localStorage.setItem('00chat_attempts', '0');
+    document.getElementById('auth-unlock').style.display = 'none';
+    bootIntoChat();
+  } catch {
+    _attempts++; localStorage.setItem('00chat_attempts', String(_attempts));
+    updateAttemptDots();
+    errEl.textContent = `// WRONG PASSWORD — ${MAX_ATTEMPTS - _attempts} attempt(s) remaining`;
+    errEl.style.animation = 'none'; void errEl.offsetHeight; errEl.style.animation = 'errShake .3s ease';
+    document.getElementById('unlock-password').value = '';
+    if (_attempts >= MAX_ATTEMPTS) wipeKey();
+  }
+}
+function bootIntoChat() {
+  loadContacts();
+  const loading = document.getElementById('loading');
+  // Loading screen is still visible from boot sequence — just update text
+  loading.style.display = 'flex'; loading.style.opacity = '1';
+  document.getElementById('loader-status').innerHTML = 'DECRYPTING INBOX...<span class="blink">_</span>';
+  const bar = document.querySelector('.loader-bar');
+  bar.style.animation = 'none'; void bar.offsetHeight; bar.style.animation = 'loadBar .8s ease forwards';
+  setTimeout(() => {
+    loading.style.transition = 'opacity .5s';
+    loading.style.opacity = '0';
+    setTimeout(() => { loading.style.display = 'none'; renderContacts(); renderGroups(); startScanner(); startBalanceRefresh(); startNostrRelays(); }, 500);
+  }, 900);
+}
+
+// ── UI: keygen overlay ────────────────────────────
+let _kgMnemonic = null, _kgSeed64 = null;
+async function openKeygen() {
+  document.getElementById('keygen-spinner').style.display = 'block';
+  document.getElementById('keygen-content').style.display = 'none';
+  document.getElementById('keygen-overlay').style.display = 'flex';
+  _kgMnemonic = null; _kgSeed64 = null;
+  try {
+    _kgMnemonic = await bip39Generate();
+    _kgSeed64   = await bip39Seed(_kgMnemonic.join(' '));
+    const prof  = deriveProfileFromSeed(_kgSeed64);
+    document.getElementById('kg-words').innerHTML = _kgMnemonic.map((w, i) =>
+      `<div class="word-chip"><span class="word-num">${i + 1}.</span>${w}</div>`).join('');
+    document.getElementById('kg-priv').textContent = prof.bch_address; // show BCH addr for funding
+  } catch {
+    _kgSeed64 = concat(crypto.getRandomValues(new Uint8Array(32)), new Uint8Array(32));
+    document.getElementById('kg-words').innerHTML =
+      `<div style="grid-column:span 3;font-size:10px;color:rgba(0,255,65,.4);text-align:center;padding:10px">// Mode offline — wordlist indisponible</div>`;
+    document.getElementById('kg-priv').textContent = privToBchAddr(bip44BchPriv(_kgSeed64));
+  }
+  document.getElementById('keygen-spinner').style.display = 'none';
+  document.getElementById('keygen-content').style.display = 'flex';
+}
+function closeKeygen() { document.getElementById('keygen-overlay').style.display = 'none'; }
+function kgUseKey() {
+  if (!_kgMnemonic && !_kgSeed64) return;
+  document.getElementById('import-key').value = _kgMnemonic ? _kgMnemonic.join(' ') : b2h(_kgSeed64.slice(0, 32));
+  closeKeygen(); document.getElementById('import-pass').focus();
+}
+function kgCopy(id, btn) {
+  const text = document.getElementById(id).textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent; btn.textContent = '✓ COPIÉ'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 1800);
+  }).catch(() => {
+    const r = document.createRange(); r.selectNode(document.getElementById(id));
+    window.getSelection().removeAllRanges(); window.getSelection().addRange(r);
+  });
+}
+function kgCopyWords(btn) {
+  if (!_kgMnemonic) return;
+  navigator.clipboard.writeText(_kgMnemonic.join(' ')).then(() => {
+    btn.textContent = '✓ COPIÉ'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'COPIER LES 12 MOTS'; btn.classList.remove('copied'); }, 1800);
+  });
+}
+
+// ── UI: Add Contact overlay ───────────────────────
+async function openAddContact(pendingIdx) {
+  ['ac-url', 'ac-name', 'ac-pub', 'ac-bch'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('ac-error').textContent = '';
+  // Pré-remplissage depuis un contact pending (reçu avant d'être ajouté)
+  if (pendingIdx !== undefined && pendingIdx !== null && contacts[pendingIdx]?.pending) {
+    const c = contacts[pendingIdx];
+    document.getElementById('ac-pub').value  = c.pub_hex;
+    document.getElementById('ac-name').value = c.name.startsWith('Unknown ') ? '' : c.name;
+    document.getElementById('ac-bch').value  = c.bch_address || '';
+    document.getElementById('ac-pub').readOnly = true;
+    document.getElementById('ac-pub').style.opacity = '.5';
+    // Fetch BCH address on demand (1 seul appel API, uniquement au clic)
+    if (!c.bch_address) {
+      const txid = c.msgs?.find(m => m.from === 'them' && m.txid)?.txid;
+      if (txid) {
+        const addr = await bcSenderAddr(txid);
+        if (addr) {
+          c.bch_address = addr;
+          saveContacts();
+          document.getElementById('ac-bch').value = addr;
+        }
+      }
+    }
+  } else {
+    document.getElementById('ac-pub').readOnly = false;
+    document.getElementById('ac-pub').style.opacity = '';
+  }
+  document.getElementById('add-contact-overlay').style.display = 'flex';
+}
+function closeAddContact() {
+  document.getElementById('add-contact-overlay').style.display = 'none';
+  document.getElementById('ac-pub').readOnly = false;
+  document.getElementById('ac-pub').style.opacity = '';
+  document.getElementById('ac-error').textContent = '';
+}
+function parseContactCard() {
+  const url = document.getElementById('ac-url').value.trim();
+  if (!url.startsWith('chatcash:')) { document.getElementById('ac-error').textContent = '// Not a chatcash: URL'; return; }
+  const rest    = url.slice(9);
+  const [bchAddr, query] = rest.split('?');
+  const params  = {};
+  (query || '').split('&').forEach(p => {
+    if (p.includes('=')) { const [k, v] = p.split('=', 2); params[k] = decodeURIComponent(v.replace(/\+/g, ' ')); }
+  });
+  const pubHex = params.pub || '';
+  const name   = params.name || bchAddr.slice(0, 16);
+  if (!pubHex || pubHex.length !== 64) { document.getElementById('ac-error').textContent = '// Invalid pub_hex (64 hex chars required)'; return; }
+  document.getElementById('ac-name').value = name;
+  document.getElementById('ac-pub').value  = pubHex;
+  document.getElementById('ac-bch').value  = bchAddr;
+  document.getElementById('ac-error').textContent = '';
+}
+function saveContact() {
+  const name    = document.getElementById('ac-name').value.trim();
+  const pubHex  = document.getElementById('ac-pub').value.trim();
+  const bchAddr = document.getElementById('ac-bch').value.trim();
+  const errEl   = document.getElementById('ac-error');
+  if (!name)                               { errEl.textContent = '// name required'; return; }
+  if (!pubHex || pubHex.length !== 64)    { errEl.textContent = '// invalid pub_hex'; return; }
+  if (!bchAddr.startsWith('bitcoincash:')) { errEl.textContent = '// invalid BCH address'; return; }
+  const existing = contacts.findIndex(c => c.pub_hex === pubHex);
+  if (existing !== -1) {
+    if (!contacts[existing].pending) { errEl.textContent = '// contact already exists'; return; }
+    // Met à jour le contact pending (reçu avant d'être ajouté)
+    contacts[existing] = { ...contacts[existing], name, bch_address: bchAddr,
+      avatar: name.slice(0, 2).toUpperCase(), pending: false };
+  } else {
+    contacts.push({ name, pub_hex: pubHex, bch_address: bchAddr, avatar: name.slice(0, 2).toUpperCase(), msgs: [] });
+  }
+  saveContacts(); closeAddContact(); renderContacts();
+  if (currentConvIdx !== null) openConv(currentConvIdx); // refresh banner si conv ouverte
+}
+
+// ── UI: Share Card overlay ────────────────────────
+function openShareCard() {
+  if (!profile) return;
+  document.getElementById('sc-bch').textContent = profile.bch_address;
+  document.getElementById('sc-pub').textContent = profile.x25519_pub_hex;
+  updateShareCard();
+  document.getElementById('share-card-overlay').style.display = 'flex';
+}
+function updateShareCard() {
+  if (!profile) return;
+  const name = document.getElementById('sc-name').value.trim() || 'anon';
+  const url  = `chatcash:${profile.bch_address}?pub=${profile.x25519_pub_hex}&name=${encodeURIComponent(name)}`;
+  document.getElementById('sc-url').textContent = url;
+  const canvas = document.getElementById('sc-qr');
+  QRCode.toCanvas(canvas, url, {
+    width: 180,
+    margin: 1,
+    color: { dark: '#00ff41', light: '#050a05' },
+  }).catch(() => {});
+}
+function closeShareCard() {
+  document.getElementById('share-card-overlay').style.display = 'none';
+  document.getElementById('sc-bch-qr-wrap').style.display = 'none';
+}
+function toggleBchQr() {
+  const wrap = document.getElementById('sc-bch-qr-wrap');
+  const open = wrap.style.display === 'none';
+  wrap.style.display = open ? 'flex' : 'none';
+  document.getElementById('sc-bch-qr-icon').style.opacity = open ? '1' : '.55';
+  if (open) {
+    QRCode.toCanvas(document.getElementById('sc-bch-qr'), profile.bch_address, {
+      width: 160, margin: 1, color: { dark: '#00ff41', light: '#050a05' },
+    }).catch(() => {});
+  }
+}
+
+// ── UI: Change Identity overlay ───────────────────
+let _ciNewPrivHex = null, _ciNewPubHex = null, _ciNewBchAddr = null, _ciNewBchPrivHex = null;
+async function openChangeIdentity() {
+  if (!profile) return;
+  const btn = document.getElementById('ci-broadcast-btn');
+  btn.disabled = false; btn.textContent = '⚡ BROADCASTER AUX CONTACTS →';
+  document.getElementById('ci-spinner').style.display = 'block';
+  document.getElementById('ci-content').style.display = 'none';
+  document.getElementById('ci-done').style.display    = 'none';
+  document.getElementById('ci-overlay').style.display = 'flex';
+  const ephPriv = crypto.getRandomValues(new Uint8Array(32));
+  const ephPub  = x25519.getPublicKey(ephPriv);
+  _ciNewPrivHex = b2h(ephPriv); _ciNewPubHex = b2h(ephPub);
+  const newBchPriv = crypto.getRandomValues(new Uint8Array(32));
+  _ciNewBchPrivHex = b2h(newBchPriv);
+  _ciNewBchAddr = privToBchAddr(newBchPriv);
+  document.getElementById('ci-new-pub').textContent = _ciNewPubHex;
+  document.getElementById('ci-new-bch').textContent = _ciNewBchAddr;
+  const listEl = document.getElementById('ci-contacts-list');
+  listEl.innerHTML = contacts.map(c => `
+    <div class="ci-contact-row" id="ci-row-${c.pub_hex.slice(0, 8)}">
+      <span>${c.name}</span>
+      <span class="ci-contact-status pending" id="ci-status-${c.pub_hex.slice(0, 8)}">PENDING</span>
+    </div>`).join('') || '<div style="font-size:10px;color:rgba(0,255,65,.3)">// no contacts to notify</div>';
+  document.getElementById('ci-spinner').style.display = 'none';
+  document.getElementById('ci-content').style.display = 'flex';
+}
+async function ciDoBroadcast() {
+  if (!_ciNewPrivHex || !_ciNewBchAddr || !_ciNewBchPrivHex || !profile) return;
+  const btn = document.getElementById('ci-broadcast-btn');
+  btn.disabled = true; btn.textContent = 'BROADCASTING...';
+  const oldPrivHex = profile.bch_priv_hex;
+  const oldAddr    = profile.bch_address;
+  // Compact CI payload: "addr|pub_b64NoPad" → 42+1+43 = 86 bytes (limit=99, BCH OP_RETURN max=220)
+  const _pub64 = btoa(String.fromCharCode(...h2b(_ciNewPubHex))).replace(/=+$/, '');
+  const _addr  = _ciNewBchAddr.replace('bitcoincash:', '');
+  const payload = `${_addr}|${_pub64}`;
+
+  console.group('[CI] ciDoBroadcast — START');
+  console.log('[CI] old addr     :', oldAddr);
+  console.log('[CI] new addr     :', _ciNewBchAddr);
+  console.log('[CI] old pub_hex  :', profile.x25519_pub_hex?.slice(0, 20) + '...');
+  console.log('[CI] new pub_hex  :', _ciNewPubHex?.slice(0, 20) + '...');
+  console.log('[CI] payload JSON :', payload);
+  console.log('[CI] contacts     :', contacts.length);
+
+  for (const c of contacts) {
+    const sid = `ci-status-${c.pub_hex.slice(0, 8)}`;
+    console.group(`[CI] → contact "${c.name}" pub=${c.pub_hex.slice(0, 16)}...`);
+    console.log('[CI]   bch_address:', c.bch_address);
+    try {
+      await sendCcshMsg(c, payload, 0x02);  // TX on-chain, msgType ADDR_CHANGE
+      console.log('[CI]   ✓ TX broadcast OK');
+      const s = document.getElementById(sid);
+      if (s) { s.textContent = '✓ SENT'; s.classList.replace('pending', 'sent'); }
+    } catch(e) {
+      console.error('[CI]   ✗ TX failed:', e);
+      const s = document.getElementById(sid);
+      if (s) { s.textContent = '✗ ' + e.message.slice(0, 20); s.style.color = '#ff4040'; }
+    }
+    console.groupEnd();
+  }
+
+  console.log('[CI] All contacts notified — switching profile...');
+  // Switcher le profil vers la nouvelle identité, conserver l'ancienne clé BCH comme fallback
+  profile = {
+    ...profile,
+    x25519_priv_hex:   _ciNewPrivHex,
+    x25519_pub_hex:    _ciNewPubHex,
+    bch_priv_hex:      _ciNewBchPrivHex,
+    bch_address:       _ciNewBchAddr,
+    bch_priv_hex_prev: oldPrivHex,   // fallback si nouvelle adresse pas encore financée
+    bch_address_prev:  oldAddr,
+  };
+  console.log('[CI] profile switched. new x25519_pub_hex:', _ciNewPubHex?.slice(0, 20) + '...');
+  console.groupEnd();
+
+  // Re-chiffrer le vault avec la nouvelle identité
+  if (_sessionPass) {
+    localStorage.setItem('00chat_vault', await encryptVault(profile, _sessionPass));
+  }
+  seenTxids.clear(); localStorage.removeItem('00chat_seen');
+  startBalanceRefresh();
+  document.getElementById('ci-content').style.display = 'none';
+  document.getElementById('ci-done').style.display = 'flex';
+}
+function closeChangeIdentity() { document.getElementById('ci-overlay').style.display = 'none'; }
+
+// ── Clock ─────────────────────────────────────────
+function updateClock() {
+  document.getElementById('phone-clock').textContent =
+    new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+}
+setInterval(updateClock, 1000); updateClock();
+
+// ── Matrix rain ───────────────────────────────────
+const canvas = document.getElementById('rain'); const ctx = canvas.getContext('2d');
+function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+resize(); window.addEventListener('resize', resize);
+const drops = [];
+for (let i = 0; i < 120; i++)
+  drops.push({ x: Math.random() * 1440, y: Math.random() * 900,
+    len: Math.random() * 18 + 6, speed: Math.random() * 7 + 5,
+    op: Math.random() * .4 + .1, w: Math.random() * .8 + .2 });
+function drawRain() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drops.forEach(d => {
+    ctx.beginPath(); ctx.moveTo(d.x, d.y); ctx.lineTo(d.x - 1, d.y + d.len);
+    ctx.strokeStyle = `rgba(0,255,65,${d.op})`; ctx.lineWidth = d.w; ctx.stroke();
+    d.y += d.speed;
+    if (d.y > canvas.height) { d.y = -d.len; d.x = Math.random() * canvas.width; }
+  });
+  requestAnimationFrame(drawRain);
+}
+drawRain();
+
+// ── WalletConnect v2 ──────────────────────────────
+let _wcClient = null, _wcSession = null, _wcMode = false, _wcBchAddr = null;
+
+async function _initChatWC() {
+  if (_wcClient) return _wcClient;
+  const mod = await import('https://esm.sh/@walletconnect/sign-client@2.17.5');
+  const SignClient = mod.SignClient || mod.default;
+  _wcClient = await SignClient.init({
+    projectId: '082bda1ddb7c62dc3aee194b5e8dc8f9',
+    metadata: {
+      name: '0penw0rld Chat',
+      description: 'E2E Encrypted BCH Messaging',
+      url: 'https://0penw0rld.com',
+      icons: ['https://0penw0rld.com/icons/icon-180.png']
+    }
+  });
+  return _wcClient;
+}
+
+async function connectWalletConnect() {
+  const errEl = document.getElementById('wc-error-import') || document.getElementById('wc-error-unlock');
+  if (errEl) errEl.textContent = '';
+  const btns = document.querySelectorAll('[onclick="connectWalletConnect()"]');
+  btns.forEach(b => { b.textContent = '⛓ LOADING SDK...'; b.disabled = true; });
+  try {
+    const client = await _initChatWC();
+    btns.forEach(b => { b.textContent = '⛓ PAIRING...'; });
+    const { uri, approval } = await client.connect({
+      requiredNamespaces: {
+        bch: {
+          chains: ['bch:bitcoincash'],
+          methods: ['bch_getAddresses', 'bch_signTransaction', 'bch_signMessage'],
+          events: ['addressesChanged']
+        }
+      }
+    });
+    if (uri) {
+      const overlay = document.getElementById('wc-overlay');
+      overlay.style.display = 'flex';
+      document.getElementById('wc-step-qr').style.display = 'flex';
+      document.getElementById('wc-step-pass').style.display = 'none';
+      await QRCode.toCanvas(document.getElementById('wc-qr'), uri, {
+        width: 240, margin: 2, color: { dark: '#000000', light: '#ffffff' },
+      });
+    }
+    _wcSession = await approval();
+    const addresses = await client.request({
+      chainId: 'bch:bitcoincash', topic: _wcSession.topic,
+      request: { method: 'bch_getAddresses', params: {} },
+    });
+    _wcBchAddr = addresses[0];
+
+    // Show password step
+    document.getElementById('wc-step-qr').style.display = 'none';
+    document.getElementById('wc-step-pass').style.display = 'flex';
+  } catch(e) {
+    document.getElementById('wc-overlay').style.display = 'none';
+    if (errEl) errEl.textContent = '// ' + (e.message || 'connection rejected');
+    btns.forEach(b => { b.textContent = '⛓ WALLETCONNECT'; b.disabled = false; });
+  }
+}
+
+async function wcFinalize() {
+  const pass = document.getElementById('wc-pass').value;
+  const pass2 = document.getElementById('wc-pass2').value;
+  const errEl = document.getElementById('wc-pass-error');
+  if (pass.length < 8) { errEl.textContent = '// password min 8 chars'; return; }
+  if (pass !== pass2) { errEl.textContent = '// passwords don\'t match'; return; }
+
+  // Generate random X25519 keys for E2E encryption
+  const x25519Priv = crypto.getRandomValues(new Uint8Array(32));
+  const x25519Pub = x25519.getPublicKey(x25519Priv);
+
+  profile = {
+    x25519_priv_hex: b2h(x25519Priv),
+    x25519_pub_hex: b2h(x25519Pub),
+    bch_priv_hex: null,
+    bch_address: _wcBchAddr,
+    wc_mode: true,
+  };
+  _wcMode = true;
+  _sessionPass = pass;
+
+  localStorage.setItem('00chat_vault', await encryptVault(profile, pass));
+  localStorage.setItem('00_wc_session_chat', 'true');
+
+  _wcSubscribeChat(_wcClient);
+  document.getElementById('wc-overlay').style.display = 'none';
+  document.getElementById('auth-import').style.display = 'none';
+  document.getElementById('auth-unlock').style.display = 'none';
+  bootIntoChat();
+}
+
+function _wcSubscribeChat(client) {
+  client.on('session_delete', () => {
+    _wcSession = null; _wcMode = false;
+    localStorage.removeItem('00_wc_session_chat');
+    window.location.reload();
+  });
+}
+
+async function _restoreChatWcSession() {
+  try {
+    const client = await _initChatWC();
+    if (client.session.length) {
+      const lastKey = client.session.keys[client.session.keys.length - 1];
+      _wcSession = client.session.get(lastKey);
+      const addresses = await client.request({
+        chainId: 'bch:bitcoincash', topic: _wcSession.topic,
+        request: { method: 'bch_getAddresses', params: {} },
+      });
+      _wcBchAddr = addresses[0];
+      _wcMode = true;
+      _wcSubscribeChat(client);
+      return true;
+    }
+  } catch(e) { console.error('[WC Chat] restore failed:', e); }
+  localStorage.removeItem('00_wc_session_chat');
+  return false;
+}
+
+function cancelChatWc() {
+  document.getElementById('wc-overlay').style.display = 'none';
+  const btns = document.querySelectorAll('[onclick="connectWalletConnect()"]');
+  btns.forEach(b => { b.textContent = '⛓ WALLETCONNECT'; b.disabled = false; });
+}
+
+// ── Boot callback (called by regular script after loading screen) ─────────
+window._appBoot = async function() {
+  const vault = localStorage.getItem('00chat_vault');
+  if (vault) {
+    // Auto-unlock from shared session (cross-app, 30 min TTL)
+    try {
+      const sess = JSON.parse(localStorage.getItem('00_session_auth') || '{}');
+      if (sess.p && sess.ts && Date.now() - sess.ts < 30 * 60 * 1000) {
+        const pass = atob(sess.p);
+        profile = await decryptVault(vault, pass);
+        _sessionPass = pass;
+        localStorage.setItem('00_session_auth', JSON.stringify({ p: sess.p, ts: Date.now() }));
+        if (profile.wc_mode) { _wcMode = true; await _restoreChatWcSession(); }
+        _attempts = 0;
+        bootIntoChat();
+        return;
+      }
+    } catch { /* wrong password for this vault — show prompt */ }
+    if (localStorage.getItem('00_wc_session_chat')) {
+      _restoreChatWcSession();
+    }
+    showUnlock();
+  } else {
+    // No chat vault — try auto-create from wallet vault + session
+    try {
+      const sess = JSON.parse(localStorage.getItem('00_session_auth') || '{}');
+      const walletVault = localStorage.getItem('00wallet_vault');
+      if (sess.p && sess.ts && Date.now() - sess.ts < 30 * 60 * 1000 && walletVault) {
+        const pass = atob(sess.p);
+        const walletProfile = await decryptVault(walletVault, pass);
+        const seed64 = walletProfile.seedHex
+          ? h2b(walletProfile.seedHex)
+          : concat(h2b(walletProfile.bchPrivHex), new Uint8Array(32));
+        profile = deriveProfileFromSeed(seed64);
+        _sessionPass = pass;
+        localStorage.setItem('00chat_vault', await encryptVault(profile, pass));
+        localStorage.setItem('00chat_attempts', '0');
+        localStorage.setItem('00_session_auth', JSON.stringify({ p: sess.p, ts: Date.now() }));
+        _attempts = 0;
+        bootIntoChat();
+        return;
+      }
+    } catch { /* wallet decrypt failed — show import */ }
+    // Hide loading screen before showing import
+    const ld = document.getElementById('loading');
+    ld.style.transition = 'opacity .4s'; ld.style.opacity = '0';
+    setTimeout(() => { ld.style.display = 'none'; }, 400);
+    document.getElementById('auth-import').style.display = 'flex';
+  }
+};
+
+// ── Expose to onclick handlers ────────────────────
+// ── v2 self-test (dev) ────────────────────────────
+window._testV2 = async function() {
+  try {
+    const testMsg = 'Hello split-knowledge v2!';
+    // Generate test keys
+    const privA = crypto.getRandomValues(new Uint8Array(32));
+    const pubA  = x25519.getPublicKey(privA);
+    const privB = crypto.getRandomValues(new Uint8Array(32));
+    const pubB  = x25519.getPublicKey(privB);
+    // Encrypt from A → B
+    const { chainBlob, relayBlob, ephPub } = await splitEncrypt(testMsg, b2h(pubB));
+    console.log('[test] chainBlob=' + chainBlob.length + 'B relayBlob=' + relayBlob.length + 'B');
+    // Decrypt as B
+    const decrypted = await splitDecrypt(chainBlob, relayBlob, ephPub, privB);
+    const ok = decrypted === testMsg;
+    console.log('[test] v2 round-trip ' + (ok ? '✓ PASS' : '✗ FAIL') + ' → "' + decrypted + '"');
+    // Test XOR split independently
+    const data = new Uint8Array([1,2,3,4,5,6,7,8]);
+    const [shard, pad] = xorSplit(data);
+    const merged = xorMerge(shard, pad);
+    const xorOk = data.every((v, i) => v === merged[i]);
+    console.log('[test] XOR round-trip ' + (xorOk ? '✓ PASS' : '✗ FAIL'));
+    // Test packet pack/unpack
+    const msgId = crypto.getRandomValues(new Uint8Array(16));
+    const pkt = packV2({ msg_id: msgId, sender_pub: pubA, chunk_index: 0, chunk_total: 1,
+      ciphertext_chunk: chainBlob, msg_type: MSG_SPLIT_CHAIN, flags: FLAG_SPLIT });
+    const unpacked = unpackAny(pkt);
+    const pktOk = unpacked.version === CCSH_V2 && unpacked.msg_type === MSG_SPLIT_CHAIN;
+    console.log('[test] packet pack/unpack ' + (pktOk ? '✓ PASS' : '✗ FAIL') + ' ver=' + unpacked.version + ' type=0x' + unpacked.msg_type.toString(16));
+    // Test Nostr event creation
+    const nostrPriv = _deriveNostrPriv(b2h(privA));
+    const ev = await _makeNostrEvent(nostrPriv, NOSTR_KIND_CCSH, 'test', [['p', b2h(pubB)]]);
+    const evOk = ev.id.length === 64 && ev.sig.length === 128;
+    console.log('[test] Nostr event ' + (evOk ? '✓ PASS' : '✗ FAIL') + ' id=' + ev.id.slice(0, 16) + '...');
+    return { crypto: ok, xor: xorOk, packet: pktOk, nostr: evOk, all: ok && xorOk && pktOk && evOk };
+  } catch (e) { console.error('[test] ✗ ERROR:', e); return { error: e.message }; }
+};
+
+Object.assign(window, {
+  importKey, tryUnlock, toggleSave, showImport, resetToImport,
+  openKeygen, closeKeygen, kgUseKey, kgCopy, kgCopyWords,
+  connectWalletConnect, cancelChatWc, wcFinalize,
+  openChangeIdentity, closeChangeIdentity, ciDoBroadcast,
+  openConv, closeConv, deleteContact, deleteCurrentContact, addCurrentContact, switchTab, handleSend, sendMsg,
+  openAddContact, closeAddContact, parseContactCard, saveContact,
+  openShareCard, closeShareCard, updateShareCard, toggleBchQr,
+});
+
+</script>
+<div id="chat-info-modal" onclick="if(event.target===this)toggleChatInfo()" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center">
+  <div style="max-width:480px;width:90%;background:#1e1e1e;border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:32px 36px;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.6)">
+    <div onclick="toggleChatInfo()" style="position:absolute;top:16px;right:20px;cursor:pointer;font-size:20px;color:rgba(255,255,255,.25);line-height:1">&times;</div>
+    <div style="font-size:20px;font-weight:700;color:rgba(255,255,255,.9);margin-bottom:24px">How Split-Knowledge Works</div>
+    <div style="font-size:15px;font-weight:600;color:rgba(255,255,255,.85);margin-bottom:8px">Message Splitting</div>
+    <div style="font-size:13px;line-height:1.7;color:rgba(255,255,255,.4);margin-bottom:20px">Each message is split into two encrypted halves using XOR One-Time Pad. The chain half travels as an OP_RETURN on BCH (~2046 sat). The relay half travels as a Nostr ephemeral event (free, expires 1h). Neither half alone reveals anything.</div>
+    <div style="font-size:15px;font-weight:600;color:rgba(255,255,255,.85);margin-bottom:8px">Encryption</div>
+    <div style="font-size:13px;line-height:1.7;color:rgba(255,255,255,.4);margin-bottom:20px">X25519 ECDH + AES-256-GCM per half, with separate derived keys for chain and relay. Only the recipient can recombine both halves to read the message.</div>
+    <div style="font-size:15px;font-weight:600;color:rgba(255,255,255,.85);margin-bottom:8px">Identity</div>
+    <div style="font-size:13px;line-height:1.7;color:rgba(255,255,255,.4)">Your chat identity is an X25519 keypair + a BCH address. Changing identity notifies each contact on-chain (~2046 sat/contact). No account, no phone number, no server — just keys.</div>
+  </div>
+</div>
+
+<script src="/shell.js?v=263"></script>
+<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{});}</script>
+</body>
+</html>

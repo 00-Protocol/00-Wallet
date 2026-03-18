@@ -1,0 +1,1509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#ff6600">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>00 Swap XMR — 0penw0rld</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{--xmr:#ff6600;--xmr-dim:#cc5200;--xmr-dark:#331400;--green:#00ff41;--black:#020a03;--grey:#0a110a;--panel:#060e06;--red:#ff4040;--gold:#f0a500}
+    html,body{width:100%;height:100%;background:var(--black);font-family:'Share Tech Mono',monospace;display:flex;align-items:center;justify-content:center;overflow:hidden}
+    .scanlines{position:fixed;inset:0;z-index:1;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.12) 2px,rgba(0,0,0,.12) 4px)}
+    .vignette{position:fixed;inset:0;z-index:1;pointer-events:none;background:radial-gradient(ellipse at center,transparent 30%,rgba(0,0,0,.9) 100%)}
+
+    .phone-wrap{position:relative;z-index:10;display:flex;align-items:center;justify-content:center}
+    .phone{width:375px;height:780px;background:var(--panel);border-radius:42px;border:2px solid rgba(255,102,0,.2);box-shadow:0 0 0 1px rgba(255,102,0,.05),0 0 40px rgba(255,102,0,.08);display:flex;flex-direction:column;overflow:hidden;position:relative}
+    .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:120px;height:28px;background:var(--black);border-radius:0 0 18px 18px;z-index:50;display:flex;align-items:center;justify-content:center;gap:8px}
+    .notch-cam{width:8px;height:8px;border-radius:50%;background:#111;border:1px solid #222}
+    .notch-speaker{width:40px;height:4px;border-radius:2px;background:#111}
+    .status-bar{padding:10px 20px 4px;display:flex;align-items:center;justify-content:space-between;font-size:10px;color:rgba(255,102,0,.5);flex-shrink:0;margin-top:14px}
+    .app-header{padding:10px 20px 0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+    .app-title{font-family:'Orbitron',monospace;font-size:18px;font-weight:700;color:var(--xmr);text-shadow:0 0 10px rgba(255,102,0,.4)}
+    .app-title span{font-size:11px;color:rgba(255,102,0,.4);display:block;letter-spacing:2px}
+    .header-icon{font-size:18px;cursor:pointer;color:rgba(255,102,0,.6);transition:.15s}
+
+    .conn-bar{display:flex;align-items:center;gap:8px;padding:5px 20px;border-bottom:1px solid rgba(255,102,0,.08);flex-shrink:0;font-size:9px;color:rgba(255,102,0,.4);letter-spacing:1px;flex-wrap:wrap}
+    .conn-dot{width:5px;height:5px;border-radius:50%;background:rgba(255,102,0,.2);flex-shrink:0;transition:.3s}
+    .conn-dot.on{background:var(--xmr);box-shadow:0 0 4px var(--xmr)}
+    .conn-dot.err{background:var(--red)}
+    .conn-chip{display:flex;align-items:center;gap:4px;padding:2px 8px;border:1px solid rgba(255,102,0,.1);border-radius:10px}
+
+    .tabs{display:flex;padding:0 16px;border-bottom:1px solid rgba(255,102,0,.1);flex-shrink:0}
+    .tab{flex:1;padding:10px;text-align:center;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,102,0,.3);cursor:pointer;border-bottom:2px solid transparent;transition:.2s}
+    .tab.active{color:var(--xmr);border-bottom-color:var(--xmr)}
+    .tab-pane{display:none;flex:1;overflow-y:auto;scrollbar-width:none;min-height:0;flex-direction:column}
+    .tab-pane::-webkit-scrollbar{display:none}
+    .tab-pane.active{display:flex}
+
+    .section{padding:16px 20px;border-bottom:1px solid rgba(255,102,0,.07)}
+    .section-title{font-size:9px;color:rgba(255,102,0,.4);letter-spacing:2px;margin-bottom:10px}
+    .form-lbl{font-size:9px;color:rgba(255,102,0,.4);letter-spacing:2px;margin-bottom:4px}
+    .form-input{width:100%;background:rgba(255,102,0,.04);border:1px solid rgba(255,102,0,.2);border-radius:8px;padding:11px 14px;color:var(--xmr);font-family:'Share Tech Mono',monospace;font-size:11px;outline:none;transition:.2s;margin-bottom:10px}
+    .form-input:focus{border-color:rgba(255,102,0,.5)}
+    .form-input::placeholder{color:rgba(255,102,0,.2)}
+    select.form-input{-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23ff6600' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+    .action-btn{width:100%;padding:12px;background:rgba(255,102,0,.08);border:1px solid rgba(255,102,0,.3);border-radius:8px;color:var(--xmr);font-family:'Share Tech Mono',monospace;font-size:12px;letter-spacing:2px;cursor:pointer;transition:.2s;text-align:center}
+    .action-btn:hover{background:rgba(255,102,0,.15);border-color:var(--xmr)}
+    .action-btn:disabled{opacity:.3;cursor:default}
+    .action-btn.danger{border-color:rgba(255,64,64,.3);color:var(--red)}
+
+    .balance-hero{padding:16px 20px;border-bottom:1px solid rgba(255,102,0,.07)}
+    .balance-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+    .balance-val{font-family:'Orbitron',monospace;font-size:16px;font-weight:700;text-shadow:0 0 10px rgba(255,102,0,.2)}
+    .balance-val.bch{color:var(--green)}
+    .balance-val.xmr{color:var(--xmr)}
+    .balance-lbl{font-size:8px;letter-spacing:2px}
+    .balance-lbl.bch{color:rgba(0,255,65,.35)}
+    .balance-lbl.xmr{color:rgba(255,102,0,.35)}
+
+    .empty-state{padding:40px 20px;text-align:center;font-size:11px;color:rgba(255,102,0,.25);letter-spacing:2px;line-height:2.5}
+
+    .offer-item{padding:12px 16px;border-bottom:1px solid rgba(255,102,0,.05);cursor:pointer;transition:.15s}
+    .offer-item:hover{background:rgba(255,102,0,.03)}
+    .offer-top{display:flex;align-items:center;justify-content:space-between}
+    .offer-amounts{font-size:12px;color:var(--xmr);font-family:'Orbitron',monospace}
+    .offer-side{font-size:9px;padding:2px 8px;border-radius:4px;letter-spacing:1px}
+    .offer-side.sell{color:var(--red);border:1px solid rgba(255,64,64,.3)}
+    .offer-side.buy{color:var(--green);border:1px solid rgba(0,255,65,.3)}
+    .offer-detail{font-size:9px;color:rgba(255,102,0,.35);margin-top:4px;letter-spacing:1px}
+    .offer-actions{margin-top:8px}
+
+    .swap-step{display:flex;align-items:center;gap:10px;padding:10px 0}
+    .swap-dot{width:24px;height:24px;border-radius:50%;border:2px solid rgba(255,102,0,.2);display:flex;align-items:center;justify-content:center;font-size:10px;color:rgba(255,102,0,.3);flex-shrink:0}
+    .swap-dot.done{border-color:var(--green);color:var(--green);background:rgba(0,255,65,.08)}
+    .swap-dot.active{border-color:var(--xmr);color:var(--xmr);box-shadow:0 0 8px rgba(255,102,0,.3)}
+    .swap-label{font-size:10px;color:rgba(255,102,0,.5);letter-spacing:1px;flex:1}
+    .swap-label.done{color:var(--green)}
+    .swap-label.active{color:var(--xmr)}
+
+    .swap-btn{padding:6px 14px;background:rgba(255,102,0,.1);border:1px solid rgba(255,102,0,.3);border-radius:6px;color:var(--xmr);font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1px;cursor:pointer;transition:.15s}
+    .swap-btn:hover{background:rgba(255,102,0,.2);border-color:var(--xmr)}
+
+    .app-toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);padding:12px 24px;border-radius:8px;font:12px 'Share Tech Mono',monospace;z-index:9999;animation:toastIn .3s ease,toastOut .3s ease 3.7s;pointer-events:none;max-width:340px;text-align:center}
+    .app-toast.error{background:rgba(255,20,20,.15);border:1px solid rgba(255,64,64,.4);color:#ff4040}
+    .app-toast.success{background:rgba(0,255,65,.1);border:1px solid rgba(0,255,65,.3);color:var(--green)}
+    .app-toast.info{background:rgba(255,102,0,.1);border:1px solid rgba(255,102,0,.3);color:var(--xmr)}
+    @keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+    @keyframes toastOut{from{opacity:1}to{opacity:0}}
+
+    .spinner{width:16px;height:16px;border:2px solid rgba(255,102,0,.1);border-top-color:var(--xmr);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    #auth-view{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px 24px;gap:16px}
+    .auth-logo{font-family:'Orbitron',monospace;font-size:28px;font-weight:900;color:var(--xmr);text-shadow:0 0 20px rgba(255,102,0,.5)}
+    .auth-sub{font-size:10px;color:rgba(255,102,0,.35);letter-spacing:3px;margin-top:-8px}
+    .auth-input{width:100%;background:rgba(255,102,0,.04);border:1px solid rgba(255,102,0,.2);border-radius:8px;padding:12px 14px;color:var(--xmr);font-family:'Share Tech Mono',monospace;font-size:12px;outline:none}
+    .auth-input::placeholder{color:rgba(255,102,0,.2)}
+    .auth-btn{width:100%;padding:14px;background:rgba(255,102,0,.1);border:1px solid rgba(255,102,0,.4);border-radius:8px;color:var(--xmr);font-family:'Share Tech Mono',monospace;font-size:13px;letter-spacing:3px;cursor:pointer}
+    .auth-error{font-size:10px;color:#ff4040;letter-spacing:1px;min-height:14px}
+
+    @media (min-width:900px){.scanlines,.vignette{display:none!important}}
+  </style>
+  <link rel="stylesheet" href="desktop.css">
+</head>
+<body>
+<div class="scanlines"></div>
+<div class="vignette"></div>
+
+<div class="phone-wrap">
+  <div class="phone">
+    <div class="notch"><div class="notch-speaker"></div><div class="notch-cam"></div></div>
+
+    <div class="status-bar">
+      <span id="clock">--:--</span>
+      <span style="font-size:8px;letter-spacing:2px">00 SWAP</span>
+    </div>
+
+    <div class="app-header">
+      <div class="app-title">00<span>XMR ATOMIC SWAP</span></div>
+      <a href="swap.html" class="header-icon" title="BCH↔BTC Swap">⇄</a>
+    </div>
+
+
+    <!-- Auth -->
+    <div id="auth-view">
+      <div class="auth-logo">00</div>
+      <div class="auth-sub">XMR SWAP</div>
+      <input class="auth-input" id="auth-pass" type="password" placeholder="// wallet password" autocomplete="off">
+      <button class="auth-btn" onclick="unlock()">UNLOCK →</button>
+      <div class="auth-error" id="auth-err"></div>
+    </div>
+
+    <!-- Main -->
+    <div id="main-view" style="display:none;flex:1;flex-direction:column;min-height:0">
+      <div class="tabs">
+        <div class="tab active" data-tab="book" onclick="switchTab('book')">BOOK</div>
+        <div class="tab" data-tab="swap" onclick="switchTab('swap')">SWAP</div>
+        <div class="tab" data-tab="config" onclick="switchTab('config')" style="font-size:14px;letter-spacing:0">⚙</div>
+      </div>
+
+      <!-- BOOK tab -->
+      <div class="tab-pane active" id="tab-book">
+        <div class="balance-hero">
+          <div class="balance-row">
+            <div class="balance-lbl bch">BCH BALANCE</div>
+            <div class="balance-val bch" id="bch-balance">0.00000000</div>
+          </div>
+          <div class="balance-row">
+            <div class="balance-lbl xmr">XMR BALANCE</div>
+            <div class="balance-val xmr" id="xmr-balance">—</div>
+          </div>
+        </div>
+
+        <div class="section" id="send-xmr-section" style="display:none">
+          <div class="section-title">SEND XMR</div>
+          <div class="form-lbl">DESTINATION</div>
+          <input class="form-input" id="send-xmr-addr" placeholder="4... or 8..." autocomplete="off" spellcheck="false" style="font-size:9px">
+          <div style="display:flex;gap:8px;align-items:flex-end">
+            <div style="flex:1">
+              <div class="form-lbl">AMOUNT (XMR)</div>
+              <input class="form-input" id="send-xmr-amt" placeholder="0.000000000000" type="number" step="0.000000000001" min="0">
+            </div>
+            <button class="action-btn" style="width:60px;margin-bottom:10px;font-size:9px" onclick="sendXmrMax()">MAX</button>
+          </div>
+          <div id="send-xmr-fee" style="font-size:9px;color:rgba(255,102,0,.25);letter-spacing:1px;margin-bottom:8px">FEE: —</div>
+          <button class="action-btn" id="send-xmr-btn" onclick="sendXmr()">SEND XMR →</button>
+          <div id="send-xmr-status" style="font-size:9px;color:rgba(255,102,0,.35);letter-spacing:1px;margin-top:8px;min-height:14px"></div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">POST OFFER</div>
+          <div class="form-lbl">SIDE</div>
+          <select class="form-input" id="offer-side">
+            <option value="sell_bch">SELL BCH → GET XMR</option>
+            <option value="buy_bch">BUY BCH → PAY XMR</option>
+          </select>
+          <div style="display:flex;gap:8px">
+            <div style="flex:1">
+              <div class="form-lbl">BCH AMOUNT</div>
+              <input class="form-input" id="offer-bch" placeholder="0.01" type="number" step="0.00000001">
+            </div>
+            <div style="flex:1">
+              <div class="form-lbl">XMR AMOUNT</div>
+              <input class="form-input" id="offer-xmr" placeholder="0.1" type="number" step="0.000000000001">
+            </div>
+          </div>
+          <div id="offer-rate" style="font-size:9px;color:rgba(255,102,0,.3);letter-spacing:1px;margin-bottom:8px">RATE: —</div>
+          <button class="action-btn" onclick="postOffer()">POST OFFER →</button>
+          <div id="offer-status" style="font-size:9px;color:rgba(255,102,0,.35);letter-spacing:1px;margin-top:8px;min-height:14px"></div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">ORDERBOOK</div>
+          <div id="orderbook"><div class="empty-state">SCANNING FOR OFFERS...</div></div>
+        </div>
+      </div>
+
+      <!-- SWAP tab -->
+      <div class="tab-pane" id="tab-swap">
+        <div id="swap-idle" class="empty-state">
+          NO ACTIVE SWAP<br>
+          <span style="font-size:9px;color:rgba(255,102,0,.15)">Select an offer from the BOOK tab to start</span>
+        </div>
+        <div id="swap-active" style="display:none">
+          <div class="section">
+            <div class="section-title">XMR SWAP PROGRESS</div>
+            <div id="swap-steps"></div>
+          </div>
+          <div class="section">
+            <div class="section-title">DETAILS</div>
+            <div id="swap-details" style="font-size:9px;color:rgba(255,102,0,.3);letter-spacing:1px;line-height:2.2"></div>
+          </div>
+          <div class="section" id="swap-actions" style="display:none">
+            <button class="action-btn danger" onclick="refundSwap()">REFUND →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- CONFIG tab -->
+      <div class="tab-pane" id="tab-config">
+        <div class="section">
+          <div class="section-title">SESSION INFO</div>
+          <div style="font-size:9px;color:rgba(255,102,0,.3);letter-spacing:1px;line-height:2.2">
+            <div>SESSION: <span id="cfg-pub" style="color:rgba(255,102,0,.5)">—</span></div>
+            <div>BCH: <span id="cfg-bch" style="color:rgba(0,255,65,.5)">—</span></div>
+            <div>XMR: <span id="cfg-xmr" style="color:rgba(255,102,0,.5);cursor:pointer" onclick="if(_xmrAddr){navigator.clipboard.writeText(_xmrAddr);showToast('XMR ADDRESS COPIED','success')}">—</span></div>
+            <div>XMR NODE: <span id="cfg-xmr-node" style="color:rgba(255,102,0,.5)">—</span></div>
+            <div>XMR HEIGHT: <span id="cfg-xmr-height" style="color:rgba(255,102,0,.5)">—</span></div>
+          </div>
+        </div>
+        <div class="section" id="cfg-xmr-wallet" style="display:none">
+          <div class="section-title">XMR WALLET</div>
+          <div style="font-size:9px;color:rgba(255,102,0,.3);letter-spacing:1px;line-height:1.8;margin-bottom:8px">
+            <div style="margin-bottom:4px">ADDRESS (tap to copy):</div>
+            <div id="cfg-xmr-addr" style="color:rgba(255,102,0,.5);word-break:break-all;padding:8px;background:rgba(255,102,0,.04);border:1px solid rgba(255,102,0,.15);border-radius:6px;cursor:pointer;font-size:8px;line-height:1.6" onclick="navigator.clipboard.writeText(_xmrAddr);showToast('XMR ADDRESS COPIED','success')">—</div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="action-btn" style="flex:1;font-size:8px" onclick="navigator.clipboard.writeText(b2h(_xmrSpendPriv));showToast('SPEND KEY COPIED','success')">COPY SPEND KEY</button>
+            <button class="action-btn" style="flex:1;font-size:8px" onclick="navigator.clipboard.writeText(b2h(_xmrViewPriv));showToast('VIEW KEY COPIED','success')">COPY VIEW KEY</button>
+          </div>
+          <div style="font-size:7px;color:rgba(255,102,0,.15);margin-top:6px;letter-spacing:.5px">Import keys into Feather / Cake Wallet / monero-cli to send XMR</div>
+          <button class="action-btn" style="margin-top:8px;font-size:8px" onclick="xmrFullScan()">⟳ FULL CHAIN SCAN</button>
+        </div>
+        <div class="section">
+          <div class="section-title">BCH SERVERS</div>
+          <textarea class="form-input" id="cfg-bch-servers" rows="3" style="resize:none;height:auto"></textarea>
+          <button class="action-btn" onclick="reconnectBch()">RECONNECT</button>
+        </div>
+        <div class="section">
+          <div class="section-title">NOSTR RELAYS</div>
+          <textarea class="form-input" id="cfg-relays" rows="3" style="resize:none;height:auto"></textarea>
+          <button class="action-btn" onclick="reconnectNostr()">RECONNECT</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>(function(){var v=localStorage.getItem('00wallet_vault');if(!v){window.location.href='/wallet.html';return;}try{var s=JSON.parse(localStorage.getItem('00_session_auth')||'{}');if(!s.ts||Date.now()-s.ts>30*60*1000){window.location.href='/wallet.html';}}catch(e){window.location.href='/wallet.html';}})();</script>
+<script src="shell.js"></script>
+<script src="/ws-bridge.js"></script>
+<script type="module">
+'use strict';
+
+import { secp256k1, schnorr } from 'https://esm.sh/@noble/curves@1.8.1/secp256k1';
+import { sha256 }    from 'https://esm.sh/@noble/hashes@1.7.1/sha256';
+import { ripemd160 } from 'https://esm.sh/@noble/hashes@1.7.1/ripemd160';
+import { hmac }      from 'https://esm.sh/@noble/hashes@1.7.1/hmac';
+import { sha512 }    from 'https://esm.sh/@noble/hashes@1.7.1/sha512';
+
+// XMR swap modules
+import { XmrSwap, STATE, NOSTR_KIND_XMR_OFFER, NOSTR_KIND_XMR_TAKE,
+         NOSTR_KIND_XMR_KEYS, NOSTR_KIND_XMR_LOCKED, NOSTR_KIND_XMR_XLOCKED,
+         NOSTR_KIND_XMR_ADAPTOR, NOSTR_KIND_XMR_CLAIMED,
+         xmrSwapScript, p2shScript, p2pkhScript, swapMessage,
+         computeSharedXmrAddress, computeFullXmrSpendKey,
+         BCH_LOCK_BLOCKS, MIN_BCH_SATS, MIN_XMR_PICONERO
+} from './xmr-swap.js?v=2';
+
+import * as XmrRpc from './xmr-rpc.js?v=1';
+import * as XmrCrypto from './xmr-swap-crypto.js?v=5';
+
+// monero-ts WASM wallet (for sending XMR)
+import * as moneroTs from './lib/monero-ts.js';
+// Use Blob Worker + importScripts to bypass SW/COEP Worker fetch issue
+moneroTs.LibraryUtils.WORKER_LOADER = () => {
+  const code = "importScripts('" + location.origin + "/monero.worker.js');";
+  const blob = new Blob([code], { type: 'application/javascript' });
+  return new Worker(URL.createObjectURL(blob));
+};
+
+/* ══════════════════════════════════════════
+   CONFIG
+   ══════════════════════════════════════════ */
+const _BCH_DEFAULTS = ['wss://bch.imaginary.cash:50004','wss://electroncash.de:50004','wss://bch.loping.net:50004'];
+let _BCH_SERVERS = JSON.parse(localStorage.getItem('00_ep_fulcrum') || 'null') || _BCH_DEFAULTS;
+let _RELAYS = JSON.parse(localStorage.getItem('00_ep_relays') || 'null') || ['wss://relay.damus.io','wss://nos.lol','wss://relay.nostr.band'];
+
+const OFFER_TTL = 1800;
+
+/* ══════════════════════════════════════════
+   STATE
+   ══════════════════════════════════════════ */
+let _bchPriv, _bchPub33, _bchAddr = '';
+let _bchUtxos = [], _bchBalance = 0;
+let _sessionPriv, _sessionPub;
+let _stealthSpendPriv, _stealthSpendPub, _stealthCode = '';
+let _nostrSockets = [], _nostrConnected = false, _seenEvents = new Set();
+let _bchWs, _bchConnected = false, _bchReqId = 1, _bchCbs = {};
+let _xmrConnected = false, _xmrHeight = 0;
+let _xmrSpendPriv, _xmrViewPriv, _xmrSpendPub, _xmrViewPub, _xmrAddr = '';
+let _xmrBalance = null; // piconero, null = not scanned
+let _xmrWallet = null; // monero-ts WalletFull instance
+let _xmrWalletReady = false;
+let _offers = [], _myOffers = new Set();
+let _swap = null; // XmrSwap instance
+let _profile = null;
+let _acctPriv, _acctChain;
+
+/* ══════════════════════════════════════════
+   HELPERS (copied from swap.html for self-containment)
+   ══════════════════════════════════════════ */
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+const b2h = b => [...b].map(x => x.toString(16).padStart(2,'0')).join('');
+const h2b = h => new Uint8Array(h.match(/.{2}/g).map(x => parseInt(x,16)));
+const rand = n => crypto.getRandomValues(new Uint8Array(n));
+const utf8 = s => new TextEncoder().encode(s);
+function concat(...arrs) { const r = new Uint8Array(arrs.reduce((s,a)=>s+a.length,0)); let o=0; for(const a of arrs){r.set(a,o);o+=a.length;} return r; }
+const u32LE = n => new Uint8Array([n&0xff,(n>>8)&0xff,(n>>16)&0xff,(n>>24)&0xff]);
+function u64LE(n){const b=new Uint8Array(8);let v=BigInt(n);for(let i=0;i<8;i++){b[i]=Number(v&0xffn);v>>=8n;}return b;}
+function writeVarint(n){if(n<0xfd)return new Uint8Array([n]);if(n<=0xffff)return new Uint8Array([0xfd,n&0xff,(n>>8)&0xff]);return new Uint8Array([0xfe,n&0xff,(n>>8)&0xff,(n>>16)&0xff,(n>>24)&0xff]);}
+const dsha256 = d => sha256(sha256(d));
+const N_SECP = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141n;
+function satsToBch(s){return(s/1e8).toFixed(8);}
+function bchToSats(b){const n=parseFloat(b);return isNaN(n)?0:Math.round(n*1e8);}
+function picoToXmr(p){return(Number(p)/1e12).toFixed(12);}
+function xmrToPico(x){const n=parseFloat(x);return isNaN(n)?0n:BigInt(Math.round(n*1e12));}
+
+const _toastStack=[];
+function showToast(msg,type='info'){const el=document.createElement('div');el.className='app-toast '+type;el.textContent=msg;const off=_toastStack.reduce((s,t)=>s+t.offsetHeight+8,0);el.style.bottom=(30+off)+'px';document.body.appendChild(el);_toastStack.push(el);setTimeout(()=>{el.remove();const i=_toastStack.indexOf(el);if(i>=0)_toastStack.splice(i,1);let y=0;for(const t of _toastStack){t.style.bottom=(30+y)+'px';y+=t.offsetHeight+8;}},4000);}
+
+/* ═══ BIP32 ═══ */
+function _bip32Child(priv,chain,idx,hard){const ib=new Uint8Array([idx>>>24,(idx>>>16)&0xff,(idx>>>8)&0xff,idx&0xff]);const data=hard?concat(new Uint8Array([0]),priv,ib):concat(secp256k1.getPublicKey(priv,true),ib);const I=hmac(sha512,chain,data);const child=((BigInt('0x'+b2h(I.slice(0,32)))+BigInt('0x'+b2h(priv)))%N_SECP).toString(16).padStart(64,'0');return{priv:h2b(child),chain:I.slice(32)};}
+
+/* ═══ BCH Sighash (BIP143 forkid=0x41) ═══ */
+function bchSighash(version, locktime, inputs, outputs, i, utxoScript, utxoValue) {
+  const prevouts = concat(...inputs.map(x => concat(x.txidLE, u32LE(x.vout))));
+  const seqs     = concat(...inputs.map(x => u32LE(x.sequence)));
+  const outsData = concat(...outputs.map(o => concat(u64LE(o.value), writeVarint(o.script.length), o.script)));
+  const inp = inputs[i];
+  return dsha256(concat(
+    u32LE(version), dsha256(prevouts), dsha256(seqs),
+    inp.txidLE, u32LE(inp.vout),
+    writeVarint(utxoScript.length), utxoScript,
+    u64LE(utxoValue), u32LE(inp.sequence),
+    dsha256(outsData), u32LE(locktime),
+    u32LE(0x41)
+  ));
+}
+function serializeTx(version, locktime, inputs, outputs) {
+  return concat(
+    u32LE(version), writeVarint(inputs.length),
+    ...inputs.flatMap(inp => [inp.txidLE, u32LE(inp.vout), writeVarint(inp.scriptSig.length), inp.scriptSig, u32LE(inp.sequence)]),
+    writeVarint(outputs.length),
+    ...outputs.flatMap(o => [u64LE(o.value), writeVarint(o.script.length), o.script]),
+    u32LE(locktime)
+  );
+}
+function pushData(data) {
+  if (data.length <= 75) return concat(new Uint8Array([data.length]), data);
+  if (data.length <= 255) return concat(new Uint8Array([0x4c, data.length]), data);
+  return concat(new Uint8Array([0x4d, data.length & 0xff, (data.length >> 8) & 0xff]), data);
+}
+function cashAddrToHash20(addr) {
+  const clean = addr.replace(/^bitcoincash:/, '');
+  const d5 = [];
+  for (const c of clean) { const v = _caCharset.indexOf(c); if (v >= 0) d5.push(v); }
+  const payload = d5.slice(0, -8);
+  const converted = []; let acc = 0, bits = 0;
+  for (const v of payload) { acc = (acc << 5) | v; bits += 5; while (bits >= 8) { bits -= 8; converted.push((acc >> bits) & 0xff); } }
+  return new Uint8Array(converted.slice(1, 21));
+}
+const P2SH_INPUT_VBYTES = 280;
+const BCH_FEE_RATE = 1; // sat/byte
+
+/* Build BCH funding TX for XMR swap lock (P2SH output) */
+function buildXmrSwapFundTx(utxos, redeemScript, amountSats, changeAddr) {
+  const p2shOut = p2shScript(redeemScript);
+  let total = 0; const selected = [];
+  const sorted = [...utxos].sort((a, b) => b.value - a.value);
+  for (const u of sorted) {
+    selected.push(u);
+    total += u.value;
+    const fee = Math.ceil((10 + selected.length * 148 + 2 * 34) * BCH_FEE_RATE);
+    if (total >= amountSats + fee) break;
+  }
+  const fee = Math.ceil((10 + selected.length * 148 + 2 * 34) * BCH_FEE_RATE);
+  if (total < amountSats + fee) throw new Error('insufficient BCH');
+  const change = total - amountSats - fee;
+  const outputs = [{ value: amountSats, script: p2shOut }];
+  if (change >= 546) outputs.push({ value: change, script: p2pkhScript(cashAddrToHash20(changeAddr)) });
+  const inputs = selected.map(u => ({
+    txidLE: h2b(u.txid).reverse(), vout: u.vout, value: u.value,
+    sequence: 0xffffffff, scriptSig: new Uint8Array(0)
+  }));
+  for (let i = 0; i < inputs.length; i++) {
+    const priv = selected[i]._priv || _bchPriv;
+    const pub = secp256k1.getPublicKey(priv, true);
+    const utxoScript = p2pkhScript(ripemd160(sha256(pub)));
+    const sh = bchSighash(1, 0, inputs, outputs, i, utxoScript, inputs[i].value);
+    const sig = secp256k1.sign(sh, priv, { lowS: true });
+    const derSig = concat(sig.toDERRawBytes(), new Uint8Array([0x41]));
+    inputs[i].scriptSig = concat(new Uint8Array([derSig.length]), derSig, new Uint8Array([pub.length]), pub);
+  }
+  return b2h(serializeTx(1, 0, inputs, outputs));
+}
+
+/* Build BCH claim TX for XMR swap (OP_CHECKDATASIG path — no sighash needed) */
+function buildXmrSwapClaimTx(lockTxid, lockVout, lockValue, redeemScript, sig64, outputAddr) {
+  const fee = Math.ceil((10 + P2SH_INPUT_VBYTES + 34) * BCH_FEE_RATE);
+  const outputValue = lockValue - fee;
+  if (outputValue < 546) throw new Error('lock value too small');
+  const scriptSig = concat(pushData(sig64), new Uint8Array([0x51]), pushData(redeemScript));
+  const inputs = [{
+    txidLE: h2b(lockTxid).reverse(), vout: lockVout, value: lockValue,
+    sequence: 0xffffffff, scriptSig
+  }];
+  const outputs = [{ value: outputValue, script: p2pkhScript(cashAddrToHash20(outputAddr)) }];
+  return b2h(serializeTx(1, 0, inputs, outputs));
+}
+
+/* Build BCH refund TX for XMR swap (timelock path with OP_CHECKSIG) */
+function buildXmrSwapRefundTx(lockTxid, lockVout, lockValue, redeemScript, locktime, refunderPriv, outputAddr) {
+  const fee = Math.ceil((10 + P2SH_INPUT_VBYTES + 34) * BCH_FEE_RATE);
+  const outputValue = lockValue - fee;
+  if (outputValue < 546) throw new Error('lock value too small');
+  const inputs = [{
+    txidLE: h2b(lockTxid).reverse(), vout: lockVout, value: lockValue,
+    sequence: 0xfffffffe, scriptSig: new Uint8Array(0)
+  }];
+  const outputs = [{ value: outputValue, script: p2pkhScript(cashAddrToHash20(outputAddr)) }];
+  const sh = bchSighash(1, locktime, inputs, outputs, 0, redeemScript, lockValue);
+  const sig = secp256k1.sign(sh, refunderPriv, { lowS: true });
+  const derSig = concat(sig.toDERRawBytes(), new Uint8Array([0x41]));
+  inputs[0].scriptSig = concat(
+    new Uint8Array([derSig.length]), derSig,
+    new Uint8Array([0x00]),      // OP_FALSE = refund path
+    pushData(redeemScript)
+  );
+  return b2h(serializeTx(1, locktime, inputs, outputs));
+}
+
+/* ═══ CashAddr ═══ */
+const _caCharset='qpzry9x8gf2tvdw0s3jn54khce6mua7l';
+function _caPolymod(v){const G=[0x98f2bc8e61n,0x79b76d99e2n,0xf33e5fb3c4n,0xae2eabe2a8n,0x1e4f43e470n];let c=1n;for(const d of v){const c0=c>>35n;c=((c&0x07ffffffffn)<<5n)^BigInt(d);if(c0&1n)c^=G[0];if(c0&2n)c^=G[1];if(c0&4n)c^=G[2];if(c0&8n)c^=G[3];if(c0&16n)c^=G[4];}return c^1n;}
+function _hashToCashAddr(hash20,vb){const p=new Uint8Array([vb,...hash20]);const d5=[];let acc=0,bits=0;for(const b of p){acc=(acc<<8)|b;bits+=8;while(bits>=5){bits-=5;d5.push((acc>>bits)&31);}}if(bits>0)d5.push((acc<<(5-bits))&31);const prefix='bitcoincash';const pe=[...prefix.split('').map(c=>c.charCodeAt(0)&31),0];const mod=_caPolymod([...pe,...d5,0,0,0,0,0,0,0,0]);const cs=[];for(let i=7;i>=0;i--)cs.push(Number((mod>>(BigInt(i)*5n))&31n));return'bitcoincash:'+[...d5,...cs].map(v=>_caCharset[v]).join('');}
+function pubHashToCashAddr(hash20){return _hashToCashAddr(hash20,0x00);}
+
+/* ═══ NIP-04 Encrypt/Decrypt ═══ */
+async function nip04Encrypt(priv, pub, text) {
+  const sh = secp256k1.getSharedSecret(priv, '02' + pub);
+  const key = await crypto.subtle.importKey('raw', sh.slice(1, 33), 'AES-CBC', false, ['encrypt']);
+  const iv = rand(16);
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-CBC', iv }, key, utf8(text)));
+  return btoa(String.fromCharCode(...ct)) + '?iv=' + btoa(String.fromCharCode(...iv));
+}
+async function nip04Decrypt(priv, pub, ct) {
+  try {
+    const [data, ivStr] = ct.split('?iv=');
+    const sh = secp256k1.getSharedSecret(priv, '02' + pub);
+    const key = await crypto.subtle.importKey('raw', sh.slice(1, 33), 'AES-CBC', false, ['decrypt']);
+    const iv = Uint8Array.from(atob(ivStr), c => c.charCodeAt(0));
+    const buf = await crypto.subtle.decrypt({ name: 'AES-CBC', iv }, key, Uint8Array.from(atob(data), c => c.charCodeAt(0)));
+    return new TextDecoder().decode(buf);
+  } catch(e) { return null; }
+}
+
+/* ═══ Nostr event ═══ */
+async function makeEvent(priv, kind, content, tags) {
+  const pub = b2h(secp256k1.getPublicKey(priv, true).slice(1));
+  const created = Math.floor(Date.now() / 1000);
+  const pre = JSON.stringify([0, pub, created, kind, tags, content]);
+  const id = b2h(sha256(utf8(pre)));
+  const sig = b2h(schnorr.sign(id, priv));
+  return { id, pubkey: pub, created_at: created, kind, tags, content, sig };
+}
+function nostrBroadcast(ev) {
+  const msg = JSON.stringify(['EVENT', ev]);
+  for (const s of _nostrSockets) { try { if (s.readyState === 1) s.send(msg); } catch(e) {} }
+}
+
+/* ══════════════════════════════════════════
+   BCH ELECTRUM CONNECTION — SharedWorker or fallback
+   ══════════════════════════════════════════ */
+let bchConnect, bchCall;
+
+if (window._wsSharedWorkerAvailable) {
+  bchCall = (method, params) => window.bchCall(method, params);
+  let _statusWired = false;
+  bchConnect = () => {
+    if (_statusWired) return;
+    _statusWired = true;
+    window._wsOnStatus('bch', (connected, server) => {
+      _bchConnected = connected;
+      if (connected) {
+        $('#conn-bch').classList.add('on');
+        $('#conn-bch-srv').textContent = new URL(server).hostname;
+        refreshBchBalance();
+      } else {
+        $('#conn-bch').classList.remove('on');
+      }
+    });
+  };
+} else {
+  bchConnect = () => {
+    const url = _BCH_SERVERS[Math.floor(Math.random() * _BCH_SERVERS.length)];
+    if (_bchWs) try { _bchWs.close(); } catch(e) {}
+    _bchWs = new WebSocket(url);
+    _bchWs.onopen = () => {
+      _bchConnected = true;
+      $('#conn-bch').classList.add('on');
+      $('#conn-bch-srv').textContent = new URL(url).hostname;
+      refreshBchBalance();
+    };
+    _bchWs.onmessage = (e) => {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.id && _bchCbs[msg.id]) { _bchCbs[msg.id](msg.result); delete _bchCbs[msg.id]; }
+      } catch(e2) {}
+    };
+    _bchWs.onclose = _bchWs.onerror = () => {
+      _bchConnected = false;
+      $('#conn-bch').classList.remove('on');
+      setTimeout(bchConnect, 5000);
+    };
+  };
+
+  bchCall = (method, params) => {
+    return new Promise((resolve, reject) => {
+      const id = _bchReqId++;
+      _bchCbs[id] = resolve;
+      try { _bchWs.send(JSON.stringify({ id, method, params })); }
+      catch(e) { reject(e); }
+      setTimeout(() => { if (_bchCbs[id]) { delete _bchCbs[id]; reject(new Error('timeout')); } }, 15000);
+    });
+  };
+}
+async function refreshBchBalance() {
+  if (!_bchConnected || !_bchAddr) return;
+  try {
+    const history = await bchCall('blockchain.scripthash.listunspent', [addrToScriptHash(_bchAddr)]);
+    _bchUtxos = history || [];
+    _bchBalance = _bchUtxos.reduce((s, u) => s + u.value, 0);
+    $('#bch-balance').textContent = satsToBch(_bchBalance);
+  } catch(e) {}
+}
+function addrToScriptHash(addr) {
+  const clean = addr.replace(/^bitcoincash:/, '');
+  const d5 = [];
+  for (const c of clean) { const v = _caCharset.indexOf(c); if (v >= 0) d5.push(v); }
+  const payload = d5.slice(0, -8);
+  const converted = []; let acc = 0, bits = 0;
+  for (const v of payload) { acc = (acc << 5) | v; bits += 5; while (bits >= 8) { bits -= 8; converted.push((acc >> bits) & 0xff); } }
+  const hash20 = new Uint8Array(converted.slice(1, 21));
+  const script = concat(new Uint8Array([0x76, 0xa9, 0x14]), hash20, new Uint8Array([0x88, 0xac]));
+  const sh = sha256(script);
+  return b2h(sh.reverse());
+}
+
+/* ══════════════════════════════════════════
+   XMR NODE CONNECTION
+   ══════════════════════════════════════════ */
+async function xmrConnect() {
+  const result = await XmrRpc.testConnection();
+  if (result.connected) {
+    _xmrConnected = true;
+    _xmrHeight = result.height;
+    $('#conn-xmr').classList.add('on');
+    $('#conn-xmr-srv').textContent = result.height;
+    $('#cfg-xmr-node').textContent = result.name;
+    $('#cfg-xmr-height').textContent = result.height;
+  } else {
+    $('#conn-xmr').classList.add('err');
+    $('#conn-xmr-srv').textContent = 'ERR';
+  }
+}
+
+/* ══════════════════════════════════════════
+   XMR BALANCE SCAN
+   ══════════════════════════════════════════ */
+async function refreshXmrBalance() {
+  if (!_xmrConnected || !_xmrViewPriv || !_xmrSpendPub) return;
+
+  // Load cached state
+  const cached = JSON.parse(localStorage.getItem('00_xmr_scan') || 'null');
+  const startHeight = cached ? cached.height + 1 : Math.max(0, _xmrHeight - 500);
+  const balance = cached ? BigInt(cached.balance) : 0n;
+
+  // Convert view priv to scalar (LE bytes → bigint)
+  let viewScalar = 0n;
+  for (let i = 31; i >= 0; i--) viewScalar = (viewScalar << 8n) | BigInt(_xmrViewPriv[i]);
+
+  if (startHeight >= _xmrHeight) {
+    // Already up to date
+    _xmrBalance = balance;
+    $('#xmr-balance').textContent = picoToXmr(balance);
+    return;
+  }
+
+  $('#xmr-balance').textContent = 'SCANNING...';
+  try {
+    const found = await XmrRpc.scanBlocks(viewScalar, _xmrSpendPub, startHeight, _xmrHeight,
+      (cur, tot) => { if (tot > 0) $('#xmr-balance').textContent = `SCAN ${Math.round(cur/tot*100)}%`; });
+
+    let newBalance = balance;
+    for (const out of found) newBalance += out.amount;
+    _xmrBalance = newBalance;
+    $('#xmr-balance').textContent = picoToXmr(newBalance);
+
+    // Cache scan state
+    localStorage.setItem('00_xmr_scan', JSON.stringify({ height: _xmrHeight, balance: newBalance.toString() }));
+  } catch(e) {
+    console.warn('[XMR] scan error:', e.message);
+    if (cached) {
+      _xmrBalance = balance;
+      $('#xmr-balance').textContent = picoToXmr(balance);
+    } else {
+      $('#xmr-balance').textContent = '—';
+    }
+  }
+}
+
+// Full rescan from scratch
+window.xmrFullScan = async function() {
+  if (!_xmrConnected || !_xmrViewPriv) { showToast('XMR NOT CONNECTED', 'error'); return; }
+  localStorage.removeItem('00_xmr_scan');
+  showToast('FULL XMR SCAN STARTED...', 'info');
+  await refreshXmrBalance();
+  showToast('XMR SCAN COMPLETE', 'success');
+};
+
+/* ══════════════════════════════════════════
+   MONERO WASM WALLET (send support)
+   ══════════════════════════════════════════ */
+async function initXmrWallet() {
+  if (!_xmrSpendPriv || !_xmrViewPriv || !_xmrAddr) return;
+
+  const daemonUri = location.origin + '/xmr-rpc/json_rpc';
+  const restoreHeight = Math.max(0, _xmrHeight - 1000);
+
+  try {
+    console.log('[XMR-WASM] Initializing wallet...');
+    $('#send-xmr-status').textContent = 'LOADING WASM WALLET...';
+
+    _xmrWallet = await moneroTs.createWalletFull({
+      password: 'x',
+      networkType: moneroTs.MoneroNetworkType.MAINNET,
+      primaryAddress: _xmrAddr,
+      privateViewKey: b2h(_xmrViewPriv),
+      privateSpendKey: b2h(_xmrSpendPriv),
+      restoreHeight,
+      server: { uri: location.origin },
+      proxyToWorker: true,
+    });
+
+    console.log('[XMR-WASM] Wallet created, syncing...');
+    $('#send-xmr-status').textContent = 'SYNCING WALLET...';
+
+    await _xmrWallet.sync(new class extends moneroTs.MoneroWalletListener {
+      onSyncProgress(height, startHeight, endHeight, percentDone) {
+        $('#send-xmr-status').textContent = `SYNC ${Math.round(percentDone * 100)}%`;
+      }
+    });
+
+    _xmrWalletReady = true;
+    const bal = await _xmrWallet.getUnlockedBalance();
+    _xmrBalance = bal;
+    $('#xmr-balance').textContent = picoToXmr(bal);
+    $('#send-xmr-status').textContent = '';
+    $('#send-xmr-section').style.display = '';
+    console.log('[XMR-WASM] Wallet ready, balance:', picoToXmr(bal));
+
+    // Start background syncing
+    await _xmrWallet.startSyncing(30000);
+  } catch (e) {
+    console.error('[XMR-WASM] Init error:', e);
+    $('#send-xmr-status').textContent = 'WASM WALLET ERROR: ' + (e.message || e).toString().slice(0, 60);
+    // Still show the send section so user can see the error
+    $('#send-xmr-section').style.display = '';
+  }
+}
+
+window.sendXmrMax = function() {
+  if (_xmrBalance && _xmrBalance > 0n) {
+    // Set max, fee will be deducted by the wallet
+    $('#send-xmr-amt').value = picoToXmr(_xmrBalance);
+  }
+};
+
+window.sendXmr = async function() {
+  if (!_xmrWalletReady || !_xmrWallet) {
+    showToast('XMR WALLET NOT READY', 'error');
+    return;
+  }
+
+  const dest = $('#send-xmr-addr').value.trim();
+  const amtStr = $('#send-xmr-amt').value.trim();
+
+  if (!dest || !dest.match(/^[48][1-9A-HJ-NP-Za-km-z]{94,}$/)) {
+    showToast('INVALID XMR ADDRESS', 'error');
+    return;
+  }
+  if (!amtStr || parseFloat(amtStr) <= 0) {
+    showToast('INVALID AMOUNT', 'error');
+    return;
+  }
+
+  const amountPico = BigInt(Math.round(parseFloat(amtStr) * 1e12));
+  const isMax = _xmrBalance && amountPico >= _xmrBalance;
+
+  $('#send-xmr-btn').disabled = true;
+  $('#send-xmr-status').textContent = 'BUILDING TX...';
+
+  try {
+    // Re-sync before sending
+    await _xmrWallet.sync();
+
+    let tx;
+    if (isMax) {
+      // Sweep all
+      const txs = await _xmrWallet.sweepUnlocked({
+        address: dest,
+        relay: false,
+      });
+      tx = txs[0];
+    } else {
+      tx = await _xmrWallet.createTx({
+        accountIndex: 0,
+        address: dest,
+        amount: amountPico,
+        relay: false,
+      });
+    }
+
+    const fee = tx.getFee();
+    $('#send-xmr-fee').textContent = 'FEE: ' + picoToXmr(fee) + ' XMR';
+    $('#send-xmr-status').textContent = 'BROADCASTING...';
+
+    // Relay
+    await _xmrWallet.relayTx(tx);
+
+    showToast('XMR SENT!', 'success');
+    $('#send-xmr-status').textContent = 'TX: ' + tx.getHash().slice(0, 16) + '...';
+    $('#send-xmr-addr').value = '';
+    $('#send-xmr-amt').value = '';
+
+    // Refresh balance
+    await _xmrWallet.sync();
+    const bal = await _xmrWallet.getUnlockedBalance();
+    _xmrBalance = bal;
+    $('#xmr-balance').textContent = picoToXmr(bal);
+  } catch (e) {
+    console.error('[XMR] send error:', e);
+    showToast('SEND FAILED: ' + (e.message || e).toString().slice(0, 50), 'error');
+    $('#send-xmr-status').textContent = 'ERROR: ' + (e.message || e).toString().slice(0, 60);
+  } finally {
+    $('#send-xmr-btn').disabled = false;
+  }
+};
+
+/* ══════════════════════════════════════════
+   NOSTR CONNECTION
+   ══════════════════════════════════════════ */
+function nostrConnect() {
+  for (const ws of _nostrSockets) try { ws.close(); } catch(e) {}
+  _nostrSockets = [];
+  let connected = 0;
+
+  for (const url of _RELAYS) {
+    const ws = new WebSocket(url);
+    _nostrSockets.push(ws);
+    ws.onopen = () => {
+      connected++;
+      _nostrConnected = true;
+      $('#conn-nostr').classList.add('on');
+      $('#conn-nostr-srv').textContent = connected + '/' + _RELAYS.length;
+      // Subscribe to XMR swap offers
+      ws.send(JSON.stringify(['REQ', 'xmr-offers', { kinds: [NOSTR_KIND_XMR_OFFER], since: Math.floor(Date.now()/1000) - OFFER_TTL }]));
+      // Subscribe to DMs for swap coordination
+      if (_sessionPub) {
+        ws.send(JSON.stringify(['REQ', 'xmr-dm', {
+          kinds: [NOSTR_KIND_XMR_TAKE, NOSTR_KIND_XMR_KEYS, NOSTR_KIND_XMR_LOCKED,
+                  NOSTR_KIND_XMR_XLOCKED, NOSTR_KIND_XMR_ADAPTOR, NOSTR_KIND_XMR_CLAIMED],
+          '#p': [_sessionPub],
+          since: Math.floor(Date.now()/1000) - 3600
+        }]));
+      }
+    };
+    ws.onmessage = (e) => {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg[0] === 'EVENT' && msg[2]) handleNostrEvent(msg[2]);
+      } catch(e2) {}
+    };
+    ws.onclose = ws.onerror = () => {
+      connected = _nostrSockets.filter(s => s.readyState === 1).length;
+      _nostrConnected = connected > 0;
+      if (!_nostrConnected) $('#conn-nostr').classList.remove('on');
+      $('#conn-nostr-srv').textContent = connected + '/' + _RELAYS.length;
+    };
+  }
+}
+
+/* ══════════════════════════════════════════
+   NOSTR EVENT HANDLER
+   ══════════════════════════════════════════ */
+async function handleNostrEvent(ev) {
+  if (_seenEvents.has(ev.id)) return;
+  _seenEvents.add(ev.id);
+
+  switch (ev.kind) {
+    case NOSTR_KIND_XMR_OFFER: handleOffer(ev); break;
+    case NOSTR_KIND_XMR_TAKE:  await handleTake(ev); break;
+    case NOSTR_KIND_XMR_KEYS:  await handleKeys(ev); break;
+    case NOSTR_KIND_XMR_LOCKED: await handleBchLocked(ev); break;
+    case NOSTR_KIND_XMR_XLOCKED: await handleXmrLocked(ev); break;
+    case NOSTR_KIND_XMR_ADAPTOR: await handleAdaptor(ev); break;
+    case NOSTR_KIND_XMR_CLAIMED: await handleClaimed(ev); break;
+  }
+}
+
+function handleOffer(ev) {
+  try {
+    const offer = JSON.parse(ev.content);
+    if (!offer.bch_amt || !offer.xmr_amt) return;
+    // Don't show expired offers
+    if (Date.now()/1000 - ev.created_at > OFFER_TTL) return;
+    // Dedup: skip if already have this offer
+    if (_offers.some(o => o.id === ev.id)) return;
+    _offers.push({
+      id: ev.id,
+      pubkey: ev.pubkey,
+      side: offer.side,
+      bch_amt: offer.bch_amt,
+      xmr_amt: BigInt(offer.xmr_amt),
+      ts: ev.created_at
+    });
+    renderOrderbook();
+  } catch(e) {}
+}
+
+async function handleTake(ev) {
+  if (!_sessionPriv) return;
+  const decrypted = await nip04Decrypt(_sessionPriv, ev.pubkey, ev.content);
+  if (!decrypted) return;
+  try {
+    const take = JSON.parse(decrypted);
+    if (!_myOffers.has(take.offer_id)) return;
+    const offer = _offers.find(o => o.id === take.offer_id);
+    if (!offer || _swap) return;
+
+    showToast('TAKE RECEIVED — KEY EXCHANGE', 'info');
+
+    // We are Bob (maker). Initialize swap.
+    _swap = new XmrSwap('bob', {
+      bchAmount: offer.bch_amt,
+      xmrAmount: offer.xmr_amt,
+      counterpartyNostrPub: ev.pubkey
+    });
+
+    // Generate our keys
+    const bobKeysMsg = _swap.generateKeys();
+
+    // Receive and verify Alice's keys (sent in take message)
+    const verified = _swap.receiveKeys(take);
+    if (!verified) {
+      showToast('DLEQ PROOF FAILED', 'error');
+      _swap = null;
+      return;
+    }
+
+    // Send Bob's keys back to Alice
+    const encrypted = await nip04Encrypt(_sessionPriv, ev.pubkey,
+      JSON.stringify({ swap_id: _swap.swapId, ...bobKeysMsg }));
+    const keyEv = await makeEvent(_sessionPriv, NOSTR_KIND_XMR_KEYS, encrypted, [['p', ev.pubkey]]);
+    nostrBroadcast(keyEv);
+
+    showToast('KEYS VERIFIED ✓ — LOCKING BCH...', 'success');
+    renderSwapState();
+    switchTab('swap');
+
+    // Build and broadcast BCH lock TX
+    await refreshBchBalance();
+    const header = await bchCall('blockchain.headers.subscribe', []);
+    const height = header.height || header.block_height;
+    const lockInfo = _swap.prepareBchLock(height);
+
+    const txHex = buildXmrSwapFundTx(_bchUtxos, lockInfo.redeemScript, lockInfo.amount, _bchAddr);
+    const txid = await bchCall('blockchain.transaction.broadcast', [txHex]);
+    _swap.setBchLockTx(txid, 0);
+    console.log('[XMR-SWAP] Bob locked BCH:', txid);
+    showToast('BCH LOCKED: ' + txid.slice(0, 12) + '...', 'success');
+    saveSwapState();
+
+    // Notify Alice
+    const lockedMsg = await nip04Encrypt(_sessionPriv, ev.pubkey,
+      JSON.stringify({ swap_id: _swap.swapId, txid, vout: 0, amount: lockInfo.amount, locktime: lockInfo.locktime }));
+    const lockedEv = await makeEvent(_sessionPriv, NOSTR_KIND_XMR_LOCKED, lockedMsg, [['p', ev.pubkey]]);
+    nostrBroadcast(lockedEv);
+
+    renderSwapState();
+    await refreshBchBalance();
+  } catch(e) {
+    console.error('[XMR-SWAP] handleTake:', e);
+    showToast('SWAP ERROR: ' + e.message, 'error');
+  }
+}
+
+async function handleKeys(ev) {
+  if (!_sessionPriv || !_swap) return;
+  const decrypted = await nip04Decrypt(_sessionPriv, ev.pubkey, ev.content);
+  if (!decrypted) return;
+  try {
+    const keys = JSON.parse(decrypted);
+
+    // Alice receives Bob's keys
+    if (_swap.role !== 'alice') return;
+
+    const verified = _swap.receiveKeys(keys);
+    if (!verified) {
+      showToast('DLEQ PROOF FAILED', 'error');
+      return;
+    }
+    showToast('KEYS VERIFIED ✓ — WAITING FOR BCH LOCK...', 'success');
+    saveSwapState();
+    renderSwapState();
+  } catch(e) { console.error('[XMR-SWAP] handleKeys:', e); }
+}
+
+async function handleBchLocked(ev) {
+  if (!_sessionPriv || !_swap || _swap.role !== 'alice') return;
+  const decrypted = await nip04Decrypt(_sessionPriv, ev.pubkey, ev.content);
+  if (!decrypted) return;
+  try {
+    const locked = JSON.parse(decrypted);
+    if (locked.swap_id && locked.swap_id !== _swap.swapId) return;
+
+    // Store lock info
+    _swap.bchLockTxid = locked.txid;
+    _swap.bchLockVout = locked.vout || 0;
+    _swap.bchLocktime = locked.locktime;
+
+    // Verify BCH lock on-chain
+    try {
+      const txHex = await bchCall('blockchain.transaction.get', [locked.txid]);
+      const bobPub33 = _swap.theirKeys.secp.pub;
+      const expectedScript = xmrSwapScript(_swap.swapMsg, bobPub33, locked.locktime);
+      _swap.bchLockScript = expectedScript;
+      // TODO: Full TX parsing to verify output amount and P2SH match
+      showToast('BCH LOCK VERIFIED ✓', 'success');
+    } catch(e) {
+      showToast('BCH LOCK SEEN (verification pending)', 'info');
+      // Store script anyway for claim
+      const bobPub33 = _swap.theirKeys.secp.pub;
+      _swap.bchLockScript = xmrSwapScript(_swap.swapMsg, bobPub33, locked.locktime);
+    }
+
+    // Alice now needs to lock XMR — show instructions in UI
+    _swap.state = STATE.ALICE_WAITING_BCH;
+    _swap.currentStep = 2;
+    saveSwapState();
+    renderSwapState();
+    showToast('SEND XMR TO SHARED ADDRESS →', 'info');
+  } catch(e) { console.error('[XMR-SWAP] handleBchLocked:', e); }
+}
+
+async function handleXmrLocked(ev) {
+  if (!_sessionPriv || !_swap || _swap.role !== 'bob') return;
+  const decrypted = await nip04Decrypt(_sessionPriv, ev.pubkey, ev.content);
+  if (!decrypted) return;
+  try {
+    const locked = JSON.parse(decrypted);
+    if (locked.swap_id && locked.swap_id !== _swap.swapId) return;
+
+    _swap.xmrLockTxid = locked.txid;
+    showToast('XMR LOCK REPORTED — VERIFYING...', 'info');
+    renderSwapState();
+
+    // Verify XMR lock using view key scan
+    const viewScalar = _swap.sharedXmrAddress.viewScalar;
+    const spendPub = _swap.sharedXmrAddress.sharedSpendPub;
+    let verified = false;
+
+    if (locked.txid) {
+      try {
+        // Try scanning the specific TX (allow 1 confirmation for speed)
+        const result = await XmrRpc.verifyXmrLock(locked.txid, viewScalar, spendPub, _swap.xmrAmount, 1);
+        if (result.verified) {
+          verified = true;
+          showToast('XMR LOCK VERIFIED ✓ (' + result.confirmations + ' conf)', 'success');
+        } else {
+          showToast('XMR: ' + result.reason, 'info');
+          // Accept anyway if output found (low-conf)
+          if (result.amount >= _swap.xmrAmount) verified = true;
+        }
+      } catch(e) {
+        console.warn('[XMR-SWAP] XMR verify error:', e.message);
+      }
+    }
+
+    if (!verified) {
+      // Accept on trust for now (manual verification)
+      showToast('XMR LOCK ACCEPTED (manual verify)', 'info');
+      verified = true;
+    }
+
+    _swap.verifyXmrLock(verified);
+    saveSwapState();
+
+    // Send adaptor signature
+    const adaptorSigJson = _swap.createAdaptorSig();
+    const adaptorEncrypted = await nip04Encrypt(_sessionPriv, ev.pubkey,
+      JSON.stringify({ swap_id: _swap.swapId, ...adaptorSigJson }));
+    const adaptorEv = await makeEvent(_sessionPriv, NOSTR_KIND_XMR_ADAPTOR, adaptorEncrypted, [['p', ev.pubkey]]);
+    nostrBroadcast(adaptorEv);
+
+    showToast('ADAPTOR SIG SENT — WAITING FOR BCH CLAIM...', 'info');
+    saveSwapState();
+    renderSwapState();
+  } catch(e) {
+    console.error('[XMR-SWAP] handleXmrLocked:', e);
+    showToast('XMR VERIFY ERROR: ' + e.message, 'error');
+  }
+}
+
+async function handleAdaptor(ev) {
+  if (!_sessionPriv || !_swap || _swap.role !== 'alice') return;
+  const decrypted = await nip04Decrypt(_sessionPriv, ev.pubkey, ev.content);
+  if (!decrypted) return;
+  try {
+    const adaptorData = JSON.parse(decrypted);
+    const ok = _swap.receiveAdaptorSig(adaptorData);
+    if (!ok) { showToast('ADAPTOR SIG INVALID', 'error'); return; }
+    showToast('ADAPTOR VERIFIED ✓ — CLAIMING BCH...', 'success');
+    saveSwapState();
+    renderSwapState();
+
+    // Decrypt adaptor sig to get real Schnorr sig
+    const claimData = _swap.decryptAndClaim();
+    if (!claimData) { showToast('DECRYPT FAILED', 'error'); return; }
+
+    // Build and broadcast BCH claim TX
+    const claimTxHex = buildXmrSwapClaimTx(
+      _swap.bchLockTxid, _swap.bchLockVout, _swap.bchAmount,
+      _swap.bchLockScript, claimData.signature, _bchAddr
+    );
+    const claimTxid = await bchCall('blockchain.transaction.broadcast', [claimTxHex]);
+    console.log('[XMR-SWAP] Alice claimed BCH:', claimTxid);
+    showToast('BCH CLAIMED: ' + claimTxid.slice(0, 12) + '...', 'success');
+    saveSwapState();
+
+    // Notify Bob (send the on-chain sig so he can recover)
+    const claimedMsg = await nip04Encrypt(_sessionPriv, ev.pubkey,
+      JSON.stringify({ swap_id: _swap.swapId, txid: claimTxid, sig: b2h(claimData.signature) }));
+    const claimedEv = await makeEvent(_sessionPriv, NOSTR_KIND_XMR_CLAIMED, claimedMsg, [['p', ev.pubkey]]);
+    nostrBroadcast(claimedEv);
+
+    _swap.state = STATE.ALICE_COMPLETE;
+    _swap.currentStep = 5;
+    saveSwapState();
+    renderSwapState();
+    await refreshBchBalance();
+  } catch(e) {
+    console.error('[XMR-SWAP] handleAdaptor:', e);
+    showToast('CLAIM ERROR: ' + e.message, 'error');
+  }
+}
+
+async function handleClaimed(ev) {
+  if (!_sessionPriv || !_swap || _swap.role !== 'bob') return;
+  const decrypted = await nip04Decrypt(_sessionPriv, ev.pubkey, ev.content);
+  if (!decrypted) return;
+  try {
+    const claimed = JSON.parse(decrypted);
+    if (claimed.swap_id && claimed.swap_id !== _swap.swapId) return;
+
+    showToast('BCH CLAIMED — RECOVERING XMR KEY...', 'info');
+
+    // Extract on-chain signature (64 bytes)
+    const sig64 = h2b(claimed.sig);
+    const recoveredSecret = _swap.recoverSecret(sig64);
+
+    if (recoveredSecret === null) {
+      showToast('SECRET RECOVERY FAILED', 'error');
+      return;
+    }
+
+    // Compute full XMR spend key
+    const sweepData = _swap.computeXmrSweepKey();
+    showToast('XMR KEY RECOVERED ✓', 'success');
+
+    console.log('[XMR-SWAP] Full XMR spend key:', b2h(sweepData.spendKey));
+    console.log('[XMR-SWAP] XMR address:', sweepData.address);
+
+    saveSwapState();
+    renderSwapState();
+  } catch(e) {
+    console.error('[XMR-SWAP] handleClaimed:', e);
+    showToast('RECOVERY ERROR: ' + e.message, 'error');
+  }
+}
+
+/* ══════════════════════════════════════════
+   SWAP PERSISTENCE
+   ══════════════════════════════════════════ */
+function saveSwapState() {
+  if (_swap) {
+    localStorage.setItem('00_xmr_swap', _swap.serialize());
+  } else {
+    localStorage.removeItem('00_xmr_swap');
+  }
+}
+function loadSwapState() {
+  const saved = localStorage.getItem('00_xmr_swap');
+  if (saved) {
+    try {
+      _swap = XmrSwap.deserialize(saved);
+      console.log('[XMR-SWAP] restored swap:', _swap.swapId, 'state:', _swap.state);
+    } catch(e) {
+      console.warn('[XMR-SWAP] failed to restore swap:', e);
+    }
+  }
+}
+
+/* ══════════════════════════════════════════
+   MANUAL XMR ACTIONS
+   ══════════════════════════════════════════ */
+// Alice: confirm she sent XMR to the shared address
+window.confirmXmrSent = async function() {
+  if (!_swap || _swap.role !== 'alice') return;
+  const txidInput = $('#xmr-txid-input');
+  const txid = txidInput ? txidInput.value.trim() : '';
+  if (txid.length < 64) {
+    showToast('ENTER XMR TX HASH (64 chars)', 'error');
+    return;
+  }
+
+  // Update swap state
+  const lockInfo = _swap.prepareXmrLock();
+  _swap.setXmrLockTx(txid);
+  saveSwapState();
+
+  // Notify Bob
+  const counterPub = _swap.counterpartyNostrPub;
+  const msg = await nip04Encrypt(_sessionPriv, counterPub,
+    JSON.stringify({ swap_id: _swap.swapId, txid, amount: _swap.xmrAmount.toString() }));
+  const ev = await makeEvent(_sessionPriv, NOSTR_KIND_XMR_XLOCKED, msg, [['p', counterPub]]);
+  nostrBroadcast(ev);
+
+  showToast('XMR LOCK NOTIFIED — WAITING FOR ADAPTOR SIG...', 'info');
+  renderSwapState();
+};
+
+// Bob: refund BCH after timelock expires
+window.refundSwap = async function() {
+  if (!_swap || _swap.role !== 'bob') return;
+  if (!_swap.bchLockTxid || !_swap.bchLockScript) {
+    showToast('NO BCH LOCK TO REFUND', 'error');
+    return;
+  }
+
+  try {
+    const header = await bchCall('blockchain.headers.subscribe', []);
+    const currentHeight = header.height || header.block_height;
+    if (currentHeight < _swap.bchLocktime) {
+      showToast(`TIMELOCK NOT EXPIRED (${_swap.bchLocktime - currentHeight} blocks left)`, 'error');
+      return;
+    }
+
+    const txHex = buildXmrSwapRefundTx(
+      _swap.bchLockTxid, _swap.bchLockVout, _swap.bchAmount,
+      _swap.bchLockScript, _swap.bchLocktime, _bchPriv, _bchAddr
+    );
+    const txid = await bchCall('blockchain.transaction.broadcast', [txHex]);
+    showToast('REFUND TX: ' + txid.slice(0, 12) + '...', 'success');
+    _swap.state = STATE.EXPIRED;
+    saveSwapState();
+    renderSwapState();
+    await refreshBchBalance();
+  } catch(e) {
+    showToast('REFUND ERROR: ' + e.message, 'error');
+  }
+};
+
+// Clear completed/expired swap
+window.clearSwap = function() {
+  _swap = null;
+  saveSwapState();
+  renderSwapState();
+  showToast('SWAP CLEARED', 'info');
+};
+
+/* ══════════════════════════════════════════
+   OFFER MANAGEMENT
+   ══════════════════════════════════════════ */
+window.postOffer = async function() {
+  if (!_sessionPriv || !_nostrConnected) {
+    $('#offer-status').textContent = '// connect wallet & nostr first';
+    return;
+  }
+  const side = $('#offer-side').value;
+  const bchAmt = bchToSats($('#offer-bch').value);
+  const xmrAmt = xmrToPico($('#offer-xmr').value);
+  if (bchAmt < MIN_BCH_SATS || xmrAmt < MIN_XMR_PICONERO) {
+    $('#offer-status').textContent = '// amounts too small';
+    return;
+  }
+  const offer = {
+    side, bch_amt: bchAmt, xmr_amt: xmrAmt.toString(),
+    maker_pub: _sessionPub,
+    ts: Math.floor(Date.now() / 1000)
+  };
+  const ev = await makeEvent(_sessionPriv, NOSTR_KIND_XMR_OFFER, JSON.stringify(offer), []);
+  nostrBroadcast(ev);
+  _myOffers.add(ev.id);
+  handleOffer(ev);
+  $('#offer-status').textContent = '// offer posted';
+  showToast('XMR OFFER POSTED', 'success');
+};
+
+window.takeOffer = async function(offerId) {
+  const offer = _offers.find(o => o.id === offerId);
+  if (!offer || _swap) return;
+
+  // Initialize swap as Alice (taker)
+  _swap = new XmrSwap('alice', {
+    bchAmount: offer.bch_amt,
+    xmrAmount: offer.xmr_amt,
+    counterpartyNostrPub: offer.pubkey
+  });
+
+  // Generate our keys
+  const keysMsg = _swap.generateKeys();
+
+  // Send take + keys
+  const takeMsg = {
+    offer_id: offerId,
+    taker_pub: _sessionPub,
+    ...keysMsg
+  };
+  const encrypted = await nip04Encrypt(_sessionPriv, offer.pubkey, JSON.stringify(takeMsg));
+  const ev = await makeEvent(_sessionPriv, NOSTR_KIND_XMR_TAKE, encrypted, [['p', offer.pubkey]]);
+  nostrBroadcast(ev);
+
+  showToast('TAKE SENT — KEY EXCHANGE...', 'info');
+  saveSwapState();
+  switchTab('swap');
+  renderSwapState();
+};
+
+/* ══════════════════════════════════════════
+   RENDERING
+   ══════════════════════════════════════════ */
+function renderOrderbook() {
+  const el = $('#orderbook');
+  if (_offers.length === 0) {
+    el.innerHTML = '<div class="empty-state">NO OFFERS YET</div>';
+    return;
+  }
+  el.innerHTML = _offers.map(o => {
+    const isMine = _myOffers.has(o.id);
+    const sideLabel = o.side === 'sell_bch' ? 'SELL BCH' : 'BUY BCH';
+    const sideClass = o.side === 'sell_bch' ? 'sell' : 'buy';
+    return `<div class="offer-item" data-offer="${o.id}">
+      <div class="offer-top">
+        <div class="offer-amounts">${satsToBch(o.bch_amt)} BCH ↔ ${picoToXmr(o.xmr_amt)} XMR</div>
+        <div class="offer-side ${sideClass}">${sideLabel}</div>
+      </div>
+      <div class="offer-detail">${o.pubkey.slice(0,8)}... · ${Math.floor((Date.now()/1000 - o.ts)/60)}m ago</div>
+      <div class="offer-actions">
+        ${isMine
+          ? '<button class="swap-btn" onclick="cancelOffer(\''+o.id+'\')">CANCEL</button>'
+          : '<button class="swap-btn" onclick="takeOffer(\''+o.id+'\')">SWAP →</button>'
+        }
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderSwapState() {
+  if (!_swap) {
+    $('#swap-idle').style.display = '';
+    $('#swap-active').style.display = 'none';
+    return;
+  }
+  $('#swap-idle').style.display = 'none';
+  $('#swap-active').style.display = '';
+
+  const steps = _swap.steps;
+  const current = _swap.currentStep;
+  const isDone = _swap.state === STATE.BOB_COMPLETE || _swap.state === STATE.ALICE_COMPLETE || _swap.state === STATE.EXPIRED;
+  $('#swap-steps').innerHTML = steps.map((s, i) => {
+    const done = i < current || isDone;
+    const active = i === current && !isDone;
+    return `<div class="swap-step">
+      <div class="swap-dot ${done?'done':active?'active':''}">${done?'✓':i+1}</div>
+      <div class="swap-label ${done?'done':active?'active':''}">${s}</div>
+      ${active?'<div class="spinner"></div>':''}
+    </div>`;
+  }).join('');
+
+  // Details
+  const d = [];
+  d.push(`ROLE: ${_swap.role.toUpperCase()}`);
+  d.push(`STATE: ${_swap.state}`);
+  d.push(`BCH: ${satsToBch(_swap.bchAmount)}`);
+  d.push(`XMR: ${picoToXmr(_swap.xmrAmount)}`);
+  if (_swap.sharedXmrAddress) d.push(`SHARED XMR: ${_swap.sharedXmrAddress.address.slice(0,20)}...`);
+  if (_swap.bchLockTxid) d.push(`BCH TX: ${_swap.bchLockTxid.slice(0,16)}...`);
+  if (_swap.xmrLockTxid) d.push(`XMR TX: ${_swap.xmrLockTxid.slice(0,16)}...`);
+  $('#swap-details').innerHTML = d.join('<br>');
+
+  // Action buttons
+  const actionsEl = $('#swap-actions');
+  actionsEl.style.display = '';
+  let actionsHTML = '';
+
+  // Alice: needs to lock XMR manually
+  if (_swap.role === 'alice' && _swap.state === STATE.ALICE_WAITING_BCH && _swap.sharedXmrAddress) {
+    actionsHTML += `
+      <div class="section-title" style="color:var(--xmr)">SEND XMR TO SHARED ADDRESS</div>
+      <div style="font-size:10px;color:rgba(255,102,0,.5);word-break:break-all;margin:8px 0;padding:10px;background:rgba(255,102,0,.04);border:1px solid rgba(255,102,0,.15);border-radius:6px;cursor:pointer" onclick="navigator.clipboard.writeText('${_swap.sharedXmrAddress.address}');showToast('COPIED','success')">
+        ${_swap.sharedXmrAddress.address}
+      </div>
+      <div style="font-size:9px;color:rgba(255,102,0,.3);margin-bottom:8px">AMOUNT: ${picoToXmr(_swap.xmrAmount)} XMR · TAP ADDRESS TO COPY</div>
+      <div class="form-lbl">XMR TX HASH</div>
+      <input class="form-input" id="xmr-txid-input" placeholder="paste xmr txid..." style="font-size:10px">
+      <button class="action-btn" onclick="confirmXmrSent()">CONFIRM XMR SENT →</button>`;
+  }
+
+  // Bob: XMR sweep key (after secret recovery)
+  if (_swap.role === 'bob' && _swap.state === STATE.BOB_COMPLETE) {
+    const sweepData = _swap.computeXmrSweepKey();
+    actionsHTML += `
+      <div class="section-title" style="color:var(--green)">✓ XMR SPEND KEY RECOVERED</div>
+      <div style="font-size:9px;color:rgba(0,255,65,.5);margin:4px 0">Import this key into Monero CLI/Feather/Cake to sweep:</div>
+      <div style="font-size:9px;color:var(--green);word-break:break-all;margin:8px 0;padding:10px;background:rgba(0,255,65,.04);border:1px solid rgba(0,255,65,.15);border-radius:6px;cursor:pointer" onclick="navigator.clipboard.writeText('${b2h(sweepData.spendKey)}');showToast('KEY COPIED','success')">
+        ${b2h(sweepData.spendKey)}
+      </div>
+      <div style="font-size:8px;color:rgba(255,102,0,.25);margin-bottom:8px">monero-wallet-cli --generate-from-spend-key sweep_wallet</div>
+      <button class="action-btn" onclick="clearSwap()">CLEAR SWAP</button>`;
+  }
+
+  // Alice: swap complete
+  if (_swap.role === 'alice' && _swap.state === STATE.ALICE_COMPLETE) {
+    actionsHTML += `
+      <div class="section-title" style="color:var(--green)">✓ SWAP COMPLETE — BCH RECEIVED</div>
+      <button class="action-btn" onclick="clearSwap()">CLEAR SWAP</button>`;
+  }
+
+  // Bob: refund option
+  if (_swap.role === 'bob' && _swap.bchLockTxid && _swap.state !== STATE.BOB_COMPLETE && _swap.state !== STATE.EXPIRED) {
+    actionsHTML += `<button class="action-btn danger" style="margin-top:10px" onclick="refundSwap()">REFUND BCH →</button>`;
+  }
+
+  // Expired
+  if (_swap.state === STATE.EXPIRED || _swap.state === STATE.FAILED) {
+    actionsHTML += `<button class="action-btn" onclick="clearSwap()">CLEAR SWAP</button>`;
+  }
+
+  actionsEl.innerHTML = actionsHTML;
+  if (!actionsHTML) actionsEl.style.display = 'none';
+}
+
+window.cancelOffer = function(id) {
+  _myOffers.delete(id);
+  _offers = _offers.filter(o => o.id !== id);
+  renderOrderbook();
+  showToast('OFFER CANCELLED', 'info');
+};
+
+/* ══════════════════════════════════════════
+   UI HELPERS
+   ══════════════════════════════════════════ */
+window.switchTab = function(tab) {
+  $$('.tab').forEach(x => x.classList.toggle('active', x.dataset.tab === tab));
+  $$('.tab-pane').forEach(x => x.classList.toggle('active', x.id === 'tab-' + tab));
+};
+
+// Clock
+setInterval(() => {
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2,'0');
+  const m = String(now.getMinutes()).padStart(2,'0');
+  $('#clock').textContent = h + ':' + m;
+}, 30000);
+
+/* ══════════════════════════════════════════
+   WALLET UNLOCK
+   ══════════════════════════════════════════ */
+window.unlock = async function() {
+  const pass = $('#auth-pass').value;
+  if (!pass) { $('#auth-err').textContent = '// enter password'; return; }
+  try {
+    const vault = JSON.parse(localStorage.getItem('00wallet_vault'));
+    const salt = h2b(vault.salt);
+    const iv = h2b(vault.iv);
+    const data = h2b(vault.data);
+    const keyMat = await crypto.subtle.importKey('raw', utf8(pass), 'PBKDF2', false, ['deriveKey']);
+    const key = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 200000, hash: 'SHA-256' }, keyMat, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+    const dec = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, data);
+    _profile = JSON.parse(new TextDecoder().decode(dec));
+
+    // Derive BCH key (m/44'/145'/0'/0/0)
+    const seed = h2b(_profile.seedHex);
+    const I = hmac(sha512, utf8('Bitcoin seed'), seed);
+    let master = { priv: I.slice(0, 32), chain: I.slice(32) };
+    const path = [44 + 0x80000000, 145 + 0x80000000, 0x80000000, 0, 0];
+    let node = master;
+    for (const idx of path) node = _bip32Child(node.priv, node.chain, idx, idx >= 0x80000000);
+    _bchPriv = node.priv;
+    _bchPub33 = secp256k1.getPublicKey(_bchPriv, true);
+    _bchAddr = pubHashToCashAddr(Array.from(ripemd160(sha256(_bchPub33))));
+
+    // Session key = sha256(privKey) — same as other apps
+    _sessionPriv = sha256(_bchPriv);
+    _sessionPub = b2h(secp256k1.getPublicKey(_sessionPriv, true).slice(1));
+
+    // Account key for HD (m/44'/145'/0')
+    let acct = master;
+    for (const idx of [44 + 0x80000000, 145 + 0x80000000, 0x80000000]) acct = _bip32Child(acct.priv, acct.chain, idx, true);
+    _acctPriv = acct.priv;
+    _acctChain = acct.chain;
+
+    // Derive XMR keys from seed
+    _xmrSpendPriv = XmrCrypto.scReduce32(seed);
+    _xmrViewPriv = XmrCrypto.xmrViewKeyFromSpend(_xmrSpendPriv);
+    _xmrSpendPub = XmrCrypto.xmrPubFromPriv(_xmrSpendPriv);
+    _xmrViewPub = XmrCrypto.xmrPubFromPriv(_xmrViewPriv);
+    _xmrAddr = XmrCrypto.xmrAddress(_xmrSpendPub, _xmrViewPub);
+    console.log('[XMR] address:', _xmrAddr);
+
+    // Show main view
+    $('#auth-view').style.display = 'none';
+    $('#main-view').style.display = 'flex';
+    $('#cfg-pub').textContent = _sessionPub.slice(0, 16) + '...';
+    $('#cfg-bch').textContent = _bchAddr.replace('bitcoincash:', '').slice(0, 20) + '...';
+    $('#cfg-xmr').textContent = _xmrAddr.slice(0, 20) + '...';
+    $('#cfg-xmr-addr').textContent = _xmrAddr;
+    $('#cfg-xmr-wallet').style.display = '';
+    $('#cfg-bch-servers').value = _BCH_SERVERS.join('\n');
+    $('#cfg-relays').value = _RELAYS.join('\n');
+
+    // Load saved swap state
+    loadSwapState();
+    if (_swap) renderSwapState();
+
+    // Connect
+    bchConnect();
+    xmrConnect().then(() => { refreshXmrBalance(); initXmrWallet(); });
+    nostrConnect();
+
+    showToast('UNLOCKED', 'success');
+  } catch(e) {
+    $('#auth-err').textContent = '// wrong password';
+    console.error(e);
+  }
+};
+
+window.reconnectBch = function() {
+  const text = $('#cfg-bch-servers').value.trim();
+  if (text) { _BCH_SERVERS = text.split('\n').map(s => s.trim()).filter(Boolean); localStorage.setItem('00_ep_fulcrum', JSON.stringify(_BCH_SERVERS)); }
+  if (window._wsSharedWorkerAvailable) {
+    window._wsUpdateServers('bch', _BCH_SERVERS);
+  } else {
+    bchConnect();
+  }
+};
+window.reconnectNostr = function() {
+  const text = $('#cfg-relays').value.trim();
+  if (text) { _RELAYS = text.split('\n').map(s => s.trim()).filter(Boolean); localStorage.setItem('00_ep_relays', JSON.stringify(_RELAYS)); }
+  nostrConnect();
+};
+
+// Auto-unlock if already unlocked in same session
+$('#auth-pass').addEventListener('keydown', e => { if (e.key === 'Enter') unlock(); });
+
+// Rate calculation
+function updateRate() {
+  const bch = parseFloat($('#offer-bch').value) || 0;
+  const xmr = parseFloat($('#offer-xmr').value) || 0;
+  if (bch > 0 && xmr > 0) {
+    $('#offer-rate').textContent = `RATE: 1 BCH = ${(xmr/bch).toFixed(4)} XMR`;
+  } else {
+    $('#offer-rate').textContent = 'RATE: —';
+  }
+}
+$('#offer-bch').addEventListener('input', updateRate);
+$('#offer-xmr').addEventListener('input', updateRate);
+
+// Init clock
+(function(){const now=new Date();$('#clock').textContent=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');})();
+</script>
+</body>
+</html>

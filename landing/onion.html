@@ -1,0 +1,3081 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#00ff41">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-name" content="0penw0rld">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <title>00 Onion — 0penw0rld</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{--green:#00ff41;--green-dim:#00c832;--green-dark:#003d0f;--black:#020a03;--grey:#0a110a;--panel:#060e06;--red:#ff4040;--gold:#f0a500;--purple:#9d4edd;--cyan:#00f5ff}
+    html,body{width:100%;height:100%;background:var(--black);font-family:'Share Tech Mono',monospace;display:flex;align-items:center;justify-content:center;overflow:hidden}
+    #rain{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.12}
+    .scanlines{position:fixed;inset:0;z-index:1;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.12) 2px,rgba(0,0,0,.12) 4px)}
+    .vignette{position:fixed;inset:0;z-index:1;pointer-events:none;background:radial-gradient(ellipse at center,transparent 30%,rgba(0,0,0,.9) 100%)}
+    #loading{position:fixed;inset:0;z-index:100;background:var(--black);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px}
+    .loader-logo{font-family:'Orbitron',monospace;font-size:52px;font-weight:900;color:var(--green);text-shadow:0 0 20px var(--green),0 0 50px var(--green),0 0 100px rgba(0,255,65,.3);animation:logoPulse 1s ease-in-out infinite}
+    @keyframes logoPulse{0%,100%{text-shadow:0 0 20px var(--green),0 0 50px var(--green)}50%{text-shadow:0 0 30px var(--green),0 0 70px var(--green),0 0 140px rgba(0,255,65,.5)}}
+    .loader-bar-wrap{width:200px;height:2px;background:rgba(0,255,65,.1);border-radius:2px;overflow:hidden}
+    .loader-bar{height:100%;background:var(--green);box-shadow:0 0 8px var(--green);animation:loadBar 2.5s ease-in-out forwards}
+    @keyframes loadBar{from{width:0}to{width:100%}}
+    .loader-status{font-size:10px;color:rgba(0,255,65,.3);letter-spacing:2px;min-height:14px}
+    .blink{animation:blink .8s step-end infinite}
+    @keyframes blink{50%{opacity:0}}
+
+    .phone-wrap{position:relative;z-index:10;display:flex;align-items:center;justify-content:center}
+    .phone{width:375px;height:780px;background:var(--panel);border-radius:42px;border:2px solid rgba(0,255,65,.2);box-shadow:0 0 0 1px rgba(0,255,65,.05),0 0 40px rgba(0,255,65,.08),0 0 80px rgba(0,255,65,.04),inset 0 0 30px rgba(0,0,0,.5);display:flex;flex-direction:column;overflow:hidden;position:relative}
+    .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:120px;height:28px;background:var(--black);border-radius:0 0 18px 18px;z-index:50;display:flex;align-items:center;justify-content:center;gap:8px}
+    .notch-cam{width:8px;height:8px;border-radius:50%;background:#111;border:1px solid #222}
+    .notch-speaker{width:40px;height:4px;border-radius:2px;background:#111}
+    .status-bar{padding:10px 20px 4px;display:flex;align-items:center;justify-content:space-between;font-size:10px;color:rgba(0,255,65,.5);flex-shrink:0;margin-top:14px}
+    .app-header{padding:10px 20px 0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+    .app-title{font-family:'Orbitron',monospace;font-size:18px;font-weight:700;color:var(--green);text-shadow:0 0 10px rgba(0,255,65,.4)}
+    .app-title span{font-size:11px;color:rgba(0,255,65,.4);display:block;letter-spacing:2px}
+    .header-icon{font-size:18px;cursor:pointer;color:rgba(0,255,65,.6);transition:.15s}
+    .header-icon:hover{color:var(--green)}
+
+    .conn-bar{display:flex;align-items:center;gap:8px;padding:5px 20px;border-bottom:1px solid rgba(0,255,65,.08);flex-shrink:0;font-size:9px;color:rgba(0,255,65,.4);letter-spacing:1px}
+    .conn-dot{width:5px;height:5px;border-radius:50%;background:rgba(0,255,65,.2);flex-shrink:0;transition:.3s}
+    .conn-dot.on{background:var(--green);box-shadow:0 0 4px var(--green)}
+    .conn-dot.err{background:var(--red)}
+
+    .tabs{display:flex;padding:0 16px;border-bottom:1px solid rgba(0,255,65,.1);flex-shrink:0}
+    .tab{flex:1;padding:10px;text-align:center;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(0,255,65,.3);cursor:pointer;border-bottom:2px solid transparent;transition:.2s}
+    .tab.active{color:var(--green);border-bottom-color:var(--green)}
+    .tab-pane{display:none;flex:1;overflow-y:auto;scrollbar-width:none;min-height:0;flex-direction:column}
+    .tab-pane::-webkit-scrollbar{display:none}
+    .tab-pane.active{display:flex}
+
+    #auth-view{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px 24px;gap:16px}
+    .auth-logo{font-family:'Orbitron',monospace;font-size:28px;font-weight:900;color:var(--green);text-shadow:0 0 20px rgba(0,255,65,.5)}
+    .auth-sub{font-size:10px;color:rgba(0,255,65,.35);letter-spacing:3px;margin-top:-8px}
+    .auth-input{width:100%;background:rgba(0,255,65,.04);border:1px solid rgba(0,255,65,.2);border-radius:8px;padding:12px 14px;color:var(--green);font-family:'Share Tech Mono',monospace;font-size:12px;outline:none;transition:.2s}
+    .auth-input:focus{border-color:rgba(0,255,65,.5);box-shadow:0 0 8px rgba(0,255,65,.1)}
+    .auth-input::placeholder{color:rgba(0,255,65,.2)}
+    .auth-btn{width:100%;padding:14px;background:rgba(0,255,65,.1);border:1px solid rgba(0,255,65,.4);border-radius:8px;color:var(--green);font-family:'Share Tech Mono',monospace;font-size:13px;letter-spacing:3px;cursor:pointer;transition:.2s}
+    .auth-btn:hover{background:rgba(0,255,65,.18);box-shadow:0 0 16px rgba(0,255,65,.2)}
+    .auth-error{font-size:10px;color:#ff4040;letter-spacing:1px;min-height:14px}
+
+    .section{padding:16px 20px;border-bottom:1px solid rgba(0,255,65,.07)}
+    .section-title{font-size:9px;color:rgba(0,255,65,.4);letter-spacing:2px;margin-bottom:10px}
+    .form-lbl{font-size:9px;color:rgba(0,255,65,.4);letter-spacing:2px;margin-bottom:4px}
+    .form-input{width:100%;background:rgba(0,255,65,.04);border:1px solid rgba(0,255,65,.2);border-radius:8px;padding:11px 14px;color:var(--green);font-family:'Share Tech Mono',monospace;font-size:11px;outline:none;transition:.2s;margin-bottom:10px}
+    .form-input:focus{border-color:rgba(0,255,65,.5)}
+    .form-input::placeholder{color:rgba(0,255,65,.2)}
+    select.form-input{-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2300ff41' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+    textarea.form-input{line-height:1.6}
+    .action-btn{width:100%;padding:12px;background:rgba(0,255,65,.08);border:1px solid rgba(0,255,65,.3);border-radius:8px;color:var(--green);font-family:'Share Tech Mono',monospace;font-size:12px;letter-spacing:2px;cursor:pointer;transition:.2s;text-align:center}
+    .action-btn:hover{background:rgba(0,255,65,.15);border-color:var(--green)}
+    .action-btn:disabled{opacity:.3;cursor:default}
+    .action-btn.danger{border-color:rgba(255,64,64,.3);color:var(--red)}
+    .action-btn.danger:hover{background:rgba(255,64,64,.1)}
+
+    .balance-hero{padding:20px;text-align:center;border-bottom:1px solid rgba(0,255,65,.07)}
+    .balance-val{font-family:'Orbitron',monospace;font-size:22px;font-weight:700;color:var(--green);text-shadow:0 0 15px rgba(0,255,65,.3)}
+    .balance-lbl{font-size:9px;color:rgba(0,255,65,.35);letter-spacing:2px;margin-top:4px}
+
+    .empty-state{padding:40px 20px;text-align:center;font-size:11px;color:rgba(0,255,65,.25);letter-spacing:2px;line-height:2.5}
+
+    .htlc-item{padding:12px 16px;border-bottom:1px solid rgba(0,255,65,.05)}
+    .htlc-top{display:flex;align-items:center;justify-content:space-between}
+    .htlc-amount{font-size:13px;color:var(--green);font-family:'Orbitron',monospace}
+    .htlc-time{font-size:9px;color:rgba(0,255,65,.25)}
+    .htlc-detail{font-size:9px;color:rgba(0,255,65,.35);margin-top:4px;letter-spacing:1px}
+    .htlc-hash{font-size:8px;color:rgba(0,255,65,.25);margin-top:2px;word-break:break-all}
+    .htlc-badge{font-size:9px;padding:2px 8px;border-radius:4px;letter-spacing:1px}
+    .htlc-badge.pending{color:var(--gold);border:1px solid rgba(240,165,0,.3)}
+    .htlc-badge.claimed{color:var(--green);border:1px solid rgba(0,255,65,.2)}
+    .htlc-badge.refunded{color:var(--cyan);border:1px solid rgba(0,245,255,.2)}
+    .htlc-badge.expired{color:var(--red);border:1px solid rgba(255,64,64,.2)}
+    .htlc-badge.settled{color:var(--green);border:1px solid rgba(0,255,65,.3);background:rgba(0,255,65,.08)}
+    .htlc-badge.forwarded{color:var(--gold);border:1px solid rgba(240,165,0,.2)}
+    .htlc-actions{display:flex;gap:8px;margin-top:8px}
+    .app-toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);padding:12px 24px;border-radius:8px;font:12px 'JetBrains Mono',monospace;z-index:9999;animation:toastIn .3s ease,toastOut .3s ease 3.7s;pointer-events:none;max-width:340px;text-align:center}
+    .app-toast.error{background:rgba(255,20,20,.15);border:1px solid rgba(255,64,64,.4);color:#ff4040}
+    .app-toast.success{background:rgba(0,255,65,.1);border:1px solid rgba(0,255,65,.3);color:var(--green)}
+    .app-toast.info{background:rgba(0,245,255,.1);border:1px solid rgba(0,245,255,.3);color:var(--cyan)}
+    @keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+    @keyframes toastOut{from{opacity:1}to{opacity:0}}
+    .htlc-btn{padding:6px 12px;background:rgba(0,255,65,.06);border:1px solid rgba(0,255,65,.2);border-radius:6px;color:var(--green);font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1px;cursor:pointer;transition:.15s}
+    .htlc-btn:hover{background:rgba(0,255,65,.12);border-color:var(--green)}
+
+    .relay-item{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid rgba(0,255,65,.05);cursor:pointer;transition:.15s}
+    .relay-item:hover{background:rgba(0,255,65,.03)}
+    .relay-icon{width:36px;height:36px;border-radius:50%;background:rgba(0,255,65,.08);border:1px solid rgba(0,255,65,.2);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+    .relay-info{flex:1;min-width:0}
+    .relay-pub{font-size:10px;color:var(--green);font-family:'Orbitron',monospace}
+    .relay-detail{font-size:9px;color:rgba(0,255,65,.35);margin-top:2px;letter-spacing:1px}
+    .relay-fee{font-size:10px;color:rgba(0,255,65,.5);flex-shrink:0}
+
+    .route-step{display:flex;align-items:center;gap:8px;padding:8px 0}
+    .route-dot{width:20px;height:20px;border-radius:50%;border:1px solid rgba(0,255,65,.3);display:flex;align-items:center;justify-content:center;font-size:8px;color:rgba(0,255,65,.5);flex-shrink:0}
+    .route-dot.active{border-color:var(--green);color:var(--green);box-shadow:0 0 6px rgba(0,255,65,.2)}
+    .route-line{width:1px;height:12px;background:rgba(0,255,65,.15);margin-left:9px}
+    .route-label{font-size:9px;color:rgba(0,255,65,.4);letter-spacing:1px}
+
+    .toggle-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0}
+    .toggle-label{font-size:11px;color:rgba(0,255,65,.6);letter-spacing:1px}
+    .toggle{width:40px;height:22px;border-radius:11px;background:rgba(0,255,65,.1);border:1px solid rgba(0,255,65,.2);cursor:pointer;position:relative;transition:.2s}
+    .toggle.on{background:rgba(0,255,65,.2);border-color:var(--green)}
+    .toggle-knob{width:16px;height:16px;border-radius:50%;background:rgba(0,255,65,.4);position:absolute;top:2px;left:2px;transition:.2s}
+    .toggle.on .toggle-knob{left:20px;background:var(--green);box-shadow:0 0 6px var(--green)}
+
+    .test-suite{padding:12px 16px;border-bottom:1px solid rgba(0,255,65,.05)}
+    .test-name{font-size:11px;color:rgba(0,255,65,.6);letter-spacing:1px;margin-bottom:6px}
+    .test-result{font-size:9px;letter-spacing:1px;padding:2px 0}
+    .test-result.pass{color:var(--green)}
+    .test-result.fail{color:var(--red)}
+    .test-result.info{color:rgba(0,255,65,.35)}
+
+    .spinner{width:16px;height:16px;border:2px solid rgba(0,255,65,.1);border-top-color:var(--green);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    @keyframes dt-pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+    /* Info tooltip */
+    .dt-info-i {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 15px; height: 15px; border-radius: 50%;
+      font-size: 9px; font-weight: 700; font-style: italic;
+      font-family: 'Georgia', serif;
+      color: var(--dt-accent); background: var(--dt-accent-soft, rgba(10,193,142,.1));
+      border: 1px solid rgba(10,193,142,.25);
+      cursor: help; position: relative; vertical-align: middle;
+      margin-left: 2px; transition: .15s;
+    }
+    .dt-info-i:hover { background: rgba(10,193,142,.2); border-color: var(--dt-accent); }
+    .dt-info-i::after {
+      content: attr(data-tip);
+      position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+      width: 260px; padding: 10px 12px;
+      background: var(--dt-surface, #16171f); color: var(--dt-text-secondary, #94a3b8);
+      border: 1px solid var(--dt-border, #232430); border-radius: 10px;
+      font-size: 11.5px; font-weight: 400; font-style: normal; font-family: 'Inter', sans-serif;
+      line-height: 1.6; letter-spacing: 0;
+      box-shadow: 0 4px 16px rgba(0,0,0,.25);
+      opacity: 0; pointer-events: none;
+      transition: opacity .15s, transform .15s;
+      transform: translateX(-50%) translateY(4px);
+      z-index: 100;
+    }
+    .dt-info-i:hover::after {
+      opacity: 1; pointer-events: auto;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    #main-view{min-height:0}
+    /* Desktop: skip loading, hide phone overlays */
+    @media (min-width: 900px) {
+      #loading { display: none !important; }
+      #rain, .scanlines, .vignette { display: none !important; }
+    }
+  </style>
+  <link rel="stylesheet" href="desktop.css">
+</head>
+<body>
+<canvas id="rain"></canvas>
+<div class="scanlines"></div>
+<div class="vignette"></div>
+
+<!-- Loading -->
+<div id="loading">
+  <div class="loader-logo">00</div>
+  <div class="loader-bar-wrap"><div class="loader-bar"></div></div>
+  <div class="loader-status">ONION PROTOCOL<span class="blink">_</span></div>
+</div>
+
+<!-- ── Desktop Onion View (hidden on mobile) ── -->
+<div id="onion-desktop" style="display:none">
+  <div class="dt-inner">
+    <div class="dt-page-header">
+      <div class="dt-page-title-wrap">
+        <div class="dt-page-icon">🧅</div>
+        <div>
+          <div class="dt-page-title">Onion</div>
+          <div class="dt-page-sub">HTLC · Nostr · Stealth Payments</div>
+        </div>
+        <div class="swap-info-btn" onclick="toggleOnionInfo()" title="How it works" style="cursor:pointer;font-size:18px;opacity:.35;margin-left:4px">ⓘ</div>
+      </div>
+    </div>
+
+
+    <div class="dt-tabs" id="dt-on-tabs">
+      <button class="dt-tab active" onclick="dtOnTab('send')">Send</button>
+      <button class="dt-tab" onclick="dtOnTab('relay')">Relay</button>
+      <button class="dt-tab" onclick="dtOnTab('htlcs')">HTLCs</button>
+    </div>
+
+    <!-- SEND pane -->
+    <div class="dt-pane active" id="dt-on-p-send">
+      <div class="dt-card" style="max-width:560px">
+        <div style="text-align:center;padding:16px 0;border-bottom:1px solid var(--dt-border);margin-bottom:16px">
+          <div style="font-size:28px;font-weight:800;color:var(--dt-text)" id="dt-on-balance">0.00000000 <span style="font-size:14px;font-weight:600;color:var(--dt-text-secondary)">BCH</span></div>
+          <div style="font-size:12px;color:var(--dt-text-secondary);margin-top:4px">Available Balance</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;padding:12px;background:var(--dt-input-bg);border-radius:10px;border:1px solid var(--dt-border)">
+          <div>
+            <div class="dt-form-lbl" style="margin-bottom:4px">My Address <span class="dt-info-i" data-tip="Your session public key (secp256k1). Share this with senders for direct onion payments. Derived from your wallet seed — unique per session.">i</span></div>
+            <div id="dt-on-my-pub" style="font-size:10px;color:var(--dt-text-secondary);overflow-wrap:break-word;word-break:break-word;font-family:monospace;line-height:1.6;margin-bottom:6px">Waiting for wallet…</div>
+            <button class="dt-action-btn-outline" style="padding:4px 14px;font-size:11px;align-self:flex-start" onclick="var v=document.getElementById('dt-on-my-pub').textContent;if(v){navigator.clipboard.writeText(v);var b=this;b.textContent='Copied ✓';b.style.borderColor='var(--dt-accent)';b.style.color='var(--dt-accent)';setTimeout(function(){b.textContent='Copy';b.style.borderColor='';b.style.color=''},1500)}">Copy</button>
+          </div>
+          <div>
+            <div class="dt-form-lbl" style="margin-bottom:4px">Stealth Code <span class="dt-info-i" data-tip="Your stealth payment code (scan + spend pubkeys). Senders derive a unique one-time address via ECDH for each payment — your real address is never revealed on-chain.">i</span></div>
+            <div id="dt-on-stealth" style="font-size:10px;color:var(--dt-text-secondary);overflow-wrap:break-word;word-break:break-word;font-family:monospace;line-height:1.6;margin-bottom:6px">Waiting for wallet…</div>
+            <button class="dt-action-btn-outline" style="padding:4px 14px;font-size:11px;align-self:flex-start" onclick="var v=document.getElementById('dt-on-stealth').textContent;if(v){navigator.clipboard.writeText(v);var b=this;b.textContent='Copied ✓';b.style.borderColor='var(--dt-accent)';b.style.color='var(--dt-accent)';setTimeout(function(){b.textContent='Copy';b.style.borderColor='';b.style.color=''},1500)}">Copy</button>
+          </div>
+        </div>
+        <div class="dt-card-title">Onion Payment</div>
+        <div class="dt-form-group">
+          <div class="dt-form-lbl">Recipient <span class="dt-info-i" data-tip="Paste the recipient's session pubkey (hex) or stealth code (stealth:...). Stealth codes derive a one-time address via ECDH — the recipient stays anonymous on-chain.">i</span></div>
+          <input class="dt-form-input" id="dt-on-dest" placeholder="session pubkey or stealth:..." autocomplete="off">
+        </div>
+        <div class="dt-form-group">
+          <div class="dt-form-lbl">Amount (BCH) <span class="dt-info-i" data-tip="Payment amount in BCH. This is locked in an HTLC contract on-chain. Relay fees are added on top automatically based on the route.">i</span></div>
+          <input class="dt-form-input" id="dt-on-amount" type="number" step="0.00000001" placeholder="0.001">
+        </div>
+        <div id="dt-on-route" style="display:none;margin-bottom:12px">
+          <div class="dt-form-lbl" style="margin-bottom:8px">Route</div>
+          <div class="dt-route-vis" id="dt-on-route-hops"></div>
+        </div>
+        <button class="dt-action-btn" onclick="dtOnSend()" style="width:100%;background:var(--dt-accent-bg);color:var(--dt-accent-text)">Route &amp; Pay →</button>
+        <div id="dt-on-send-status" style="font-size:12px;color:var(--dt-text-secondary);margin-top:10px;min-height:18px"></div>
+      </div>
+      <div class="dt-card" style="margin-top:16px;max-width:560px;padding:0;overflow:hidden">
+        <div style="padding:14px 20px;border-bottom:1px solid var(--dt-border)">
+          <div style="font-size:13px;font-weight:600;color:var(--dt-text)">Known Relays</div>
+        </div>
+        <div id="dt-on-relay-list"></div>
+      </div>
+    </div>
+
+    <!-- RELAY pane -->
+    <div class="dt-pane" id="dt-on-p-relay">
+      <div class="dt-card" style="max-width:560px">
+        <div class="dt-card-title">Relay Node</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding:12px 16px;background:var(--dt-input-bg);border-radius:10px;border:1px solid var(--dt-border)">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:13px;color:var(--dt-text)">Announce as Relay</span>
+            <span class="dt-info-i" data-tip="Enable to broadcast your node as an onion relay on Nostr. Other users can route payments through you and you earn fees for each forwarded HTLC.">i</span>
+          </div>
+          <div id="dt-relay-toggle" onclick="if(window.toggleRelay)window.toggleRelay()" style="position:relative;width:44px;height:24px;flex-shrink:0;cursor:pointer">
+            <div id="dt-relay-toggle-track" style="position:absolute;inset:0;border-radius:12px;background:var(--dt-border);transition:.25s"></div>
+            <div id="dt-relay-toggle-thumb" style="position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.25s;pointer-events:none"></div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="dt-form-group">
+            <div class="dt-form-lbl">Base Fee (sats) <span class="dt-info-i" data-tip="Fixed fee in satoshis you charge per forwarded payment. Senders see this before choosing your relay. Lower fees = more traffic, higher fees = more profit per hop.">i</span></div>
+            <input class="dt-form-input" id="dt-relay-fee" value="500" type="number">
+          </div>
+          <div class="dt-form-group">
+            <div class="dt-form-lbl">Max HTLC (sats) <span class="dt-info-i" data-tip="Maximum payment amount you're willing to relay. Limits your exposure — if you set 5,000,000 sats (~0.05 BCH), you won't be asked to lock more than that in an HTLC contract.">i</span></div>
+            <input class="dt-form-input" id="dt-relay-max" value="5000000" type="number">
+          </div>
+          <div class="dt-form-group">
+            <div class="dt-form-lbl">CLTV Delta (blocks) <span class="dt-info-i" data-tip="Timelock safety margin in blocks (~10 min each). Your outgoing HTLC expires this many blocks before your incoming one. Gives you time to claim if something goes wrong. Default 6 blocks (~1 hour).">i</span></div>
+            <input class="dt-form-input" id="dt-relay-cltv" value="6" type="number">
+          </div>
+          <div class="dt-form-group">
+            <div class="dt-form-lbl">Max Hops (0 = direct) <span class="dt-info-i" data-tip="How many relay hops the sender can chain through you. 0 = only accept direct payments (no forwarding). 1 = relay one hop further. Higher = deeper onion routes but longer lock times.">i</span></div>
+            <input class="dt-form-input" id="dt-relay-hops" value="1" type="number" min="0" max="3">
+          </div>
+        </div>
+      </div>
+      <div class="dt-card" style="max-width:560px;margin-top:16px">
+        <div class="dt-card-title">Relay Status</div>
+        <div id="dt-relay-status" style="font-size:13px;color:var(--dt-text-secondary)">OFFLINE</div>
+        <div id="dt-relay-earnings" style="font-size:12px;color:var(--dt-text-secondary);margin-top:6px">Earnings: 0 sats</div>
+      </div>
+      <div style="margin-top:16px">
+        <div style="font-size:13px;font-weight:600;color:var(--dt-text);margin-bottom:10px">Active Forwarding</div>
+        <div id="dt-relay-htlc-list"></div>
+      </div>
+    </div>
+
+    <!-- HTLCs pane -->
+    <div class="dt-pane" id="dt-on-p-htlcs">
+      <div id="dt-htlc-list"></div>
+    </div>
+
+    <!-- Config pane removed — end users don't need it -->
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  if(!window.matchMedia('(min-width:900px)').matches) return;
+  var el=document.getElementById('onion-desktop');if(!el)return;
+  el.style.display='';
+
+  /* ── Tab switching ─── */
+  var _tabs=['send','relay','htlcs'];
+  window.dtOnTab=function(t){
+    _tabs.forEach(function(x){
+      var p=document.getElementById('dt-on-p-'+x);
+      if(p)p.classList.toggle('active',x===t);
+    });
+    var btns=document.querySelectorAll('#dt-on-tabs .dt-tab');
+    btns.forEach(function(b){b.classList.toggle('active',b.textContent.toLowerCase()===t);});
+  };
+
+  /* ── Send — sync to mobile ─── */
+  window.dtOnSend=function(){
+    var md=document.getElementById('send-dest');
+    var ma=document.getElementById('send-amount');
+    if(md) md.value=document.getElementById('dt-on-dest').value;
+    if(ma) ma.value=document.getElementById('dt-on-amount').value;
+    if(window.startOnionPayment) window.startOnionPayment();
+  };
+
+  /* ── Network switch ─── */
+  window.dtOnSwitchNet=function(){
+    var sel=document.getElementById('dt-cfg-network');
+    var cw=document.getElementById('dt-cfg-custom-wrap');
+    if(cw) cw.style.display=sel.value==='custom'?'block':'none';
+    var ms=document.getElementById('cfg-network');
+    if(ms) ms.value=sel.value;
+    if(window.switchNetwork) window.switchNetwork();
+  };
+
+  window.dtOnApplyNet=function(){
+    var ms=document.getElementById('cfg-network');
+    var mc=document.getElementById('cfg-custom-url');
+    if(ms) ms.value=document.getElementById('dt-cfg-network').value;
+    if(mc) mc.value=document.getElementById('dt-cfg-custom-url').value||'';
+    if(window.applyNetwork) window.applyNetwork();
+  };
+
+  window.dtOnApplyRelays=function(){
+    var mr=document.getElementById('cfg-relays');
+    if(mr) mr.value=document.getElementById('dt-cfg-relays').value;
+    if(window.applyRelays) window.applyRelays();
+  };
+
+  /* ── Poll mobile DOM ─── */
+  setInterval(function(){
+    // Mirror balance
+    var mb=document.getElementById('my-balance');
+    var db=document.getElementById('dt-on-balance');
+    if(mb&&db) db.innerHTML=mb.textContent+' <span style="font-size:14px;font-weight:600;color:var(--dt-text-secondary)">BCH</span>';
+
+    // Mirror my pub + stealth (with loading indicator)
+    var mp=document.getElementById('my-session-pub');
+    var dp=document.getElementById('dt-on-my-pub');
+    if(mp&&dp){
+      var mpText=mp.textContent||'';
+      if(mpText&&mpText!=='unlock wallet to see'){
+        dp.textContent=mpText;
+        dp.style.opacity='1';
+      } else {
+        // Check if wallet is connected but still scanning
+        try{var sess=JSON.parse(localStorage.getItem('00_session_auth')||'{}');
+        if(sess.ts&&Date.now()-sess.ts<30*60*1000){
+          dp.innerHTML='<span style="color:var(--dt-accent);animation:dt-pulse 1.5s ease-in-out infinite">Scanning addresses…</span>';
+          dp.style.opacity='1';
+        }}catch(e){}
+      }
+    }
+
+    var ms=document.getElementById('my-stealth-code');
+    var ds=document.getElementById('dt-on-stealth');
+    if(ms&&ds){
+      var msText=ms.textContent||'';
+      if(msText&&msText!=='unlock wallet to see'){
+        ds.textContent=msText;
+        ds.style.opacity='1';
+      } else {
+        try{var sess2=JSON.parse(localStorage.getItem('00_session_auth')||'{}');
+        if(sess2.ts&&Date.now()-sess2.ts<30*60*1000){
+          ds.innerHTML='<span style="color:var(--dt-accent);animation:dt-pulse 1.5s ease-in-out infinite">Deriving stealth keys…</span>';
+          ds.style.opacity='1';
+        }}catch(e){}
+      }
+    }
+
+    // Mirror send status
+    var ss=document.getElementById('send-status');
+    var dss=document.getElementById('dt-on-send-status');
+    if(ss&&dss) dss.textContent=ss.textContent;
+
+    // Mirror route display
+    var rd=document.getElementById('route-display');
+    var drd=document.getElementById('dt-on-route');
+    if(rd&&drd) drd.style.display=rd.style.display;
+
+    var rh=document.getElementById('route-hops');
+    var drh=document.getElementById('dt-on-route-hops');
+    if(rh&&drh&&rh.innerHTML){
+      var hops=rh.querySelectorAll('.hop-item,.route-hop');
+      if(hops.length){
+        var html='';
+        hops.forEach(function(h,i){
+          if(i>0) html+='<div class="dt-route-line"></div>';
+          html+='<div class="dt-route-dot"><div class="dt-route-label">'+h.textContent.trim().substring(0,20)+'</div></div>';
+        });
+        drh.innerHTML=html;
+      }
+    }
+
+    // Mirror relay list (send tab)
+    var rl=document.getElementById('relay-list');
+    var drl=document.getElementById('dt-on-relay-list');
+    if(rl&&drl){
+      var items=rl.querySelectorAll('.relay-item,.relay-entry');
+      if(!items.length){
+        var es=rl.querySelector('.empty-state');
+        drl.innerHTML='<div class="dt-empty"><div class="dt-empty-text">'+(es?es.textContent:'Scanning for relay nodes...')+'</div></div>';
+      } else {
+        var html='';
+        items.forEach(function(it){
+          var dot=it.querySelector('.relay-icon');
+          var pub=it.querySelector('.relay-pub');
+          var detail=it.querySelector('.relay-detail');
+          var fee=it.querySelector('.relay-fee');
+          var opacity=it.style.opacity==='0.4'||it.style.opacity==='.4'?' opacity:.5;':'';
+          html+='<div class="dt-row" style="cursor:default;'+opacity+'">'
+            +'<div class="dt-row-left" style="gap:10px">'
+            +(dot?'<span style="font-size:14px;flex-shrink:0">'+dot.textContent+'</span>':'')
+            +'<div>'
+            +(pub?'<div class="dt-row-title" style="font-size:12px;font-family:monospace">'+pub.textContent+'</div>':'')
+            +(detail?'<div class="dt-row-sub" style="font-size:11px">'+detail.textContent+'</div>':'')
+            +'</div></div>'
+            +(fee?'<div class="dt-row-right" style="font-size:12px;font-weight:600;color:var(--dt-accent)">'+fee.textContent+'</div>':'')
+            +'</div>';
+        });
+        drl.innerHTML=html;
+      }
+    }
+
+    // Mirror relay toggle state
+    var mToggle=document.getElementById('relay-toggle');
+    var dtTrack=document.getElementById('dt-relay-toggle-track');
+    var dtThumb=document.getElementById('dt-relay-toggle-thumb');
+    if(mToggle&&dtTrack&&dtThumb){
+      var isOn=mToggle.classList.contains('on');
+      dtTrack.style.background=isOn?'var(--dt-accent)':'var(--dt-border)';
+      dtThumb.style.left=isOn?'22px':'2px';
+    }
+
+    // Mirror relay status
+    var rs=document.getElementById('relay-status');
+    var drs=document.getElementById('dt-relay-status');
+    if(rs&&drs){drs.textContent=rs.textContent;drs.style.color=rs.style.color||'';}
+
+    var re=document.getElementById('relay-earnings');
+    var dre=document.getElementById('dt-relay-earnings');
+    if(re&&dre) dre.textContent=re.textContent;
+
+    // Mirror relay active forwarding
+    var rhl=document.getElementById('relay-htlc-list');
+    var drhl=document.getElementById('dt-relay-htlc-list');
+    if(rhl&&drhl){
+      var fi=rhl.querySelectorAll('.htlc-fwd-item,.forward-item');
+      if(!fi.length){
+        drhl.innerHTML='<div class="dt-empty"><div class="dt-empty-text">No active forwards</div></div>';
+      } else {
+        var html='';
+        fi.forEach(function(f){
+          html+='<div class="dt-row" style="cursor:default"><div class="dt-row-left"><div class="dt-row-sub">'+f.textContent.trim().substring(0,80)+'</div></div></div>';
+        });
+        drhl.innerHTML=html;
+      }
+    }
+
+    // Mirror HTLC list
+    var hl=document.getElementById('htlc-list');
+    var dhl=document.getElementById('dt-htlc-list');
+    if(hl&&dhl){
+      var htlcItems=hl.querySelectorAll('.htlc-item,.htlc-row');
+      if(!htlcItems.length){
+        var es=hl.querySelector('.empty-state');
+        dhl.innerHTML='<div class="dt-empty"><div class="dt-empty-icon">🔒</div><div class="dt-empty-text">'+(es?es.textContent.trim():'No active HTLCs')+'</div></div>';
+      } else {
+        var html='';
+        htlcItems.forEach(function(h){
+          var st=h.querySelector('.htlc-status,.htlc-badge');
+          var isPending=st&&(st.textContent.toLowerCase().indexOf('pending')>=0||st.classList.contains('pending'));
+          var isClaimed=st&&(st.textContent.toLowerCase().indexOf('claim')>=0||st.classList.contains('claimed'));
+          var stColor=isClaimed?'color:var(--dt-accent)':isPending?'color:var(--dt-warning)':'color:var(--dt-danger)';
+          html+='<div class="dt-row" style="cursor:default">'
+            +'<div class="dt-row-left"><div class="dt-row-title" style="font-size:12px">'+h.textContent.trim().substring(0,60)+'</div></div>'
+            +'<div class="dt-row-right"><span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px;border:1px solid;'+stColor+'">'+(st?st.textContent:'—')+'</span></div>'
+            +'</div>';
+        });
+        dhl.innerHTML=html;
+      }
+    }
+
+    // Mirror config session info
+    var csp=document.getElementById('cfg-session-pub');
+    var dcsp=document.getElementById('dt-cfg-session-pub');
+    if(csp&&dcsp) dcsp.textContent=csp.textContent;
+
+    var cba=document.getElementById('cfg-bch-addr');
+    var dcba=document.getElementById('dt-cfg-bch-addr');
+    if(cba&&dcba) dcba.textContent=cba.textContent;
+
+    var cni=document.getElementById('cfg-network-info');
+    var dcni=document.getElementById('dt-cfg-network-info');
+    if(cni&&dcni) dcni.textContent=cni.textContent;
+
+    var cfi=document.getElementById('cfg-fulcrum-info');
+    var dcfi=document.getElementById('dt-cfg-fulcrum-info');
+    if(cfi&&dcfi) dcfi.textContent=cfi.textContent;
+
+    var cnoi=document.getElementById('cfg-nostr-info');
+    var dcnoi=document.getElementById('dt-cfg-nostr-info');
+    if(cnoi&&dcnoi) dcnoi.textContent=cnoi.textContent;
+
+    // Mirror relay form values (once)
+    var rf=document.getElementById('relay-fee');
+    var drf2=document.getElementById('dt-relay-fee');
+    if(rf&&drf2&&!drf2.dataset.init){drf2.value=rf.value;drf2.dataset.init='1';}
+
+    var rm=document.getElementById('relay-max');
+    var drm=document.getElementById('dt-relay-max');
+    if(rm&&drm&&!drm.dataset.init){drm.value=rm.value;drm.dataset.init='1';}
+
+    // Mirror config net status
+    var cns=document.getElementById('cfg-net-status');
+    var dcns=document.getElementById('dt-cfg-net-status');
+    if(cns&&dcns) dcns.textContent=cns.textContent;
+
+    // Connection status chips
+    var fd=document.getElementById('fulcrum-dot');
+    var fChip=document.getElementById('dt-status-on-fulcrum');
+    var fDot=document.getElementById('dt-on-dot-fulcrum');
+    var fSrv=document.getElementById('dt-status-on-fulcrum-server');
+    if(fd&&fChip){
+      var fOn=fd.classList.contains('on');
+      fChip.classList.toggle('on',fOn);
+      fChip.classList.toggle('err',!fOn);
+      if(fDot){fDot.classList.toggle('on',fOn);fDot.classList.toggle('err',!fOn);}
+      var fl=document.getElementById('fulcrum-label');
+      if(fl&&fSrv){var ft=fl.textContent||'';var fm=ft.match(/:\s*(.+)/);fSrv.textContent=fm?fm[1].trim():'—';}
+    }
+    var nd=document.getElementById('nostr-dot');
+    var nChip=document.getElementById('dt-status-on-nostr');
+    var nDot=document.getElementById('dt-on-dot-nostr');
+    var nSrv=document.getElementById('dt-status-on-nostr-server');
+    if(nd&&nChip){
+      var nOn=nd.classList.contains('on');
+      nChip.classList.toggle('on',nOn);
+      nChip.classList.toggle('err',!nOn);
+      if(nDot){nDot.classList.toggle('on',nOn);nDot.classList.toggle('err',!nOn);}
+      var nl=document.getElementById('nostr-label');
+      if(nl&&nSrv){var nt=nl.textContent||'';var nm=nt.match(/:\s*(.+)/);nSrv.textContent=nm?nm[1].trim():'—';}
+    }
+  },800);
+})();
+</script>
+
+<div class="phone-wrap">
+  <div class="phone">
+    <div class="notch"><div class="notch-cam"></div><div class="notch-speaker"></div><div class="notch-cam"></div></div>
+    <div class="status-bar"><span id="clock">00:00</span><div class="status-icons"><span>⚡</span><span>▮▮▮</span></div></div>
+
+    <div class="app-header">
+      <div class="app-title">00 Onion<span>HTLC · NOSTR · STEALTH</span></div>
+      <div style="display:flex;gap:12px;align-items:center">
+        <span class="header-icon" id="btn-refresh" title="Refresh">↻</span>
+      </div>
+    </div>
+
+
+    <!-- Auth view -->
+    <div id="auth-view" style="display:none">
+      <div class="auth-logo">00 ONION</div>
+      <div class="auth-sub">ONION-ROUTED PAYMENTS</div>
+      <div class="auth-sub" style="color:rgba(0,255,65,.2);font-size:9px;margin-top:4px">Unlock your wallet to route</div>
+      <input class="auth-input" type="password" id="auth-pass" placeholder="Password..." autocomplete="off">
+      <div class="auth-error" id="auth-err"></div>
+      <button class="auth-btn" onclick="tryUnlock()">UNLOCK →</button>
+      <div style="font-size:9px;color:rgba(0,255,65,.2);letter-spacing:1px;margin-top:8px">
+        No wallet yet? <a href="wallet.html" style="color:rgba(0,255,65,.5)">Create one in 00 Wallet</a>
+      </div>
+    </div>
+
+    <!-- Main view -->
+    <div id="main-view" style="display:none;flex:1;flex-direction:column;min-height:0">
+      <div class="tabs">
+        <div class="tab active" data-tab="send">SEND</div>
+        <div class="tab" data-tab="relay">RELAY</div>
+        <div class="tab" data-tab="htlcs">HTLCs</div>
+        <div class="tab" data-tab="test" id="tab-test-btn" style="display:none">TEST</div>
+        <div class="tab" data-tab="config" style="font-size:14px;letter-spacing:0">⚙</div>
+      </div>
+
+      <!-- SEND tab -->
+      <div class="tab-pane active" id="tab-send">
+        <div class="balance-hero">
+          <div class="balance-val" id="my-balance">0.00000000</div>
+          <div class="balance-lbl">AVAILABLE BALANCE (BCH)</div>
+        </div>
+        <div class="section" style="padding:8px 12px;background:rgba(0,255,65,.03);border:1px solid rgba(0,255,65,.08);border-radius:8px;margin:8px 0">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <div style="font-size:8px;color:rgba(0,255,65,.4);letter-spacing:1px">MY ADDRESS</div>
+            <div id="copy-pub-btn" style="font-size:7px;color:var(--cyan);cursor:pointer;padding:2px 8px;border:1px solid rgba(0,245,255,.2);border-radius:4px;letter-spacing:1px"
+                 onclick="navigator.clipboard.writeText(document.querySelector('#my-session-pub').dataset.pub);this.textContent='COPIED!';setTimeout(()=>{this.textContent='COPY'},1000)">COPY</div>
+          </div>
+          <div id="my-session-pub" style="font-size:8.5px;color:var(--green);word-break:break-all;line-height:1.5;font-family:'JetBrains Mono',monospace;opacity:.7"
+               data-pub="">unlock wallet to see</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;margin-bottom:4px">
+            <div style="font-size:7px;color:rgba(0,245,255,.35);letter-spacing:1px">STEALTH CODE</div>
+            <div id="copy-stealth-btn" style="font-size:7px;color:rgba(0,245,255,.5);cursor:pointer;padding:2px 8px;border:1px solid rgba(0,245,255,.15);border-radius:4px;letter-spacing:1px"
+                 onclick="navigator.clipboard.writeText(document.querySelector('#my-stealth-code').dataset.code);this.textContent='COPIED!';setTimeout(()=>{this.textContent='COPY'},1000)">COPY</div>
+          </div>
+          <div id="my-stealth-code" style="font-size:7px;color:rgba(0,245,255,.45);word-break:break-all;line-height:1.5;font-family:'JetBrains Mono',monospace"
+               data-code="">unlock wallet to see</div>
+        </div>
+        <div class="section">
+          <div class="section-title">ONION PAYMENT</div>
+          <div class="form-lbl">RECIPIENT</div>
+          <input class="form-input" id="send-dest" placeholder="session pubkey or stealth:..." autocomplete="off">
+          <div class="form-lbl">AMOUNT (BCH)</div>
+          <input class="form-input" id="send-amount" placeholder="0.001" type="number" step="0.00000001">
+          <div id="route-display" style="display:none;padding:10px 0">
+            <div class="form-lbl">ROUTE</div>
+            <div id="route-hops"></div>
+          </div>
+          <button class="action-btn" id="btn-send" onclick="startOnionPayment()">ROUTE & PAY →</button>
+          <div id="send-status" style="font-size:9px;color:rgba(0,255,65,.35);letter-spacing:1px;margin-top:8px;min-height:14px"></div>
+        </div>
+        <div class="section">
+          <div class="section-title">KNOWN RELAYS</div>
+          <div id="relay-list">
+            <div class="empty-state" style="padding:16px">SCANNING FOR RELAY NODES...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RELAY tab -->
+      <div class="tab-pane" id="tab-relay">
+        <div class="section">
+          <div class="section-title">RELAY NODE</div>
+          <div class="toggle-row">
+            <span class="toggle-label">ANNOUNCE AS RELAY</span>
+            <div class="toggle" id="relay-toggle" onclick="toggleRelay()"><div class="toggle-knob"></div></div>
+          </div>
+          <div class="form-lbl">BASE FEE (SATS)</div>
+          <input class="form-input" id="relay-fee" value="500" type="number">
+          <div class="form-lbl">MAX HTLC (SATS)</div>
+          <input class="form-input" id="relay-max" value="5000000" type="number">
+          <div class="form-lbl">CLTV DELTA (BLOCKS)</div>
+          <input class="form-input" id="relay-cltv" value="6" type="number">
+          <div class="form-lbl">MAX HOPS (0 = DIRECT)</div>
+          <input class="form-input" id="route-max-hops" value="1" type="number" min="0" max="3">
+        </div>
+        <div class="section">
+          <div class="section-title">RELAY STATUS</div>
+          <div id="relay-status" style="font-size:10px;color:rgba(0,255,65,.4);letter-spacing:1px">OFFLINE</div>
+          <div id="relay-earnings" style="font-size:9px;color:rgba(0,255,65,.3);margin-top:6px">EARNINGS: 0 sats</div>
+        </div>
+        <div class="section">
+          <div class="section-title">ACTIVE FORWARDING</div>
+          <div id="relay-htlc-list">
+            <div class="empty-state" style="padding:16px">NO ACTIVE FORWARDS</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- HTLCs tab -->
+      <div class="tab-pane" id="tab-htlcs">
+        <div id="htlc-list">
+          <div class="empty-state">NO ACTIVE HTLCs</div>
+        </div>
+      </div>
+
+      <!-- TEST tab -->
+      <div class="tab-pane" id="tab-test">
+        <div class="section">
+          <div class="section-title">HTLC & ONION TEST SUITE</div>
+          <button class="action-btn" onclick="runAllTests()">RUN ALL TESTS →</button>
+          <div style="margin-top:8px">
+            <button class="htlc-btn" onclick="runTestSuite('script')">SCRIPT</button>
+            <button class="htlc-btn" onclick="runTestSuite('p2sh')">P2SH</button>
+            <button class="htlc-btn" onclick="runTestSuite('claim')">CLAIM TX</button>
+            <button class="htlc-btn" onclick="runTestSuite('refund')">REFUND TX</button>
+            <button class="htlc-btn" onclick="runTestSuite('sighash')">SIGHASH</button>
+            <button class="htlc-btn" onclick="runTestSuite('onion')">ONION</button>
+            <button class="htlc-btn" onclick="runTestSuite('decorrelation')">DECORRELATION</button>
+          </div>
+        </div>
+        <div id="test-results" style="padding:0 16px 20px"></div>
+        <div class="section" style="border-top:1px solid rgba(0,255,65,.1)">
+          <div class="section-title">CHIPNET — LIVE HTLC TEST</div>
+          <div style="font-size:9px;color:rgba(0,255,65,.25);letter-spacing:1px;margin-bottom:10px;line-height:1.8">
+            Self-loop test: lock BCH in an HTLC, then claim it back.<br>
+            Requires unlocked wallet + chipnet Fulcrum endpoint.
+          </div>
+          <div class="form-lbl">HTLC AMOUNT (SATS)</div>
+          <input class="form-input" id="chip-amount" value="10000" type="number">
+          <div class="form-lbl">LOCKTIME (BLOCK HEIGHT)</div>
+          <input class="form-input" id="chip-locktime" value="0" type="number" placeholder="auto = current + 20">
+          <div style="display:flex;gap:8px;margin-bottom:8px">
+            <button class="action-btn" onclick="chipTestCreate()" style="flex:1">1. CREATE HTLC</button>
+            <button class="action-btn" onclick="chipTestClaim()" style="flex:1">2. CLAIM</button>
+          </div>
+          <button class="action-btn danger" onclick="chipTestRefund()">3. REFUND (after timeout)</button>
+          <div id="chip-status" style="font-size:9px;color:rgba(0,255,65,.35);letter-spacing:1px;margin-top:8px;min-height:14px;line-height:1.8;white-space:pre-wrap"></div>
+        </div>
+      </div>
+
+      <!-- CONFIG tab -->
+      <div class="tab-pane" id="tab-config">
+        <div class="section">
+          <div class="section-title">DEVELOPER MODE</div>
+          <div class="toggle-row">
+            <span class="toggle-label">DEV MODE</span>
+            <div class="toggle" id="devmode-toggle" onclick="toggleDevMode()"><div class="toggle-knob"></div></div>
+          </div>
+          <div style="font-size:9px;color:rgba(0,255,65,.2);letter-spacing:1px;margin-top:4px">
+            Show TEST tab with unit tests &amp; chipnet HTLC tools
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">FULCRUM NETWORK</div>
+          <div class="form-lbl">NETWORK</div>
+          <select class="form-input" id="cfg-network" onchange="switchNetwork()">
+            <option value="mainnet">MAINNET</option>
+            <option value="chipnet">CHIPNET</option>
+            <option value="custom">CUSTOM</option>
+          </select>
+          <div id="cfg-custom-url-wrap" style="display:none;margin-top:6px">
+            <div class="form-lbl">CUSTOM ENDPOINT</div>
+            <input class="form-input" id="cfg-custom-url" placeholder="wss://..." autocomplete="off">
+          </div>
+          <button class="action-btn" onclick="applyNetwork()" style="margin-top:8px">RECONNECT FULCRUM</button>
+          <div id="cfg-net-status" style="font-size:9px;color:rgba(0,255,65,.25);letter-spacing:1px;margin-top:6px;min-height:14px"></div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">NOSTR RELAYS</div>
+          <div class="form-lbl">RELAY URLS (one per line)</div>
+          <textarea class="form-input" id="cfg-relays" rows="4" style="resize:none;height:auto"></textarea>
+          <button class="action-btn" onclick="applyRelays()" style="margin-top:8px">RECONNECT NOSTR</button>
+        </div>
+
+        <div class="section">
+          <div class="section-title">SESSION INFO</div>
+          <div style="font-size:9px;color:rgba(0,255,65,.3);letter-spacing:1px;line-height:2.2">
+            <div>SESSION PUB: <span id="cfg-session-pub" style="color:rgba(0,255,65,.5)">—</span></div>
+            <div>BCH ADDR: <span id="cfg-bch-addr" style="color:rgba(0,255,65,.5)">—</span></div>
+            <div>NETWORK: <span id="cfg-network-info" style="color:rgba(0,255,65,.5)">—</span></div>
+            <div>FULCRUM: <span id="cfg-fulcrum-info" style="color:rgba(0,255,65,.5)">—</span></div>
+            <div>NOSTR: <span id="cfg-nostr-info" style="color:rgba(0,255,65,.5)">—</span></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div><!-- phone -->
+</div>
+
+<script>(function(){var v=localStorage.getItem('00wallet_vault');if(!v){window.location.href='/wallet.html';return;}try{var s=JSON.parse(localStorage.getItem('00_session_auth')||'{}');if(!s.ts||Date.now()-s.ts>30*60*1000){window.location.href='/wallet.html';}}catch(e){window.location.href='/wallet.html';}})();</script>
+<script src="shell.js"></script>
+<script src="/ws-bridge.js"></script>
+<script type="module">
+'use strict';
+
+import { secp256k1, schnorr } from 'https://esm.sh/@noble/curves@1.8.1/secp256k1';
+import { sha256 }    from 'https://esm.sh/@noble/hashes@1.7.1/sha256';
+import { ripemd160 } from 'https://esm.sh/@noble/hashes@1.7.1/ripemd160';
+import { hmac }      from 'https://esm.sh/@noble/hashes@1.7.1/hmac';
+import { sha512 }    from 'https://esm.sh/@noble/hashes@1.7.1/sha512';
+
+/* ══════════════════════════════════════════
+   CONFIG
+   ══════════════════════════════════════════ */
+let _FV = JSON.parse(localStorage.getItem('00_ep_fulcrum') || 'null') || ['wss://bch.imaginary.cash:50004','wss://electroncash.de:50004','wss://bch.loping.net:50004'];
+let _RELAYS = JSON.parse(localStorage.getItem('00_ep_relays') || 'null') || ['wss://relay.damus.io','wss://nos.lol','wss://relay.nostr.band'];
+
+const FULCRUM_MAINNET = ['wss://bch.imaginary.cash:50004','wss://electroncash.de:50004','wss://bch.loping.net:50004'];
+const FULCRUM_CHIPNET = ['wss://chipnet.imaginary.cash:50004'];
+
+const NOSTR_KIND_RELAY_ANN  = 22230;
+const NOSTR_KIND_ONION_BLOB = 22231;
+const NOSTR_KIND_SETTLE     = 22232;
+const DEFAULT_CLTV_DELTA    = 6;     // blocks per hop (~1h on BCH)
+const P2SH_INPUT_VBYTES     = 280;   // estimated P2SH HTLC input size (sig+preimage+redeemScript)
+const RELAY_TTL             = 300;   // 5 min — relays announce every 60s, 5x margin
+
+/* ══════════════════════════════════════════
+   STATE
+   ══════════════════════════════════════════ */
+let _profile = null;
+let _bchAddr = '';
+let _privKey = null;
+let _acctPriv = null, _acctChain = null;
+let _hdAddresses = []; // [{priv, pub, addr, path}] — HD derived addresses
+let _utxos = [];
+let _balanceSats = 0;
+
+// Session identity (deterministic from BIP32 chain 2)
+let _sessionPriv = null;
+let _sessionPub = null;
+
+// Stealth (chain 2 index 1)
+let _stealthSpendPriv = null, _stealthSpendPub = null;
+let _stealthCode = '';
+
+// Nostr
+let _nostrSockets = [];
+let _nostrConnected = false;
+let _seenEvents = new Set();
+
+// Fulcrum
+let _fulcrumWs = null;
+let _fulcrumConnected = false;
+let _fulcrumReqId = 1;
+let _fulcrumCallbacks = {};
+
+// Relay discovery
+let _knownRelays = [];   // [{pub, fee, max_htlc, cltv_delta, ts}]
+let _relayMode = false;
+let _relayAnnInterval = null;
+
+// Pending HTLCs
+let _pendingHTLCs = JSON.parse(localStorage.getItem('00_onion_pending_htlcs') || '[]');
+let _relayEarnings = parseInt(localStorage.getItem('00_onion_relay_earnings') || '0');
+
+// Dev mode
+let _devMode = localStorage.getItem('00_dev_mode') === '1';
+
+/* ══════════════════════════════════════════
+   UTILITIES
+   ══════════════════════════════════════════ */
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+const b2h = b => [...b].map(x => x.toString(16).padStart(2,'0')).join('');
+const h2b = h => new Uint8Array(h.match(/.{2}/g).map(x => parseInt(x,16)));
+const rand = n => crypto.getRandomValues(new Uint8Array(n));
+const utf8 = s => new TextEncoder().encode(s);
+function concat(...arrs) {
+  const r = new Uint8Array(arrs.reduce((s, a) => s + a.length, 0));
+  let o = 0; for (const a of arrs) { r.set(a, o); o += a.length; } return r;
+}
+const u32LE = n => new Uint8Array([n & 0xff, (n >> 8) & 0xff, (n >> 16) & 0xff, (n >> 24) & 0xff]);
+function u64LE(n) {
+  const b = new Uint8Array(8); let v = BigInt(n);
+  for (let i = 0; i < 8; i++) { b[i] = Number(v & 0xffn); v >>= 8n; } return b;
+}
+function writeVarint(n) {
+  if (n < 0xfd) return new Uint8Array([n]);
+  if (n <= 0xffff) return new Uint8Array([0xfd, n & 0xff, (n >> 8) & 0xff]);
+  return new Uint8Array([0xfe, n & 0xff, (n >> 8) & 0xff, (n >> 16) & 0xff, (n >> 24) & 0xff]);
+}
+const dsha256 = d => sha256(sha256(d));
+function satsToBch(s) { return (s / 1e8).toFixed(8); }
+function bchToSats(b) { return Math.round(parseFloat(b) * 1e8); }
+const _toastStack = [];
+function showToast(msg, type = 'info') {
+  const el = document.createElement('div');
+  el.className = 'app-toast ' + type;
+  el.textContent = msg;
+  // Stack toasts upward
+  const offset = _toastStack.reduce((sum, t) => sum + t.offsetHeight + 8, 0);
+  el.style.bottom = (30 + offset) + 'px';
+  document.body.appendChild(el);
+  _toastStack.push(el);
+  setTimeout(() => {
+    el.remove();
+    const idx = _toastStack.indexOf(el);
+    if (idx >= 0) _toastStack.splice(idx, 1);
+    // Reposition remaining toasts
+    let y = 0;
+    for (const t of _toastStack) { t.style.bottom = (30 + y) + 'px'; y += t.offsetHeight + 8; }
+  }, 4000);
+}
+
+/* ══════════════════════════════════════════
+   BIP32 HD DERIVATION
+   ══════════════════════════════════════════ */
+const N_SECP = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141n;
+function _bip32Child(priv, chain, idx, hard) {
+  const ib = new Uint8Array([idx>>>24,(idx>>>16)&0xff,(idx>>>8)&0xff,idx&0xff]);
+  const data = hard ? concat(new Uint8Array([0]),priv,ib) : concat(secp256k1.getPublicKey(priv,true),ib);
+  const I = hmac(sha512, chain, data);
+  const child = ((BigInt('0x'+b2h(I.slice(0,32)))+BigInt('0x'+b2h(priv)))%N_SECP).toString(16).padStart(64,'0');
+  return { priv: h2b(child), chain: I.slice(32) };
+}
+
+/* ══════════════════════════════════════════
+   CASHADDR ENCODING
+   ══════════════════════════════════════════ */
+const _caCharset = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l';
+function _caPolymod(v) {
+  const G = [0x98f2bc8e61n, 0x79b76d99e2n, 0xf33e5fb3c4n, 0xae2eabe2a8n, 0x1e4f43e470n];
+  let c = 1n;
+  for (const d of v) {
+    const c0 = c >> 35n;
+    c = ((c & 0x07ffffffffn) << 5n) ^ BigInt(d);
+    if (c0 & 1n) c ^= G[0]; if (c0 & 2n) c ^= G[1];
+    if (c0 & 4n) c ^= G[2]; if (c0 & 8n) c ^= G[3]; if (c0 & 16n) c ^= G[4];
+  }
+  return c ^ 1n;
+}
+function _hashToCashAddr(hash20, versionByte) {
+  const payload = new Uint8Array([versionByte, ...hash20]);
+  const d5 = []; let acc = 0, bits = 0;
+  for (const b of payload) { acc = (acc<<8)|b; bits+=8; while(bits>=5){bits-=5;d5.push((acc>>bits)&31);} }
+  if (bits > 0) d5.push((acc<<(5-bits))&31);
+  const prefix = 'bitcoincash';
+  const pe = [...prefix.split('').map(c=>c.charCodeAt(0)&31), 0];
+  const mod = _caPolymod([...pe, ...d5, 0,0,0,0,0,0,0,0]);
+  const cs = []; for (let i=7;i>=0;i--) cs.push(Number((mod>>(BigInt(i)*5n))&31n));
+  return 'bitcoincash:' + [...d5,...cs].map(v=>_caCharset[v]).join('');
+}
+function pubHashToCashAddr(hash20) { return _hashToCashAddr(hash20, 0x00); }
+function scriptHashToCashAddr(hash20) { return _hashToCashAddr(hash20, 0x08); }
+
+function cashAddrToHash20(addr) {
+  const a = addr.replace(/^bitcoincash:/, '');
+  const data = [];
+  for (const c of a.toLowerCase()) { const v = _caCharset.indexOf(c); if (v === -1) throw new Error('bad char'); data.push(v); }
+  const payload = data.slice(0, -8);
+  const converted = []; let acc = 0, bits = 0;
+  for (const v of payload) { acc = (acc << 5) | v; bits += 5; while (bits >= 8) { bits -= 8; converted.push((acc >> bits) & 0xff); } }
+  return new Uint8Array(converted.slice(1, 21));
+}
+
+/* ══════════════════════════════════════════
+   BCH TX BUILDER
+   ══════════════════════════════════════════ */
+function p2pkhScript(hash20) {
+  return concat(new Uint8Array([0x76, 0xa9, 0x14]), hash20, new Uint8Array([0x88, 0xac]));
+}
+function bchSighash(version, locktime, inputs, outputs, i, utxoScript, utxoValue) {
+  const prevouts = concat(...inputs.map(x => concat(x.txidLE, u32LE(x.vout))));
+  const seqs     = concat(...inputs.map(x => u32LE(x.sequence)));
+  const outsData = concat(...outputs.map(o => concat(u64LE(o.value), writeVarint(o.script.length), o.script)));
+  const inp = inputs[i];
+  return dsha256(concat(
+    u32LE(version), dsha256(prevouts), dsha256(seqs),
+    inp.txidLE, u32LE(inp.vout),
+    writeVarint(utxoScript.length), utxoScript,
+    u64LE(utxoValue), u32LE(inp.sequence),
+    dsha256(outsData), u32LE(locktime),
+    u32LE(0x41)
+  ));
+}
+function serializeTx(version, locktime, inputs, outputs) {
+  return concat(
+    u32LE(version), writeVarint(inputs.length),
+    ...inputs.flatMap(inp => [inp.txidLE, u32LE(inp.vout), writeVarint(inp.scriptSig.length), inp.scriptSig, u32LE(inp.sequence)]),
+    writeVarint(outputs.length),
+    ...outputs.flatMap(o => [u64LE(o.value), writeVarint(o.script.length), o.script]),
+    u32LE(locktime)
+  );
+}
+function parseTxHex(hex) {
+  try {
+    const b = h2b(hex); let p = 0;
+    const rB = n => { const s = b.slice(p, p+n); p+=n; return s; };
+    const rLE = n => { let r = 0; for(let i=0;i<n;i++) r |= b[p+i] << (i*8); p+=n; return r >>> 0; };
+    const rVI = () => { const f = b[p++]; if(f<0xfd)return f; if(f===0xfd)return rLE(2); if(f===0xfe)return rLE(4); return rLE(8); };
+    const rLE8 = () => { let lo = rLE(4), hi = rLE(4); return hi * 0x100000000 + lo; };
+    rLE(4);
+    const inCount = rVI();
+    for (let i=0;i<inCount;i++) { rB(32); rLE(4); rB(rVI()); rLE(4); }
+    const outCount = rVI();
+    const outputs = [];
+    for (let i=0;i<outCount;i++) { const value = rLE8(); const script = b2h(rB(rVI())); outputs.push({ value, script }); }
+    return outputs;
+  } catch { return null; }
+}
+
+/* ══════════════════════════════════════════
+   HTLC PRIMITIVES (NEW — 0-DAY)
+   ══════════════════════════════════════════ */
+
+// Build HTLC redeemScript
+// OP_IF
+//   OP_SHA256 <hash32> OP_EQUALVERIFY
+//   <recipientPub33> OP_CHECKSIG
+// OP_ELSE
+//   <locktime> OP_CHECKLOCKTIMEVERIFY OP_DROP
+//   <senderPub33> OP_CHECKSIG
+// OP_ENDIF
+
+// Minimal CScriptNum encoding (BIP 62 / BCH MINIMALDATA consensus rule)
+function scriptNum(n) {
+  if (n === 0) return new Uint8Array(0);
+  const neg = n < 0;
+  let abs = Math.abs(n);
+  const bytes = [];
+  while (abs > 0) {
+    bytes.push(abs & 0xff);
+    abs = Math.floor(abs / 256);
+  }
+  if (bytes[bytes.length - 1] & 0x80) {
+    bytes.push(neg ? 0x80 : 0x00);
+  } else if (neg) {
+    bytes[bytes.length - 1] |= 0x80;
+  }
+  return new Uint8Array(bytes);
+}
+
+function htlcScript(paymentHash32, recipientPub33, senderPub33, locktime) {
+  const ltBytes = scriptNum(locktime);
+  return concat(
+    new Uint8Array([0x63]),                              // OP_IF
+    new Uint8Array([0xa8]),                              // OP_SHA256
+    new Uint8Array([0x20]), paymentHash32,               // PUSH 32 bytes
+    new Uint8Array([0x88]),                              // OP_EQUALVERIFY
+    new Uint8Array([0x21]), recipientPub33,              // PUSH 33 bytes
+    new Uint8Array([0xac]),                              // OP_CHECKSIG
+    new Uint8Array([0x67]),                              // OP_ELSE
+    new Uint8Array([ltBytes.length]), ltBytes,           // PUSH N bytes (locktime, minimal)
+    new Uint8Array([0xb1]),                              // OP_CHECKLOCKTIMEVERIFY
+    new Uint8Array([0x75]),                              // OP_DROP
+    new Uint8Array([0x21]), senderPub33,                 // PUSH 33 bytes
+    new Uint8Array([0xac]),                              // OP_CHECKSIG
+    new Uint8Array([0x68])                               // OP_ENDIF
+  );
+}
+
+// P2SH output script: OP_HASH160 <hash160(redeemScript)> OP_EQUAL
+function p2shScript(redeemScript) {
+  const hash = ripemd160(sha256(redeemScript));
+  return concat(new Uint8Array([0xa9, 0x14]), hash, new Uint8Array([0x87]));
+}
+
+// P2SH address from redeemScript
+function p2shAddress(redeemScript) {
+  const hash = ripemd160(sha256(redeemScript));
+  return scriptHashToCashAddr(Array.from(hash));
+}
+
+// Fulcrum scripthash for P2SH monitoring
+function p2shScriptHash(redeemScript) {
+  const outputScript = p2shScript(redeemScript);
+  return b2h(sha256(outputScript).reverse());
+}
+
+// Push data for scriptSig (handles >75 bytes)
+function serializeScriptPush(data) {
+  if (data.length <= 75) return concat(new Uint8Array([data.length]), data);
+  if (data.length <= 255) return concat(new Uint8Array([0x4c, data.length]), data);
+  return concat(new Uint8Array([0x4d, data.length & 0xff, (data.length >> 8) & 0xff]), data);
+}
+
+// Build HTLC funding transaction
+function buildHtlcFundTx(utxos, privKeys, redeemScript, amountSats, changeAddr, feeRate) {
+  const p2shOut = p2shScript(redeemScript);
+  // Select UTXOs
+  let total = 0; const selected = [];
+  const sorted = [...utxos].sort((a, b) => b.value - a.value);
+  const nOut = 2; // htlc + change
+  for (const u of sorted) {
+    selected.push(u);
+    total += u.value;
+    const fee = Math.ceil((10 + selected.length * 148 + nOut * 34) * feeRate);
+    if (total >= amountSats + fee) break;
+  }
+  const fee = Math.ceil((10 + selected.length * 148 + nOut * 34) * feeRate);
+  if (total < amountSats + fee) throw new Error('insufficient funds');
+  const change = total - amountSats - fee;
+  const outputs = [{ value: amountSats, script: p2shOut }];
+  if (change >= 546) outputs.push({ value: change, script: p2pkhScript(cashAddrToHash20(changeAddr)) });
+  const inputs = selected.map(u => ({
+    txidLE: h2b(u.txid).reverse(), vout: u.vout, value: u.value,
+    sequence: 0xffffffff, scriptSig: new Uint8Array(0)
+  }));
+  // Sign each input
+  for (let i = 0; i < inputs.length; i++) {
+    const priv = privKeys[i];
+    const pub = secp256k1.getPublicKey(priv, true);
+    const utxoScript = p2pkhScript(ripemd160(sha256(pub)));
+    const sighash = bchSighash(1, 0, inputs, outputs, i, utxoScript, inputs[i].value);
+    const sig = secp256k1.sign(sighash, priv, { lowS: true });
+    const derSig = concat(sig.toDERRawBytes(), new Uint8Array([0x41]));
+    inputs[i].scriptSig = concat(new Uint8Array([derSig.length]), derSig, new Uint8Array([pub.length]), pub);
+  }
+  return b2h(serializeTx(1, 0, inputs, outputs));
+}
+
+// Build claim TX (preimage path)
+function buildClaimTx(htlcTxid, htlcVout, htlcValue, redeemScript, preimage, recipPriv, outputAddr, feeRate) {
+  const recipPub = secp256k1.getPublicKey(recipPriv, true);
+  const fee = Math.ceil((10 + 1 * P2SH_INPUT_VBYTES + 1 * 34) * feeRate);
+  const outputValue = htlcValue - fee;
+  if (outputValue < 546) throw new Error('htlc value too small for claim');
+  const inputs = [{
+    txidLE: h2b(htlcTxid).reverse(), vout: htlcVout, value: htlcValue,
+    sequence: 0xffffffff, scriptSig: new Uint8Array(0)
+  }];
+  const outputs = [{ value: outputValue, script: p2pkhScript(cashAddrToHash20(outputAddr)) }];
+  // Sighash uses redeemScript as utxoScript for P2SH
+  const sighash = bchSighash(1, 0, inputs, outputs, 0, redeemScript, htlcValue);
+  const sig = secp256k1.sign(sighash, recipPriv, { lowS: true });
+  const derSig = concat(sig.toDERRawBytes(), new Uint8Array([0x41]));
+  // scriptSig: <sig> <preimage> OP_TRUE <redeemScript>
+  inputs[0].scriptSig = concat(
+    new Uint8Array([derSig.length]), derSig,
+    new Uint8Array([preimage.length]), preimage,
+    new Uint8Array([0x51]),  // OP_1 = TRUE (MINIMALDATA compliant)
+    serializeScriptPush(redeemScript)
+  );
+  return b2h(serializeTx(1, 0, inputs, outputs));
+}
+
+// Build refund TX (timeout path)
+function buildRefundTx(htlcTxid, htlcVout, htlcValue, redeemScript, locktime, senderPriv, outputAddr, feeRate) {
+  const senderPub = secp256k1.getPublicKey(senderPriv, true);
+  const fee = Math.ceil((10 + 1 * P2SH_INPUT_VBYTES + 1 * 34) * feeRate);
+  const outputValue = htlcValue - fee;
+  if (outputValue < 546) throw new Error('htlc value too small for refund');
+  const inputs = [{
+    txidLE: h2b(htlcTxid).reverse(), vout: htlcVout, value: htlcValue,
+    sequence: 0xfffffffe, // MUST be < 0xffffffff for CLTV
+    scriptSig: new Uint8Array(0)
+  }];
+  const outputs = [{ value: outputValue, script: p2pkhScript(cashAddrToHash20(outputAddr)) }];
+  const sighash = bchSighash(1, locktime, inputs, outputs, 0, redeemScript, htlcValue);
+  const sig = secp256k1.sign(sighash, senderPriv, { lowS: true });
+  const derSig = concat(sig.toDERRawBytes(), new Uint8Array([0x41]));
+  // scriptSig: <sig> OP_FALSE <redeemScript>
+  inputs[0].scriptSig = concat(
+    new Uint8Array([derSig.length]), derSig,
+    new Uint8Array([0x00]),  // OP_FALSE (empty push = false for OP_IF)
+    serializeScriptPush(redeemScript)
+  );
+  return b2h(serializeTx(1, locktime, inputs, outputs));
+}
+
+/* ══════════════════════════════════════════
+   HASH DECORRELATION
+   ══════════════════════════════════════════ */
+function deriveHopPreimage(masterSecret, hopIndex) {
+  return sha256(concat(masterSecret, utf8('hop-' + hopIndex)));
+}
+function deriveHopHash(masterSecret, hopIndex) {
+  return sha256(deriveHopPreimage(masterSecret, hopIndex));
+}
+
+/* ══════════════════════════════════════════
+   STEALTH ADDRESSES
+   ══════════════════════════════════════════ */
+function stealthDerive(senderPriv, senderPub, recipScanPub, recipSpendPub, tweakData) {
+  const sharedPoint = senderPriv
+    ? secp256k1.getSharedSecret(senderPriv, recipScanPub)
+    : secp256k1.getSharedSecret(_sessionPriv, senderPub); // scan priv = session priv
+  const sharedX = sharedPoint.slice(1, 33);
+  const c = sha256(concat(sha256(sharedX), tweakData));
+  const cBig = BigInt('0x' + b2h(c)) % N_SECP;
+  const spendPoint = secp256k1.ProjectivePoint.fromHex(recipSpendPub);
+  const tweakPoint = secp256k1.ProjectivePoint.BASE.multiply(cBig);
+  const stealthPoint = spendPoint.add(tweakPoint);
+  const stealthPub = stealthPoint.toRawBytes(true);
+  return { pub: stealthPub, cBig };
+}
+function stealthSpendingKey(spendPriv, cBig) {
+  const bBig = BigInt('0x' + b2h(spendPriv));
+  return h2b(((bBig + cBig) % N_SECP).toString(16).padStart(64, '0'));
+}
+
+/* ══════════════════════════════════════════
+   ONION ENCRYPTION (secp256k1 ECDH + AES-256-GCM)
+   ══════════════════════════════════════════ */
+async function onionLayer(data, peelerPubHex) {
+  const eph = rand(32);
+  const ephPub = secp256k1.getPublicKey(eph, true);
+  const shared = secp256k1.getSharedSecret(eph, h2b('02' + peelerPubHex)).slice(1, 33);
+  const aesKey = sha256(shared);
+  const iv = rand(12);
+  const key = await crypto.subtle.importKey('raw', aesKey, { name: 'AES-GCM' }, false, ['encrypt']);
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv, tagLength: 128 }, key, data));
+  return concat(ephPub, iv, ct);
+}
+
+async function onionPeel(blob, myPriv) {
+  const ephPub = blob.slice(0, 33);
+  const iv = blob.slice(33, 45);
+  const ct = blob.slice(45);
+  const shared = secp256k1.getSharedSecret(myPriv, ephPub).slice(1, 33);
+  const aesKey = sha256(shared);
+  const key = await crypto.subtle.importKey('raw', aesKey, { name: 'AES-GCM' }, false, ['decrypt']);
+  return new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv, tagLength: 128 }, key, ct));
+}
+
+// Fixed-size padding for onion payloads
+const ONION_PAYLOAD_SIZE = 512;
+function padPayload(jsonStr) {
+  const raw = utf8(jsonStr);
+  const padded = new Uint8Array(ONION_PAYLOAD_SIZE);
+  padded.set(raw);
+  padded[raw.length] = 0x01; // delimiter
+  return padded;
+}
+function unpadPayload(data) {
+  const idx = data.indexOf(0x01);
+  return new TextDecoder().decode(data.slice(0, idx > 0 ? idx : data.length));
+}
+
+// Build multi-layer onion packet (innermost first)
+async function buildOnionPacket(hops, masterSecret) {
+  // hops = [{pub (x-only hex), amt, fee, cltv}, ...]
+  // Last hop = final recipient
+  const last = hops.length - 1;
+  // Build innermost layer (final recipient gets preimage)
+  const finalPayload = {
+    amt: hops[last].amt,
+    fee: 0,
+    cltv: hops[last].cltv,
+    hash: b2h(deriveHopHash(masterSecret, last)),
+    preimage: b2h(deriveHopPreimage(masterSecret, last)),
+    next: 'final'
+  };
+  if (hops[last].stealth_spend) finalPayload.stealth_spend = hops[last].stealth_spend;
+  if (hops[last].stealth_eph) finalPayload.stealth_eph = hops[last].stealth_eph;
+  if (hops[last].sender_pub) finalPayload.sender_pub = hops[last].sender_pub;
+  let data = padPayload(JSON.stringify(finalPayload));
+  data = await onionLayer(data, hops[last].pub);
+  // Wrap remaining layers outward
+  for (let i = last - 1; i >= 0; i--) {
+    const layerObj = {
+      amt: hops[i].amt,
+      fee: hops[i].fee,
+      cltv: hops[i].cltv,
+      hash: b2h(deriveHopHash(masterSecret, i)),
+      preimage: b2h(deriveHopPreimage(masterSecret, i)),
+      next: hops[i + 1].pub,
+      next_hash: b2h(deriveHopHash(masterSecret, i + 1))
+    };
+    if (hops[i].sender_pub) layerObj.sender_pub = hops[i].sender_pub;
+    if (hops[i].htlc_recipient_pub) layerObj.htlc_recipient_pub = hops[i].htlc_recipient_pub;
+    const layerPayload = padPayload(JSON.stringify(layerObj));
+    // Prepend layer payload + inner blob
+    const combined = concat(layerPayload, data);
+    data = await onionLayer(combined, hops[i].pub);
+  }
+  return data;
+}
+
+// Peel one layer and extract hop payload + remaining blob
+async function peelOnionLayer(blob, myPriv) {
+  const inner = await onionPeel(blob, myPriv);
+  // First ONION_PAYLOAD_SIZE bytes = this hop's payload
+  const payloadBytes = inner.slice(0, ONION_PAYLOAD_SIZE);
+  const remainingBlob = inner.slice(ONION_PAYLOAD_SIZE);
+  const payloadStr = unpadPayload(payloadBytes);
+  return { payload: JSON.parse(payloadStr), blob: remainingBlob };
+}
+
+/* ══════════════════════════════════════════
+   NIP-01 NOSTR EVENT SIGNING
+   ══════════════════════════════════════════ */
+async function makeEvent(privBytes, kind, content, tags = []) {
+  const pub = b2h(secp256k1.getPublicKey(privBytes, true).slice(1));
+  const created_at = Math.floor(Date.now() / 1000);
+  const idHash = sha256(utf8(JSON.stringify([0, pub, created_at, kind, tags, content])));
+  const sig = b2h(await schnorr.sign(idHash, privBytes));
+  return { id: b2h(idHash), pubkey: pub, created_at, kind, tags, content, sig };
+}
+
+/* ══════════════════════════════════════════
+   NIP-04 ENCRYPTION
+   ══════════════════════════════════════════ */
+async function nip04Encrypt(myPriv, theirPubHex, msg) {
+  const shared = secp256k1.getSharedSecret(myPriv, h2b('02' + theirPubHex)).slice(1, 33);
+  const iv = rand(16);
+  const key = await crypto.subtle.importKey('raw', shared, { name: 'AES-CBC' }, false, ['encrypt']);
+  const ct = await crypto.subtle.encrypt({ name: 'AES-CBC', iv }, key, utf8(msg));
+  return btoa(String.fromCharCode(...new Uint8Array(ct))) + '?iv=' + btoa(String.fromCharCode(...iv));
+}
+
+async function nip04Decrypt(myPriv, senderPubHex, encContent) {
+  try {
+    const [ctB64, ivB64] = encContent.split('?iv=');
+    const ct = Uint8Array.from(atob(ctB64), c => c.charCodeAt(0));
+    const iv = Uint8Array.from(atob(ivB64), c => c.charCodeAt(0));
+    const shared = secp256k1.getSharedSecret(myPriv, h2b('02' + senderPubHex)).slice(1, 33);
+    const key = await crypto.subtle.importKey('raw', shared, { name: 'AES-CBC' }, false, ['decrypt']);
+    const pt = await crypto.subtle.decrypt({ name: 'AES-CBC', iv }, key, ct);
+    return new TextDecoder().decode(pt);
+  } catch { return null; }
+}
+
+/* ══════════════════════════════════════════
+   CLOCK
+   ══════════════════════════════════════════ */
+function updateClock() {
+  const d = new Date();
+  $('#clock').textContent = d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0');
+}
+setInterval(updateClock, 10000);
+updateClock();
+
+/* ══════════════════════════════════════════
+   TABS
+   ══════════════════════════════════════════ */
+$$('.tab').forEach(t => t.onclick = () => {
+  $$('.tab').forEach(x => x.classList.remove('active'));
+  $$('.tab-pane').forEach(x => x.classList.remove('active'));
+  t.classList.add('active');
+  $(`#tab-${t.dataset.tab}`).classList.add('active');
+});
+
+/* ══════════════════════════════════════════
+   AES VAULT
+   ══════════════════════════════════════════ */
+async function deriveAesKey(password, salt) {
+  const km = await crypto.subtle.importKey('raw', utf8(password), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 200000, hash: 'SHA-256' }, km, { name: 'AES-GCM', length: 256 }, false, ['encrypt','decrypt']);
+}
+async function decryptVault(enc, password) {
+  const { salt, iv, data } = JSON.parse(enc);
+  const key = await deriveAesKey(password, h2b(salt));
+  const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: h2b(iv) }, key, h2b(data));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+
+/* ══════════════════════════════════════════
+   AUTH
+   ══════════════════════════════════════════ */
+window.tryUnlock = async function(autoPass) {
+  const pass = autoPass || $('#auth-pass').value;
+  if (!pass) return;
+  const vault = localStorage.getItem('00wallet_vault');
+  if (!vault) { $('#auth-err').textContent = 'NO WALLET — create one in 00 Wallet first'; return; }
+  try {
+    _profile = await decryptVault(vault, pass);
+    localStorage.setItem('00_session_auth', JSON.stringify({ p: btoa(pass), ts: Date.now() }));
+    const privHex = _profile.bchPrivHex || _profile.bch_priv_hex;
+    _privKey = privHex ? h2b(privHex) : null;
+    const pub33 = secp256k1.getPublicKey(_privKey, true);
+    _bchAddr = pubHashToCashAddr(Array.from(ripemd160(sha256(pub33))));
+    if (_profile.acctPrivHex && _profile.acctChainHex) {
+      _acctPriv = h2b(_profile.acctPrivHex);
+      _acctChain = h2b(_profile.acctChainHex);
+      // Scan HD addresses (like wallet.html)
+      _hdAddresses = [{ priv: _privKey, pub: pub33, addr: _bchAddr, path: '0/0' }];
+      for (const changeIdx of [0, 1]) {
+        const chainNode = _bip32Child(_acctPriv, _acctChain, changeIdx, false);
+        for (let i = 0; i < 20; i++) {
+          if (changeIdx === 0 && i === 0) continue; // skip main (already added)
+          const child = _bip32Child(chainNode.priv, chainNode.chain, i, false);
+          const cpub = secp256k1.getPublicKey(child.priv, true);
+          const addr = pubHashToCashAddr(Array.from(ripemd160(sha256(cpub))));
+          _hdAddresses.push({ priv: child.priv, pub: cpub, addr, path: changeIdx + '/' + i });
+        }
+      }
+      console.log('[ONION] HD addresses scanned:', _hdAddresses.length);
+    }
+    // Derive deterministic session key from seed: m/44'/145'/0'/2/0
+    const sessionChain = _bip32Child(_acctPriv, _acctChain, 2, false); // chain 2 = session/identity
+    const sessionNode = _bip32Child(sessionChain.priv, sessionChain.chain, 0, false); // index 0
+    _sessionPriv = sessionNode.priv;
+    // Ensure even parity (02 prefix) so h2b('02'+xonly) always matches
+    if (secp256k1.getPublicKey(_sessionPriv, true)[0] === 0x03) {
+      const N = BigInt('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141');
+      _sessionPriv = h2b((N - BigInt('0x' + b2h(_sessionPriv))).toString(16).padStart(64, '0'));
+    }
+    _sessionPub = b2h(secp256k1.getPublicKey(_sessionPriv, true).slice(1));
+    console.log('[ONION] session pub (deterministic):', _sessionPub.slice(0, 16) + '...');
+
+    // Derive stealth spend key: m/44'/145'/0'/2/1
+    const spendNode = _bip32Child(sessionChain.priv, sessionChain.chain, 1, false);
+    _stealthSpendPriv = spendNode.priv;
+    if (secp256k1.getPublicKey(_stealthSpendPriv, true)[0] === 0x03) {
+      _stealthSpendPriv = h2b((N_SECP - BigInt('0x' + b2h(_stealthSpendPriv))).toString(16).padStart(64, '0'));
+    }
+    _stealthSpendPub = b2h(secp256k1.getPublicKey(_stealthSpendPriv, true).slice(1));
+    _stealthCode = 'stealth:' + _sessionPub + _stealthSpendPub;
+    console.log('[ONION] stealth code:', _stealthCode.slice(0, 30) + '...');
+
+    // Update UI
+    const spDiv = $('#my-session-pub');
+    spDiv.textContent = _sessionPub;
+    spDiv.dataset.pub = _sessionPub;
+    const scDiv = $('#my-stealth-code');
+    scDiv.textContent = _stealthCode;
+    scDiv.dataset.code = _stealthCode;
+
+    $('#auth-view').style.display = 'none';
+    $('#main-view').style.display = 'flex';
+    boot();
+    updateConfigInfo();
+  } catch (e) {
+    $('#auth-err').textContent = 'WRONG PASSWORD';
+  }
+};
+$('#auth-pass').addEventListener('keydown', e => { if (e.key === 'Enter') tryUnlock(); });
+
+/* ══════════════════════════════════════════
+   FULCRUM WEBSOCKET — SharedWorker or fallback
+   ══════════════════════════════════════════ */
+let fulcrumConnect, fulcrumCall;
+
+if (window._wsSharedWorkerAvailable) {
+  fulcrumCall = (method, params) => window.fulcrumCall(method, params);
+  let _statusWired = false;
+  fulcrumConnect = () => {
+    if (_statusWired) return;
+    _statusWired = true;
+    window._wsOnStatus('bch', (connected, server) => {
+      _fulcrumConnected = connected;
+      var fd=$('#fulcrum-dot'),fl=$('#fulcrum-label');
+      if (connected) {
+        const host = new URL(server).hostname;
+        if(fd) fd.classList.add('on');
+        if(fl) fl.textContent = 'FULCRUM: ' + host;
+        refreshBalance();
+        if ($('#cfg-fulcrum-info')) updateConfigInfo();
+      } else {
+        if(fd) fd.classList.remove('on');
+        if(fl) fl.textContent = 'FULCRUM: reconnecting…';
+      }
+    });
+  };
+} else {
+  fulcrumConnect = () => {
+    const url = _FV[Math.floor(Math.random() * _FV.length)];
+    var fl=$('#fulcrum-label'); if(fl) fl.textContent = 'FULCRUM: connecting...';
+    _fulcrumWs = new WebSocket(url);
+    _fulcrumWs.onopen = () => {
+      _fulcrumConnected = true;
+      var fd=$('#fulcrum-dot'),fl2=$('#fulcrum-label');
+      if(fd) fd.classList.add('on');
+      if(fl2) fl2.textContent = 'FULCRUM: ' + new URL(url).hostname;
+      refreshBalance();
+      if ($('#cfg-fulcrum-info')) updateConfigInfo();
+    };
+    _fulcrumWs.onmessage = e => {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.id && _fulcrumCallbacks[msg.id]) {
+          _fulcrumCallbacks[msg.id](msg.result, msg.error);
+          delete _fulcrumCallbacks[msg.id];
+        }
+      } catch {}
+    };
+    _fulcrumWs.onclose = () => {
+      _fulcrumConnected = false;
+      var fd=$('#fulcrum-dot'),fl=$('#fulcrum-label');
+      if(fd) fd.classList.remove('on');
+      if(fl) fl.textContent = 'FULCRUM: disconnected';
+      setTimeout(fulcrumConnect, 3000);
+    };
+    _fulcrumWs.onerror = () => _fulcrumWs.close();
+  };
+
+  fulcrumCall = (method, params) => {
+    return new Promise((resolve, reject) => {
+      const id = _fulcrumReqId++;
+      _fulcrumCallbacks[id] = (result, err) => err ? reject(err) : resolve(result);
+      _fulcrumWs.send(JSON.stringify({ jsonrpc: '2.0', id, method, params }));
+    });
+  };
+}
+
+function addrScriptHash(addr) {
+  const h = cashAddrToHash20(addr);
+  const script = new Uint8Array([0x76, 0xa9, 0x14, ...h, 0x88, 0xac]);
+  return b2h(sha256(script).reverse());
+}
+
+async function refreshBalance() {
+  if (!_fulcrumConnected || !_bchAddr) return;
+  try {
+    _utxos = [];
+    if (_hdAddresses.length > 0) {
+      // Scan all HD addresses
+      for (const a of _hdAddresses) {
+        const sh = addrScriptHash(a.addr);
+        const utxos = await fulcrumCall('blockchain.scripthash.listunspent', [sh]);
+        for (const u of (utxos || [])) {
+          _utxos.push({ txid: u.tx_hash, vout: u.tx_pos, value: u.value, _priv: a.priv, _addr: a.addr });
+        }
+      }
+    } else {
+      const sh = addrScriptHash(_bchAddr);
+      const utxos = await fulcrumCall('blockchain.scripthash.listunspent', [sh]);
+      _utxos = (utxos || []).map(u => ({ txid: u.tx_hash, vout: u.tx_pos, value: u.value }));
+    }
+    _balanceSats = _utxos.reduce((s, u) => s + u.value, 0);
+    $('#my-balance').textContent = satsToBch(_balanceSats);
+  } catch (e) { console.error('[ONION] balance error:', e); }
+}
+
+async function bcBroadcast(hexTx) {
+  return await fulcrumCall('blockchain.transaction.broadcast', [hexTx]);
+}
+
+/* ══════════════════════════════════════════
+   NOSTR WEBSOCKET
+   ══════════════════════════════════════════ */
+function nostrConnect() {
+  var nl=$('#nostr-label'); if(nl) nl.textContent = 'NOSTR: connecting...';
+  _nostrSockets = [];
+  for (const url of _RELAYS) _connectRelay(url);
+}
+
+function _connectRelay(url) {
+  const entry = { url, ws: null, connected: false };
+  _nostrSockets.push(entry);
+  const ws = new WebSocket(url);
+  entry.ws = ws;
+  ws.onopen = () => {
+    entry.connected = true;
+    _nostrConnected = true;
+    const names = _nostrSockets.filter(s => s.connected).map(s => new URL(s.url).hostname);
+    var nd=$('#nostr-dot'),nl=$('#nostr-label');
+    if(nd) nd.classList.add('on');
+    if(nl) nl.textContent = 'NOSTR: ' + names.join(', ');
+    _subscribeRelay(ws);
+  };
+  ws.onmessage = e => {
+    try {
+      const msg = JSON.parse(e.data);
+      if (msg[0] === 'EVENT' && msg[2]) {
+        const evId = msg[2].id;
+        if (_seenEvents.has(evId)) return;
+        _seenEvents.add(evId);
+        if (_seenEvents.size > 5000) { const arr = [..._seenEvents]; _seenEvents = new Set(arr.slice(-2500)); }
+        handleNostrEvent(msg[2]);
+      }
+    } catch {}
+  };
+  ws.onclose = () => {
+    entry.connected = false;
+    const anyOn = _nostrSockets.some(s => s.connected);
+    _nostrConnected = anyOn;
+    if (!anyOn) { var nd=$('#nostr-dot'),nl=$('#nostr-label'); if(nd) nd.classList.remove('on'); if(nl) nl.textContent = 'NOSTR: disconnected'; }
+    setTimeout(() => _connectRelay(url), 5000);
+  };
+  ws.onerror = () => ws.close();
+}
+
+function _subscribeRelay(ws) {
+  const now = Math.floor(Date.now() / 1000);
+  // Discover relay announcements
+  ws.send(JSON.stringify(['REQ', 'onion-relays', { kinds: [NOSTR_KIND_RELAY_ANN], '#t': ['0penw0rld-onion'], since: now - 3600 }]));
+  // Incoming onion blobs
+  if (_sessionPub) {
+    ws.send(JSON.stringify(['REQ', 'onion-blobs', { kinds: [NOSTR_KIND_ONION_BLOB], '#p': [_sessionPub], since: now - 600 }]));
+  }
+  // Settlement notifications
+  if (_sessionPub) {
+    ws.send(JSON.stringify(['REQ', 'onion-settle', { kinds: [NOSTR_KIND_SETTLE], '#p': [_sessionPub], since: now - 3600 }]));
+  }
+}
+
+function nostrPublish(event) {
+  const msg = JSON.stringify(['EVENT', event]);
+  for (const s of _nostrSockets) { if (s.connected) try { s.ws.send(msg); } catch {} }
+}
+
+async function handleNostrEvent(ev) {
+  if (ev.kind === NOSTR_KIND_RELAY_ANN) {
+    try {
+      const info = JSON.parse(ev.content);
+      const existing = _knownRelays.findIndex(r => r.pub === ev.pubkey);
+      const relay = { pub: ev.pubkey, fee: info.fee || 500, max_htlc: info.max_htlc || 5000000, cltv_delta: info.cltv_delta || 6, ts: ev.created_at };
+      if (existing >= 0) _knownRelays[existing] = relay;
+      else _knownRelays.push(relay);
+      renderRelayList();
+    } catch {}
+  }
+  if (ev.kind === NOSTR_KIND_ONION_BLOB) {
+    try {
+      const plain = await nip04Decrypt(_sessionPriv, ev.pubkey, ev.content);
+      if (!plain) return;
+      const data = JSON.parse(plain);
+      if (data.type === 'onion') {
+        console.log('[ONION] received onion blob from', ev.pubkey.slice(0, 8));
+        await handleIncomingOnion(data, ev.pubkey);
+      }
+    } catch (e) { console.error('[ONION] blob error:', e); }
+  }
+  if (ev.kind === NOSTR_KIND_SETTLE) {
+    try {
+      const plain = await nip04Decrypt(_sessionPriv, ev.pubkey, ev.content);
+      if (!plain) return;
+      const data = JSON.parse(plain);
+      if (data.type === 'settle') {
+        console.log('[ONION] settlement:', data.htlc_txid?.slice(0, 8));
+        handleSettlement(data);
+      }
+    } catch {}
+  }
+}
+
+/* ══════════════════════════════════════════
+   RELAY DISCOVERY UI
+   ══════════════════════════════════════════ */
+function pruneStaleRelays() {
+  const cutoff = Math.floor(Date.now() / 1000) - RELAY_TTL;
+  const before = _knownRelays.length;
+  _knownRelays = _knownRelays.filter(r => r.ts >= cutoff);
+  if (_knownRelays.length < before) {
+    renderRelayList();
+    console.log('[RELAY] pruned', before - _knownRelays.length, 'stale relays');
+  }
+}
+
+function renderRelayList() {
+  const el = $('#relay-list');
+  const now = Math.floor(Date.now() / 1000);
+  const alive = _knownRelays.filter(r => (now - r.ts) < RELAY_TTL).length;
+  if (_knownRelays.length === 0) {
+    el.innerHTML = '<div class="empty-state" style="padding:16px">NO RELAYS FOUND</div>';
+    return;
+  }
+  el.innerHTML = _knownRelays.map(r => {
+    const age = now - r.ts;
+    const fresh = age < 120;
+    const ok = age < RELAY_TTL;
+    const dot = fresh ? '\u{1F7E2}' : ok ? '\u{1F7E1}' : '\u{1F534}';
+    const ago = age < 60 ? '<1m' : Math.floor(age / 60) + 'm';
+    return `<div class="relay-item" style="${!ok ? 'opacity:.4' : ''}">
+      <div class="relay-icon">${dot}</div>
+      <div class="relay-info">
+        <div class="relay-pub">${r.pub.slice(0, 12)}...</div>
+        <div class="relay-detail">MAX: ${satsToBch(r.max_htlc)} BCH · CLTV: ${r.cltv_delta} · ${ago}</div>
+      </div>
+      <div class="relay-fee">${r.fee} sat</div>
+    </div>`;
+  }).join('');
+}
+
+/* ══════════════════════════════════════════
+   RELAY MODE
+   ══════════════════════════════════════════ */
+window.toggleRelay = async function() {
+  _relayMode = !_relayMode;
+  const toggle = $('#relay-toggle');
+  toggle.classList.toggle('on', _relayMode);
+  if (_relayMode) {
+    await announceRelay();
+    _relayAnnInterval = setInterval(announceRelay, 60000);
+    $('#relay-status').textContent = 'ONLINE — ANNOUNCING';
+    $('#relay-status').style.color = 'var(--green)';
+    renderRelayForwards();
+  } else {
+    clearInterval(_relayAnnInterval);
+    // Remove self from known relays
+    _knownRelays = _knownRelays.filter(r => r.pub !== _sessionPub);
+    renderRelayList();
+    $('#relay-status').textContent = 'OFFLINE';
+    $('#relay-status').style.color = 'rgba(0,255,65,.4)';
+  }
+};
+
+async function announceRelay() {
+  const info = {
+    fee: parseInt($('#relay-fee').value) || 500,
+    max_htlc: parseInt($('#relay-max').value) || 5000000,
+    cltv_delta: parseInt($('#relay-cltv').value) || 6,
+  };
+  const ev = await makeEvent(_sessionPriv, NOSTR_KIND_RELAY_ANN, JSON.stringify(info), [['t', '0penw0rld-onion']]);
+  nostrPublish(ev);
+  console.log('[ONION] relay announced');
+}
+
+/* ══════════════════════════════════════════
+   CONFIG — DEV MODE / NETWORK / RELAYS
+   ══════════════════════════════════════════ */
+window.toggleDevMode = function() {
+  _devMode = !_devMode;
+  localStorage.setItem('00_dev_mode', _devMode ? '1' : '0');
+  $('#devmode-toggle').classList.toggle('on', _devMode);
+  applyDevMode();
+};
+
+function applyDevMode() {
+  const testBtn = $('#tab-test-btn');
+  if (_devMode) {
+    testBtn.style.display = '';
+  } else {
+    testBtn.style.display = 'none';
+    // If TEST tab active, switch to SEND
+    if (testBtn.classList.contains('active')) {
+      testBtn.classList.remove('active');
+      $('#tab-test').classList.remove('active');
+      $$('.tab')[0].classList.add('active');     // SEND tab
+      $('#tab-send').classList.add('active');
+    }
+  }
+}
+
+window.switchNetwork = function() {
+  const sel = $('#cfg-network').value;
+  $('#cfg-custom-url-wrap').style.display = sel === 'custom' ? '' : 'none';
+};
+
+window.applyNetwork = function() {
+  const sel = $('#cfg-network').value;
+  if (sel === 'mainnet') {
+    _FV = [...FULCRUM_MAINNET];
+  } else if (sel === 'chipnet') {
+    _FV = [...FULCRUM_CHIPNET];
+  } else {
+    const url = $('#cfg-custom-url').value.trim();
+    if (!url) { $('#cfg-net-status').textContent = '✗ Enter a URL'; return; }
+    _FV = [url];
+  }
+  localStorage.setItem('00_ep_fulcrum', JSON.stringify(_FV));
+  localStorage.setItem('00_network', sel);
+  if (sel === 'custom') localStorage.setItem('00_custom_fulcrum', $('#cfg-custom-url').value.trim());
+  // Disconnect & reconnect
+  if (window._wsSharedWorkerAvailable) {
+    window._wsUpdateServers('bch', _FV);
+  } else {
+    if (_fulcrumWs) { _fulcrumWs.onclose = null; _fulcrumWs.close(); }
+    _fulcrumConnected = false;
+    fulcrumConnect();
+  }
+  $('#cfg-net-status').textContent = 'reconnecting to ' + sel.toUpperCase() + '...';
+  updateConfigInfo();
+};
+
+window.applyRelays = function() {
+  const text = $('#cfg-relays').value.trim();
+  const urls = text.split('\n').map(u => u.trim()).filter(u => u.startsWith('wss://'));
+  if (urls.length === 0) return;
+  _RELAYS = urls;
+  localStorage.setItem('00_ep_relays', JSON.stringify(_RELAYS));
+  // Close all existing Nostr sockets (null onclose to prevent race)
+  for (const entry of _nostrSockets) {
+    if (entry.ws) { entry.ws.onclose = null; entry.ws.close(); }
+  }
+  _nostrSockets = [];
+  _nostrConnected = false;
+  nostrConnect();
+};
+
+function initConfig() {
+  // Restore dev mode
+  if (_devMode) $('#devmode-toggle').classList.add('on');
+  applyDevMode();
+  // Restore network selection
+  const savedNet = localStorage.getItem('00_network') || 'mainnet';
+  $('#cfg-network').value = savedNet;
+  if (savedNet === 'custom') {
+    $('#cfg-custom-url-wrap').style.display = '';
+    $('#cfg-custom-url').value = localStorage.getItem('00_custom_fulcrum') || '';
+  }
+  // Populate Nostr relay textarea
+  $('#cfg-relays').value = _RELAYS.join('\n');
+  updateConfigInfo();
+}
+
+function updateConfigInfo() {
+  const net = localStorage.getItem('00_network') || 'mainnet';
+  const spEl = $('#cfg-session-pub');
+  spEl.textContent = _sessionPub ? _sessionPub.slice(0, 20) + '...' : '—';
+  spEl.title = _sessionPub || '';
+  spEl.style.cursor = 'pointer';
+  spEl.onclick = () => { if (_sessionPub) { navigator.clipboard.writeText(_sessionPub); spEl.textContent = 'COPIED!'; setTimeout(() => { spEl.textContent = _sessionPub.slice(0, 20) + '...'; }, 1000); } };
+  $('#cfg-bch-addr').textContent = _bchAddr ? _bchAddr.replace('bitcoincash:', '').slice(0, 16) + '...' : '—';
+  $('#cfg-network-info').textContent = net.toUpperCase() + ' (' + _FV.length + ' endpoint' + (_FV.length > 1 ? 's' : '') + ')';
+  $('#cfg-fulcrum-info').textContent = _fulcrumConnected ? 'CONNECTED' : 'DISCONNECTED';
+  $('#cfg-nostr-info').textContent = _nostrConnected ? _nostrSockets.filter(s => s.connected).length + ' relay(s) connected' : 'DISCONNECTED';
+}
+
+/* ══════════════════════════════════════════
+   TX OUTPUT PARSER
+   ══════════════════════════════════════════ */
+function parseTxOutputs(txHex) {
+  const raw = h2b(txHex);
+  let o = 4; // skip version
+  // Read varint for input count
+  let nIn = raw[o++];
+  if (nIn === 0xfd) { nIn = raw[o] | (raw[o+1] << 8); o += 2; }
+  for (let i = 0; i < nIn; i++) {
+    o += 32 + 4; // txid + vout
+    let sLen = raw[o++];
+    if (sLen === 0xfd) { sLen = raw[o] | (raw[o+1] << 8); o += 2; }
+    o += sLen + 4; // script + sequence
+  }
+  let nOut = raw[o++];
+  if (nOut === 0xfd) { nOut = raw[o] | (raw[o+1] << 8); o += 2; }
+  const outputs = [];
+  for (let i = 0; i < nOut; i++) {
+    const lo = raw[o] | (raw[o+1] << 8) | (raw[o+2] << 16) | (raw[o+3] << 24);
+    const hi = raw[o+4] | (raw[o+5] << 8) | (raw[o+6] << 16) | (raw[o+7] << 24);
+    const value = (lo >>> 0) + (hi >>> 0) * 0x100000000;
+    o += 8;
+    let sLen2 = raw[o++];
+    if (sLen2 === 0xfd) { sLen2 = raw[o] | (raw[o+1] << 8); o += 2; }
+    const script = raw.slice(o, o + sLen2);
+    o += sLen2;
+    outputs.push({ value, script: b2h(script) });
+  }
+  return outputs;
+}
+
+/* ══════════════════════════════════════════
+   INCOMING ONION HANDLER (relay logic)
+   ══════════════════════════════════════════ */
+async function handleIncomingOnion(data, senderPub) {
+  const tag = '[RELAY]';
+  console.log(tag, 'incoming onion from:', senderPub.slice(0, 12), 'htlc:', data.htlc_txid);
+
+  // 1. Peel onion layer (works for both relay and final recipient)
+  let peeled;
+  try {
+    peeled = await peelOnionLayer(h2b(data.blob), _sessionPriv);
+  } catch (e) {
+    console.error(tag, 'peel failed:', e);
+    return;
+  }
+  const { payload, blob } = peeled;
+  console.log(tag, 'peeled:', JSON.stringify({
+    amt: payload.amt, fee: payload.fee, cltv: payload.cltv,
+    next: payload.next?.slice(0, 12), hash: payload.hash?.slice(0, 16)
+  }));
+
+  // 2. Final recipient?
+  if (payload.next === 'final') {
+    await handleFinalRecipient(data, senderPub, payload);
+    return;
+  }
+
+  // 2b. Next hop is ourselves? Peel remaining blob for final delivery
+  if (payload.next === _sessionPub && blob) {
+    console.log(tag, 'next hop is self — peeling inner layer');
+    try {
+      const inner = await peelOnionLayer(blob, _sessionPriv);
+      if (inner && inner.payload && inner.payload.next === 'final') {
+        await handleFinalRecipient(data, senderPub, inner.payload);
+        return;
+      }
+    } catch (e) {
+      console.error(tag, 'failed to peel inner layer:', e.message);
+    }
+  }
+
+  // 3. Relay mode must be active for forwarding
+  if (!_relayMode) {
+    console.log(tag, 'ignoring — relay mode OFF');
+    return;
+  }
+  updateRelayStatus('PROCESSING ONION...');
+
+  try {
+    // 4. Verify incoming HTLC on-chain (retry up to 5x for cross-server propagation)
+    let txHex;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        txHex = await fulcrumCall('blockchain.transaction.get', [data.htlc_txid, false]);
+        break;
+      } catch (e) {
+        if (attempt < 4) {
+          console.log(tag, 'HTLC tx not found yet, retry', attempt + 1, '/ 5...');
+          updateRelayStatus('WAITING FOR HTLC TX... (' + (attempt + 1) + '/5)');
+          await new Promise(r => setTimeout(r, 3000));
+        } else {
+          console.error(tag, 'cannot fetch incoming HTLC tx after 5 attempts');
+          updateRelayStatus('ERROR: HTLC TX NOT FOUND');
+          return;
+        }
+      }
+    }
+    const outputs = parseTxOutputs(txHex);
+    const vout = data.htlc_vout || 0;
+    if (!outputs[vout]) {
+      console.error(tag, 'invalid HTLC vout:', vout);
+      updateRelayStatus('ERROR: INVALID HTLC OUTPUT');
+      return;
+    }
+    const htlcOutput = outputs[vout];
+    const neededValue = payload.amt + payload.fee;
+    if (htlcOutput.value < neededValue) {
+      console.error(tag, 'HTLC underfunded:', htlcOutput.value, 'need:', neededValue);
+      updateRelayStatus('ERROR: HTLC UNDERFUNDED');
+      return;
+    }
+    console.log(tag, 'incoming HTLC verified:', htlcOutput.value, 'sats (need', neededValue, ')');
+
+    // 5. Check relay balance for outgoing HTLC
+    await refreshBalance();
+    const outgoingAmt = payload.amt;
+    const estFee = Math.ceil((10 + Math.max(_utxos.length, 1) * 148 + 2 * 34) * 1);
+    if (_balanceSats < outgoingAmt + estFee) {
+      console.error(tag, 'insufficient relay funds:', _balanceSats, 'need:', outgoingAmt + estFee);
+      updateRelayStatus('ERROR: INSUFFICIENT FUNDS');
+      return;
+    }
+
+    // 6. Build outgoing HTLC
+    const nextPub = payload.next;
+    const htlcRecipPub = payload.htlc_recipient_pub || nextPub; // stealth: one-time key
+    const outHash = payload.next_hash || payload.hash;
+    const ownCltvDelta = parseInt($('#relay-cltv').value) || DEFAULT_CLTV_DELTA;
+    const outCltv = payload.cltv - ownCltvDelta;
+    const outRedeemScript = htlcScript(
+      h2b(outHash),
+      h2b('02' + htlcRecipPub),
+      h2b('02' + _sessionPub),
+      outCltv
+    );
+    console.log(tag, 'building outgoing HTLC:', outgoingAmt, 'sats to', nextPub.slice(0, 12), 'cltv:', outCltv);
+
+    const privKeys = _utxos.map(u => u._priv || _privKey);
+    const fundTxHex = buildHtlcFundTx(_utxos, privKeys, outRedeemScript, outgoingAmt, _bchAddr, 1);
+
+    // 7. Broadcast outgoing HTLC
+    updateRelayStatus('BROADCASTING OUTGOING HTLC...');
+    const outTxid = await bcBroadcast(fundTxHex);
+    console.log(tag, 'outgoing HTLC funded:', outTxid);
+
+    // 8. Forward remaining onion to next hop via Nostr
+    updateRelayStatus('FORWARDING ONION...');
+    const onionMsg = JSON.stringify({
+      type: 'onion',
+      blob: b2h(blob),
+      htlc_txid: outTxid,
+      htlc_vout: 0,
+      amt: outgoingAmt
+    });
+    const encrypted = await nip04Encrypt(_sessionPriv, nextPub, onionMsg);
+    const ev = await makeEvent(_sessionPriv, NOSTR_KIND_ONION_BLOB, encrypted, [['p', nextPub]]);
+    nostrPublish(ev);
+    console.log(tag, 'onion forwarded to', nextPub.slice(0, 12));
+
+    // 9. Build incoming redeemScript for claim
+    // Use sender_pub from onion payload (wallet pubkey) if available, otherwise fall back to Nostr event pubkey
+    const htlcSenderPub = payload.sender_pub ? h2b(payload.sender_pub) : h2b('02' + senderPub);
+    const inRedeemScript = htlcScript(
+      h2b(payload.hash),
+      h2b('02' + _sessionPub),
+      htlcSenderPub,
+      payload.cltv
+    );
+
+    // 10. Track forwarded HTLC
+    _pendingHTLCs.push({
+      role: 'relay', status: 'forwarded',
+      inTxid: data.htlc_txid, inVout: vout, inValue: htlcOutput.value,
+      outTxid: outTxid, outValue: outgoingAmt,
+      fee: payload.fee, hash: payload.hash, outHash: outHash,
+      preimage: payload.preimage,
+      inRedeemScript: b2h(inRedeemScript), outRedeemScript: b2h(outRedeemScript),
+      senderPub: senderPub, nextPub: nextPub,
+      locktime: payload.cltv, ts: Date.now()
+    });
+    saveHTLCs();
+    renderHTLCList();
+    renderRelayForwards();
+
+    // 11. Claim incoming HTLC immediately (decorrelated hashes — each hop has its own preimage)
+    updateRelayStatus('CLAIMING INCOMING HTLC...');
+    try {
+      const claimTxHex = buildClaimTx(
+        data.htlc_txid, vout, htlcOutput.value,
+        inRedeemScript, h2b(payload.preimage),
+        _sessionPriv, _bchAddr, 1
+      );
+      const claimTxid = await bcBroadcast(claimTxHex);
+      console.log(tag, 'incoming HTLC claimed:', claimTxid);
+
+      // Update entry
+      const entry = _pendingHTLCs.find(h => h.role === 'relay' && h.inTxid === data.htlc_txid);
+      if (entry) { entry.status = 'claimed'; entry.claimTxid = claimTxid; }
+
+      // Update earnings
+      _relayEarnings += payload.fee;
+      localStorage.setItem('00_onion_relay_earnings', _relayEarnings.toString());
+
+      saveHTLCs();
+      renderHTLCList();
+      renderRelayForwards();
+      updateRelayEarnings();
+      updateRelayStatus('CLAIMED — FEE +' + payload.fee + ' sats');
+      console.log(tag, 'relay fee earned:', payload.fee, 'sats');
+
+      // Send settlement notification to sender (kind 22232)
+      try {
+        const settleMsg = JSON.stringify({ type: 'settle', htlc_txid: data.htlc_txid, claim_txid: claimTxid, status: 'claimed' });
+        const settleEnc = await nip04Encrypt(_sessionPriv, senderPub, settleMsg);
+        const settleEv = await makeEvent(_sessionPriv, NOSTR_KIND_SETTLE, settleEnc, [['p', senderPub]]);
+        nostrPublish(settleEv);
+        console.log(tag, 'settlement notification sent to', senderPub.slice(0, 12));
+      } catch (se) { console.error(tag, 'settle notify error:', se); }
+
+    } catch (claimErr) {
+      console.error(tag, 'claim failed (will retry later):', claimErr);
+      updateRelayStatus('FORWARDED (CLAIM PENDING)');
+    }
+
+    setTimeout(refreshBalance, 3000);
+
+  } catch (e) {
+    console.error(tag, 'forwarding error:', e);
+    updateRelayStatus('ERROR: ' + e.message);
+  }
+}
+
+/* ══════════════════════════════════════════
+   FINAL RECIPIENT HANDLER
+   ══════════════════════════════════════════ */
+async function handleFinalRecipient(data, senderPub, payload) {
+  const tag = '[FINAL]';
+  console.log(tag, 'I am the payment recipient! amt:', payload.amt, 'hash:', payload.hash?.slice(0, 16));
+
+  // sender_pub from payload (direct payment) or Nostr event author (relayed)
+  const htlcSenderPub = payload.sender_pub || senderPub;
+
+  try {
+    // 1. Verify incoming HTLC on-chain (retry for propagation delay)
+    let txHex;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        txHex = await fulcrumCall('blockchain.transaction.get', [data.htlc_txid, false]);
+        break;
+      } catch (e) {
+        if (attempt < 4) {
+          console.log(tag, 'HTLC tx not found yet, retry', attempt + 1, '/ 5...');
+          await new Promise(r => setTimeout(r, 3000));
+        } else {
+          console.error(tag, 'cannot fetch HTLC tx after 5 attempts');
+          return;
+        }
+      }
+    }
+    const outputs = parseTxOutputs(txHex);
+    const vout = data.htlc_vout || 0;
+    if (!outputs[vout]) {
+      console.error(tag, 'invalid HTLC vout');
+      return;
+    }
+    const htlcOutput = outputs[vout];
+    console.log(tag, 'HTLC value:', htlcOutput.value, 'sats');
+
+    // 2. Determine claim key (stealth or session)
+    let claimPriv, claimPub33;
+    if (payload.stealth_eph && payload.stealth_spend) {
+      const ephPub = h2b(payload.stealth_eph);
+      const spendPub33 = h2b(payload.stealth_spend);
+      const st = stealthDerive(null, ephPub, null, spendPub33, new Uint8Array(0));
+      claimPriv = stealthSpendingKey(_stealthSpendPriv, st.cBig);
+      claimPub33 = st.pub;
+      console.log(tag, 'stealth payment detected, one-time pub:', b2h(claimPub33).slice(0, 20));
+    } else {
+      claimPriv = _sessionPriv;
+      claimPub33 = h2b('02' + _sessionPub);
+    }
+
+    // htlcSenderPub is 66 hex (full compressed) from direct payload, or 64 hex (x-only) from Nostr event
+    const senderPub33Bytes = htlcSenderPub.length === 64
+      ? h2b('02' + htlcSenderPub)
+      : h2b(htlcSenderPub);
+
+    const inRedeemScript = htlcScript(
+      h2b(payload.hash),
+      claimPub33,
+      senderPub33Bytes,
+      payload.cltv
+    );
+
+    // 3. Claim with preimage
+    const claimTxHex = buildClaimTx(
+      data.htlc_txid, vout, htlcOutput.value,
+      inRedeemScript, h2b(payload.preimage),
+      claimPriv, _bchAddr, 1
+    );
+    const claimTxid = await bcBroadcast(claimTxHex);
+    console.log(tag, 'HTLC claimed:', claimTxid);
+
+    // Send settlement notification to sender (kind 22232)
+    try {
+      const settleMsg = JSON.stringify({ type: 'settle', htlc_txid: data.htlc_txid, claim_txid: claimTxid, status: 'claimed' });
+      const settleEnc = await nip04Encrypt(_sessionPriv, senderPub, settleMsg);
+      const settleEv = await makeEvent(_sessionPriv, NOSTR_KIND_SETTLE, settleEnc, [['p', senderPub]]);
+      nostrPublish(settleEv);
+      console.log(tag, 'settlement notification sent to', senderPub.slice(0, 12));
+    } catch (se) { console.error(tag, 'settle notify error:', se); }
+
+    // 4. Track as received payment
+    _pendingHTLCs.push({
+      role: 'recipient', status: 'claimed',
+      value: htlcOutput.value, hash: payload.hash,
+      txid: data.htlc_txid, claimTxid: claimTxid,
+      locktime: payload.cltv, senderPub: htlcSenderPub,
+      ts: Date.now()
+    });
+    saveHTLCs();
+    renderHTLCList();
+    setTimeout(refreshBalance, 3000);
+    showToast('PAYMENT RECEIVED: ' + satsToBch(htlcOutput.value) + ' BCH', 'success');
+
+  } catch (e) {
+    console.error(tag, 'claim error:', e?.message || e);
+    // Track as pending — can retry later
+    const pendingEntry = {
+      role: 'recipient', status: 'pending',
+      value: data.amt, hash: payload.hash,
+      preimage: payload.preimage, txid: data.htlc_txid,
+      vout: data.htlc_vout || 0,
+      redeemScript: '', // will reconstruct on retry
+      locktime: payload.cltv, senderPub: htlcSenderPub,
+      ts: Date.now()
+    };
+    if (payload.stealth_eph) pendingEntry.stealth_eph = payload.stealth_eph;
+    if (payload.stealth_spend) pendingEntry.stealth_spend = payload.stealth_spend;
+    _pendingHTLCs.push(pendingEntry);
+    saveHTLCs();
+    renderHTLCList();
+    showToast('INCOMING PAYMENT: ' + satsToBch(data.amt) + ' BCH (claiming...)', 'info');
+  }
+}
+
+/* ══════════════════════════════════════════
+   SETTLEMENT — Phase 7
+   ══════════════════════════════════════════ */
+async function getCurrentHeight() {
+  try {
+    const header = await fulcrumCall('blockchain.headers.subscribe', []);
+    return header.height || header.block_height || 0;
+  } catch { return 0; }
+}
+
+function handleSettlement(data) {
+  console.log('[SETTLE] received:', data.htlc_txid?.slice(0, 16), 'status:', data.status);
+
+  // Find matching sender HTLC
+  const entry = _pendingHTLCs.find(h =>
+    h.role === 'sender' && h.status === 'pending' && h.txid === data.htlc_txid
+  );
+  if (!entry) {
+    console.log('[SETTLE] no matching pending sender HTLC found');
+    return;
+  }
+
+  entry.status = 'settled';
+  entry.claimTxid = data.claim_txid || '';
+  entry.settledAt = Date.now();
+
+  saveHTLCs();
+  renderHTLCList();
+  showToast('PAYMENT SETTLED: ' + satsToBch(entry.value) + ' BCH', 'success');
+  console.log('[SETTLE] payment settled:', entry.txid?.slice(0, 16), 'dest:', entry.dest?.slice(0, 12));
+}
+
+let _settlementInterval = null;
+
+async function checkSettlements() {
+  if (!_fulcrumConnected || !_privKey) { console.log('[SETTLE] skip: no connection or key'); return; }
+  const now = await getCurrentHeight();
+  if (!now) { console.log('[SETTLE] skip: cannot get height'); return; }
+  console.log('[SETTLE] checking', _pendingHTLCs.length, 'HTLCs at height', now);
+
+  for (const h of _pendingHTLCs) {
+    // A. Sender pending → check if HTLC output was spent on-chain
+    if (h.role === 'sender' && h.status === 'pending' && h.redeemScript) {
+      try {
+        const sh = p2shScriptHash(h2b(h.redeemScript));
+        const utxos = await fulcrumCall('blockchain.scripthash.listunspent', [sh]);
+        if (utxos.length === 0) {
+          h.status = 'settled';
+          h.settledAt = Date.now();
+          saveHTLCs();
+          renderHTLCList();
+          console.log('[SETTLE] on-chain confirmed settled:', h.txid?.slice(0, 16));
+        } else if (now >= h.locktime) {
+          // Auto-refund: broadcast refund tx immediately
+          try {
+            const txHex2 = await fulcrumCall('blockchain.transaction.get', [h.txid, false]);
+            const outs = parseTxOutputs(txHex2);
+            if (!outs[0]) throw new Error('invalid HTLC tx');
+            const refundTxHex = buildRefundTx(
+              h.txid, 0, outs[0].value,
+              h2b(h.redeemScript), h.locktime,
+              _privKey, _bchAddr, 1
+            );
+            const refundTxid = await bcBroadcast(refundTxHex);
+            h.status = 'refunded';
+            h.refundTxid = refundTxid;
+            saveHTLCs(); renderHTLCList();
+            setTimeout(refreshBalance, 3000);
+            showToast('AUTO-REFUND: ' + refundTxid.slice(0, 16) + '...', 'success');
+            console.log('[SETTLE] auto-refund broadcast:', refundTxid);
+          } catch (e2) {
+            h.status = 'expired';
+            saveHTLCs(); renderHTLCList();
+            console.log('[SETTLE] auto-refund failed, retry next cycle:', e2.message);
+          }
+        }
+      } catch (e) { console.error('[SETTLE] sender check error:', e); }
+    }
+
+    // A2. Sender expired → retry auto-refund (catch HTLCs marked expired before this update)
+    if (h.role === 'sender' && h.status === 'expired' && h.redeemScript) {
+      try {
+        const sh = p2shScriptHash(h2b(h.redeemScript));
+        const utxos = await fulcrumCall('blockchain.scripthash.listunspent', [sh]);
+        if (utxos.length === 0) {
+          h.status = 'refunded'; saveHTLCs(); renderHTLCList();
+          continue;
+        }
+        const txHex = await fulcrumCall('blockchain.transaction.get', [h.txid, false]);
+        const outs = parseTxOutputs(txHex);
+        if (!outs[0]) continue;
+        const refundTxHex = buildRefundTx(
+          h.txid, 0, outs[0].value,
+          h2b(h.redeemScript), h.locktime,
+          _privKey, _bchAddr, 1
+        );
+        const refundTxid = await bcBroadcast(refundTxHex);
+        h.status = 'refunded';
+        h.refundTxid = refundTxid;
+        saveHTLCs(); renderHTLCList();
+        setTimeout(refreshBalance, 3000);
+        showToast('AUTO-REFUND: ' + refundTxid.slice(0, 16) + '...', 'success');
+        console.log('[SETTLE] auto-refund (retry) broadcast:', refundTxid);
+      } catch (e) { console.log('[SETTLE] A2 refund error:', e.message); }
+    }
+
+    // B. Relay forwarded (claim failed) → retry claim
+    if (h.role === 'relay' && h.status === 'forwarded' && h.preimage && h.inRedeemScript) {
+      try {
+        const inRS = h2b(h.inRedeemScript);
+        const sh = p2shScriptHash(inRS);
+        const utxos = await fulcrumCall('blockchain.scripthash.listunspent', [sh]);
+        if (utxos.length === 0) {
+          h.status = 'claimed';
+          saveHTLCs(); renderHTLCList(); renderRelayForwards();
+          continue;
+        }
+        const vout = h.inVout || 0;
+        const txHex = await fulcrumCall('blockchain.transaction.get', [h.inTxid, false]);
+        const outputs = parseTxOutputs(txHex);
+        if (!outputs[vout]) continue;
+
+        const claimTxHex = buildClaimTx(
+          h.inTxid, vout, outputs[vout].value,
+          inRS, h2b(h.preimage), _sessionPriv, _bchAddr, 1
+        );
+        const claimTxid = await bcBroadcast(claimTxHex);
+        h.status = 'claimed';
+        h.claimTxid = claimTxid;
+        _relayEarnings += h.fee;
+        localStorage.setItem('00_onion_relay_earnings', _relayEarnings.toString());
+        saveHTLCs(); renderHTLCList(); renderRelayForwards(); updateRelayEarnings();
+        console.log('[SETTLE] relay retry claim succeeded:', claimTxid);
+      } catch (e) { /* silent retry next cycle */ }
+    }
+
+    // C. Recipient pending (claim failed) → retry claim
+    if (h.role === 'recipient' && h.status === 'pending' && h.preimage && h.senderPub) {
+      try {
+        // Determine claim key (stealth or session)
+        let retryClaimPriv, retryClaimPub33;
+        if (h.stealth_eph && h.stealth_spend) {
+          const ephPub = h2b(h.stealth_eph);
+          const spendPub33 = h2b(h.stealth_spend);
+          const st = stealthDerive(null, ephPub, null, spendPub33, new Uint8Array(0));
+          retryClaimPriv = stealthSpendingKey(_stealthSpendPriv, st.cBig);
+          retryClaimPub33 = st.pub;
+        } else {
+          retryClaimPriv = _sessionPriv;
+          retryClaimPub33 = h2b('02' + _sessionPub);
+        }
+        const senderBytes = h.senderPub.length === 64
+          ? h2b('02' + h.senderPub)
+          : h2b(h.senderPub);
+        const inRS = htlcScript(
+          h2b(h.hash), retryClaimPub33,
+          senderBytes, h.locktime
+        );
+        const sh = p2shScriptHash(inRS);
+        const utxos = await fulcrumCall('blockchain.scripthash.listunspent', [sh]);
+        if (utxos.length === 0) {
+          h.status = 'claimed';
+          saveHTLCs(); renderHTLCList();
+          continue;
+        }
+        const vout = h.vout || 0;
+        const txHex = await fulcrumCall('blockchain.transaction.get', [h.txid, false]);
+        const outputs = parseTxOutputs(txHex);
+        if (!outputs[vout]) continue;
+
+        const claimTxHex = buildClaimTx(
+          h.txid, vout, outputs[vout].value,
+          inRS, h2b(h.preimage), retryClaimPriv, _bchAddr, 1
+        );
+        const claimTxid = await bcBroadcast(claimTxHex);
+        h.status = 'claimed';
+        h.claimTxid = claimTxid;
+        saveHTLCs(); renderHTLCList();
+        console.log('[SETTLE] recipient retry claim succeeded:', claimTxid);
+      } catch (e) { /* silent retry next cycle */ }
+    }
+  }
+}
+
+window.refundHTLC = async function(index) {
+  const h = _pendingHTLCs[index];
+  if (!h || h.role !== 'sender' || !h.redeemScript) return;
+
+  try {
+    const txHex = await fulcrumCall('blockchain.transaction.get', [h.txid, false]);
+    const outputs = parseTxOutputs(txHex);
+    if (!outputs[0]) throw new Error('invalid HTLC tx');
+
+    const refundTxHex = buildRefundTx(
+      h.txid, 0, outputs[0].value,
+      h2b(h.redeemScript), h.locktime,
+      _privKey, _bchAddr, 1
+    );
+    const refundTxid = await bcBroadcast(refundTxHex);
+
+    h.status = 'refunded';
+    h.refundTxid = refundTxid;
+    saveHTLCs();
+    renderHTLCList();
+    setTimeout(refreshBalance, 3000);
+    showToast('REFUND BROADCAST: ' + refundTxid.slice(0, 16) + '...', 'success');
+    console.log('[SETTLE] refund broadcast:', refundTxid);
+  } catch (e) {
+    console.error('[SETTLE] refund error:', e);
+    showToast('REFUND FAILED: ' + e.message, 'error');
+  }
+};
+
+/* ══════════════════════════════════════════
+   RELAY UI HELPERS
+   ══════════════════════════════════════════ */
+function updateRelayStatus(msg) {
+  const el = $('#relay-status');
+  el.textContent = msg;
+  el.style.color = 'var(--green)';
+}
+
+function updateRelayEarnings() {
+  $('#relay-earnings').textContent = 'EARNINGS: ' + _relayEarnings + ' sats';
+}
+
+function renderRelayForwards() {
+  const el = $('#relay-htlc-list');
+  const fwds = _pendingHTLCs.filter(h => h.role === 'relay');
+  if (fwds.length === 0) {
+    el.innerHTML = '<div class="empty-state" style="padding:16px">NO ACTIVE FORWARDS</div>';
+    return;
+  }
+  el.innerHTML = fwds.map(h => `
+    <div class="htlc-item">
+      <div class="htlc-top">
+        <span class="htlc-amount">+${h.fee} sat</span>
+        <span class="htlc-badge ${h.status}">${h.status.toUpperCase()}</span>
+      </div>
+      <div class="htlc-detail">FWD ${h.outValue} sats · ${(h.senderPub||'').slice(0,8)}→${(h.nextPub||'').slice(0,8)}</div>
+      <div class="htlc-hash">IN: ${(h.inTxid||'').slice(0,24)}...</div>
+      <div class="htlc-hash">OUT: ${(h.outTxid||'').slice(0,24)}...</div>
+    </div>
+  `).join('');
+}
+
+/* ══════════════════════════════════════════
+   SEND PAYMENT — Phase 5
+   ══════════════════════════════════════════ */
+function selectRoute(amtSats, destPub) {
+  const now = Math.floor(Date.now() / 1000);
+  const raw = parseInt($('#route-max-hops')?.value);
+  const maxHops = Number.isNaN(raw) ? 3 : raw;
+  if (maxHops === 0) return [];   // direct payment, no relays
+  const fresh = _knownRelays.filter(r =>
+    r.pub !== _sessionPub && r.pub !== destPub && (now - r.ts) < RELAY_TTL
+  );
+  if (fresh.length === 0) return [];
+
+  // Build path: pick up to maxHops distinct relays, freshest first
+  fresh.sort((a, b) => b.ts - a.ts);
+  const path = [];
+  const used = new Set();
+  let cumFees = 0;
+
+  for (const r of fresh) {
+    if (used.has(r.pub)) continue;
+    if (r.max_htlc < amtSats + cumFees + r.fee) continue;
+    path.push(r);
+    used.add(r.pub);
+    cumFees += r.fee;
+    if (path.length >= maxHops) break;
+  }
+
+  return path.length > 0 ? path : [];
+}
+
+function renderRoute(relays, recipientPub) {
+  let html = '<div class="route-step"><div class="route-dot active">S</div><div class="route-label">YOU</div></div>';
+  html += '<div class="route-line"></div>';
+  for (const r of relays) {
+    html += '<div class="route-step"><div class="route-dot active">R</div>';
+    html += '<div class="route-label">' + r.pub.slice(0, 12) + '... FEE ' + r.fee + ' · CLTV +' + r.cltv_delta + '</div></div>';
+    html += '<div class="route-line"></div>';
+  }
+  html += '<div class="route-step"><div class="route-dot active">D</div>';
+  html += '<div class="route-label">DEST ' + recipientPub.slice(0, 12) + '...</div></div>';
+  $('#route-hops').innerHTML = html;
+  $('#route-display').style.display = '';
+}
+
+window.startOnionPayment = async function() {
+  const statusEl = $('#send-status');
+  const btn = $('#btn-send');
+  const dest = $('#send-dest').value.trim();
+  const amtBch = $('#send-amount').value.trim();
+
+  // ── VALIDATE ──
+  if (!dest || !amtBch) { statusEl.textContent = '// enter destination and amount'; return; }
+  const amtSats = bchToSats(amtBch);
+  if (amtSats < 546) { statusEl.textContent = '// amount below dust limit'; return; }
+  if (!_fulcrumConnected) { statusEl.textContent = '// fulcrum not connected'; return; }
+  if (!_nostrConnected) { statusEl.textContent = '// nostr not connected'; return; }
+
+  // Recipient: session pubkey (64 hex) or stealth code (stealth:128 hex)
+  let recipientPub;
+  let stealthMode = false;
+  let stealthScanPub, stealthSpendPub33;
+  if (/^stealth:[0-9a-f]{128}$/i.test(dest)) {
+    stealthScanPub = dest.slice(8, 72).toLowerCase();
+    stealthSpendPub33 = h2b('02' + dest.slice(72, 136).toLowerCase());
+    recipientPub = stealthScanPub; // Nostr routing uses scan pub (= session pub)
+    stealthMode = true;
+  } else if (/^[0-9a-f]{64}$/i.test(dest)) {
+    recipientPub = dest.toLowerCase();
+  } else {
+    statusEl.textContent = '// enter session pubkey or stealth code';
+    return;
+  }
+
+  btn.disabled = true;
+  try {
+    // ── SELECT ROUTE ──
+    statusEl.textContent = '// selecting route...';
+    const relays = selectRoute(amtSats, recipientPub);
+    const isDirect = relays.length === 0; // direct payment (no relay)
+
+    // ── FEE CHAIN (backwards from recipient) ──
+    const numHops = relays.length + 1;
+    const hopAmts = new Array(numHops);
+    const hopFees = new Array(numHops);
+    hopAmts[numHops - 1] = amtSats;
+    hopFees[numHops - 1] = 0;
+    for (let i = numHops - 2; i >= 0; i--) {
+      hopFees[i] = relays[i].fee;
+      hopAmts[i] = hopAmts[i + 1] + hopFees[i];
+    }
+    const totalOnChain = hopAmts[0];
+    const totalFees = relays.reduce((s, r) => s + r.fee, 0);
+
+    // ── CLTV CHAIN (backwards from recipient) ──
+    statusEl.textContent = '// fetching block height...';
+    const header = await fulcrumCall('blockchain.headers.subscribe', []);
+    const currentHeight = header.height || header.block_height;
+    if (!currentHeight) throw new Error('cannot determine block height');
+
+    const hopCltvs = new Array(numHops);
+    hopCltvs[numHops - 1] = currentHeight + DEFAULT_CLTV_DELTA;
+    for (let i = numHops - 2; i >= 0; i--) {
+      hopCltvs[i] = hopCltvs[i + 1] + relays[i].cltv_delta;
+    }
+    const onChainLocktime = hopCltvs[0];
+
+    // ── CHECK BALANCE ──
+    await refreshBalance();
+    const estMinerFee = Math.ceil((10 + Math.max(_utxos.length, 1) * 148 + 2 * 34) * 1);
+    if (_balanceSats < totalOnChain + estMinerFee) {
+      statusEl.textContent = '// insufficient balance — need ' + satsToBch(totalOnChain + estMinerFee) + ' BCH';
+      return;
+    }
+
+    // ── RENDER ROUTE ──
+    renderRoute(relays, recipientPub);
+    statusEl.textContent = isDirect
+      ? '// direct payment · locktime: ' + onChainLocktime
+      : '// route: ' + numHops + ' hops · fees: ' + totalFees + ' sat · locktime: ' + onChainLocktime;
+
+    // ── MASTER SECRET ──
+    const masterSecret = rand(32);
+
+    // ── BUILD ONION HOPS ──
+    const senderPub33 = secp256k1.getPublicKey(_privKey, true);
+    const senderPubHex = b2h(senderPub33);
+    const hops = [];
+    for (let i = 0; i < relays.length; i++) {
+      hops.push({ pub: relays[i].pub, amt: hopAmts[i + 1], fee: hopFees[i], cltv: hopCltvs[i], sender_pub: i === 0 ? senderPubHex : undefined });
+    }
+
+    // ── STEALTH EPHEMERAL KEY ──
+    const lastHop = { pub: recipientPub, amt: amtSats, fee: 0, cltv: hopCltvs[numHops - 1] };
+    if (isDirect) {
+      lastHop.sender_pub = senderPubHex; // wallet key for redeemScript (Nostr event uses session key)
+    }
+    let htlcRecipPub33; // who the first-hop HTLC pays to on-chain
+    if (stealthMode) {
+      const ephPriv = rand(32);
+      const ephPub = secp256k1.getPublicKey(ephPriv, true);
+      const st = stealthDerive(ephPriv, null, h2b('02' + stealthScanPub), stealthSpendPub33, new Uint8Array(0));
+      const stealthPubXonly = b2h(st.pub).slice(2); // x-only 64 hex
+      lastHop.stealth_spend = b2h(stealthSpendPub33);
+      lastHop.stealth_eph = b2h(ephPub);
+      if (isDirect) {
+        // Direct stealth: sender creates HTLC to stealth one-time key
+        htlcRecipPub33 = st.pub;
+      } else {
+        // Tell the last relay to use stealth pub for the on-chain HTLC
+        hops[hops.length - 1].htlc_recipient_pub = stealthPubXonly;
+      }
+      console.log('[ONION] stealth one-time pub:', stealthPubXonly.slice(0, 20) + '...');
+    }
+    hops.push(lastHop);
+
+    // ── Determine HTLC recipient and Nostr target ──
+    const nostrTarget = isDirect ? recipientPub : relays[0].pub;
+    if (!htlcRecipPub33) {
+      htlcRecipPub33 = h2b('02' + nostrTarget);
+    }
+
+    // ── BUILD ONION PACKET ──
+    statusEl.textContent = '// encrypting onion (' + hops.length + ' layers)...';
+    const onionPacket = await buildOnionPacket(hops, masterSecret);
+    console.log('[ONION] onion packet:', onionPacket.length, 'bytes', isDirect ? '(direct)' : '');
+
+    // ── CREATE FIRST-HOP HTLC ──
+    statusEl.textContent = '// building HTLC...';
+    const firstHopHash = deriveHopHash(masterSecret, 0);
+    const redeemScript = htlcScript(firstHopHash, htlcRecipPub33, senderPub33, onChainLocktime);
+
+    const privKeys = _utxos.map(u => u._priv || _privKey);
+    const fundTxHex = buildHtlcFundTx(_utxos, privKeys, redeemScript, totalOnChain, _bchAddr, 1);
+
+    // ── BROADCAST ──
+    statusEl.textContent = '// broadcasting HTLC...';
+    const txid = await bcBroadcast(fundTxHex);
+    console.log('[ONION] HTLC funded:', txid);
+
+    // ── SEND ONION VIA NOSTR ──
+    statusEl.textContent = isDirect ? '// sending onion to recipient...' : '// sending onion to relay...';
+    const onionMsg = JSON.stringify({
+      type: 'onion',
+      blob: b2h(onionPacket),
+      htlc_txid: txid,
+      htlc_vout: 0,
+      amt: totalOnChain
+    });
+    const encrypted = await nip04Encrypt(_sessionPriv, nostrTarget, onionMsg);
+    const ev = await makeEvent(_sessionPriv, NOSTR_KIND_ONION_BLOB, encrypted, [['p', nostrTarget]]);
+    nostrPublish(ev);
+    console.log('[ONION] onion blob sent to', isDirect ? 'recipient' : 'relay', ':', nostrTarget.slice(0, 12));
+
+    // ── TRACK PAYMENT ──
+    _pendingHTLCs.push({
+      role: 'sender', status: 'pending', value: totalOnChain,
+      hash: b2h(firstHopHash), txid: txid, locktime: onChainLocktime,
+      dest: recipientPub, masterSecret: b2h(masterSecret),
+      redeemScript: b2h(redeemScript), relayPub: isDirect ? null : relays[0].pub,
+      paymentAmt: amtSats, ts: Date.now()
+    });
+    saveHTLCs();
+    renderHTLCList();
+
+    setTimeout(refreshBalance, 2000);
+
+    statusEl.textContent = '// ✓ payment sent! HTLC: ' + txid.slice(0, 16) + '... waiting for settlement';
+    console.log('[ONION] payment complete — txid:', txid, 'amt:', totalOnChain, 'dest:', recipientPub.slice(0, 12));
+
+  } catch (e) {
+    statusEl.textContent = '// ✗ error: ' + e.message;
+    console.error('[ONION] payment error:', e);
+  } finally {
+    btn.disabled = false;
+  }
+};
+
+/* ══════════════════════════════════════════
+   HTLC LIST UI
+   ══════════════════════════════════════════ */
+function renderHTLCList() {
+  const el = $('#htlc-list');
+  if (_pendingHTLCs.length === 0) {
+    el.innerHTML = '<div class="empty-state">NO ACTIVE HTLCs</div>';
+    return;
+  }
+  const now = Date.now();
+  el.innerHTML = _pendingHTLCs.slice().reverse().map((h, ri) => {
+    const i = _pendingHTLCs.length - 1 - ri;
+    const ago = Math.floor((now - h.ts) / 60000);
+    const agoStr = ago < 1 ? '<1m ago' : ago < 60 ? ago + 'm ago' : Math.floor(ago / 60) + 'h ago';
+    const roleIcon = h.role === 'sender' ? '\u2191' : h.role === 'recipient' ? '\u2193' : '\u21C4';
+    const txid = h.txid || h.inTxid || '';
+    let actions = '';
+    if (h.role === 'sender' && (h.status === 'expired' || h.status === 'pending')) {
+      actions = '<div class="htlc-actions"><button class="htlc-btn" onclick="refundHTLC(' + i + ')">REFUND</button></div>';
+    }
+    return `<div class="htlc-item">
+      <div class="htlc-top">
+        <span class="htlc-amount">${roleIcon} ${satsToBch(h.value || h.inValue || 0)} BCH</span>
+        <span class="htlc-badge ${h.status}">${h.status.toUpperCase()}</span>
+      </div>
+      <div class="htlc-detail">${h.role.toUpperCase()} \u00B7 ${agoStr}</div>
+      <div class="htlc-hash" style="cursor:pointer" onclick="navigator.clipboard.writeText('${txid}');this.textContent='COPIED!';setTimeout(()=>{this.textContent='TXID: ${txid.slice(0,20)}...'},1000)">TXID: ${txid.slice(0, 20)}...</div>
+      ${actions}
+    </div>`;
+  }).join('');
+}
+
+function saveHTLCs() {
+  localStorage.setItem('00_onion_pending_htlcs', JSON.stringify(_pendingHTLCs));
+}
+
+/* ══════════════════════════════════════════
+   TEST SUITE
+   ══════════════════════════════════════════ */
+const _testResults = [];
+function tlog(suite, name, pass, detail) {
+  _testResults.push({ suite, name, pass, detail });
+}
+function renderTests() {
+  const el = $('#test-results');
+  const suites = {};
+  for (const t of _testResults) {
+    if (!suites[t.suite]) suites[t.suite] = [];
+    suites[t.suite].push(t);
+  }
+  el.innerHTML = Object.entries(suites).map(([suite, tests]) => `
+    <div class="test-suite">
+      <div class="test-name">${suite.toUpperCase()}</div>
+      ${tests.map(t => `<div class="test-result ${t.pass ? 'pass' : 'fail'}">${t.pass ? '✓' : '✗'} ${t.name}${t.detail ? ' — ' + t.detail : ''}</div>`).join('')}
+    </div>
+  `).join('');
+}
+
+window.runTestSuite = async function(suite) {
+  _testResults.length = 0;
+  if (suite === 'script') await testScript();
+  else if (suite === 'p2sh') await testP2SH();
+  else if (suite === 'claim') await testClaimTx();
+  else if (suite === 'refund') await testRefundTx();
+  else if (suite === 'sighash') await testSighash();
+  else if (suite === 'onion') await testOnion();
+  else if (suite === 'decorrelation') await testDecorrelation();
+  renderTests();
+};
+
+window.runAllTests = async function() {
+  _testResults.length = 0;
+  await testScript();
+  await testP2SH();
+  await testClaimTx();
+  await testRefundTx();
+  await testSighash();
+  await testOnion();
+  await testDecorrelation();
+  renderTests();
+};
+
+async function testScript() {
+  const preimage = sha256(utf8('test-secret-42'));
+  const payHash = sha256(preimage);
+  const recipPriv = rand(32);
+  const senderPriv = rand(32);
+  const recipPub = secp256k1.getPublicKey(recipPriv, true);
+  const senderPub = secp256k1.getPublicKey(senderPriv, true);
+  const locktime = 800000;
+  const script = htlcScript(payHash, recipPub, senderPub, locktime);
+
+  tlog('script', 'starts with OP_IF (0x63)', script[0] === 0x63, 'byte0=0x' + script[0].toString(16));
+  tlog('script', 'ends with OP_ENDIF (0x68)', script[script.length - 1] === 0x68, 'last=0x' + script[script.length-1].toString(16));
+  tlog('script', 'contains OP_SHA256 (0xa8)', script[1] === 0xa8, 'byte1=0x' + script[1].toString(16));
+  tlog('script', 'contains OP_CHECKLOCKTIMEVERIFY (0xb1)', script.includes(0xb1), '');
+  tlog('script', 'OP_CHECKSIG at position 70', script[70] === 0xac, '0x' + script[70].toString(16));
+  const ltLen = scriptNum(locktime).length; // minimal encoding length
+  const csPos2 = 71 + 1 + 1 + ltLen + 1 + 1 + 1 + 33; // ELSE + push + lt + CLTV + DROP + push33 + pub
+  tlog('script', 'OP_CHECKSIG (sender)', script[csPos2] === 0xac, 'pos=' + csPos2 + ' 0x' + script[csPos2]?.toString(16));
+  tlog('script', 'length (minimal encoding)', script.length === 71 + 1 + 1 + ltLen + 1 + 1 + 1 + 33 + 1 + 1, 'len=' + script.length);
+  tlog('script', 'payment hash embedded', b2h(script.slice(3, 35)) === b2h(payHash), '');
+  tlog('script', 'recipient pubkey embedded', b2h(script.slice(37, 70)) === b2h(recipPub), '');
+  const spStart = 71 + 1 + 1 + ltLen + 1 + 1 + 1; // after OP_ELSE + push + locktime + CLTV + DROP + push33
+  tlog('script', 'sender pubkey embedded', b2h(script.slice(spStart, spStart + 33)) === b2h(senderPub), '');
+}
+
+async function testP2SH() {
+  const preimage = sha256(utf8('p2sh-test'));
+  const payHash = sha256(preimage);
+  const recipPub = secp256k1.getPublicKey(rand(32), true);
+  const senderPub = secp256k1.getPublicKey(rand(32), true);
+  const rs = htlcScript(payHash, recipPub, senderPub, 800000);
+  const p2sh = p2shScript(rs);
+  const addr = p2shAddress(rs);
+  const sh = p2shScriptHash(rs);
+
+  tlog('p2sh', 'output script starts with OP_HASH160 (0xa9)', p2sh[0] === 0xa9, '0x' + p2sh[0].toString(16));
+  tlog('p2sh', 'output script ends with OP_EQUAL (0x87)', p2sh[p2sh.length-1] === 0x87, '');
+  tlog('p2sh', 'output script length = 23', p2sh.length === 23, 'len=' + p2sh.length);
+  tlog('p2sh', 'address starts with bitcoincash:p', addr.startsWith('bitcoincash:p'), addr.slice(0, 20));
+  tlog('p2sh', 'scripthash is 64 hex chars', sh.length === 64, 'len=' + sh.length);
+  // Verify hash160 consistency
+  const h160 = ripemd160(sha256(rs));
+  tlog('p2sh', 'hash160 in script matches', b2h(p2sh.slice(2, 22)) === b2h(h160), '');
+}
+
+async function testClaimTx() {
+  const preimage = sha256(utf8('claim-test'));
+  const payHash = sha256(preimage);
+  const recipPriv = rand(32);
+  const senderPriv = rand(32);
+  const recipPub = secp256k1.getPublicKey(recipPriv, true);
+  const senderPub = secp256k1.getPublicKey(senderPriv, true);
+  const rs = htlcScript(payHash, recipPub, senderPub, 800000);
+  const fakeTxid = b2h(rand(32));
+  const fakeValue = 100000;
+
+  try {
+    const tx = buildClaimTx(fakeTxid, 0, fakeValue, rs, preimage, recipPriv,
+      pubHashToCashAddr(Array.from(ripemd160(sha256(recipPub)))), 1);
+    const txBytes = h2b(tx);
+    tlog('claim', 'tx builds without error', true, 'len=' + txBytes.length);
+    // Check locktime = 0
+    const ltBytes = txBytes.slice(txBytes.length - 4);
+    const lt = ltBytes[0] | (ltBytes[1] << 8) | (ltBytes[2] << 16) | (ltBytes[3] << 24);
+    tlog('claim', 'locktime = 0', lt === 0, 'lt=' + lt);
+    // Check tx contains preimage bytes
+    const txHex = tx;
+    tlog('claim', 'tx contains preimage', txHex.includes(b2h(preimage)), '');
+    // Check tx contains OP_1 after preimage (MINIMALDATA compliant TRUE)
+    tlog('claim', 'tx contains OP_1 after preimage', txHex.includes(b2h(preimage) + '51'), '');
+    // Check tx contains redeemScript
+    tlog('claim', 'tx contains redeemScript', txHex.includes(b2h(rs)), '');
+  } catch (e) {
+    tlog('claim', 'tx builds without error', false, e.message);
+  }
+}
+
+async function testRefundTx() {
+  const preimage = sha256(utf8('refund-test'));
+  const payHash = sha256(preimage);
+  const recipPriv = rand(32);
+  const senderPriv = rand(32);
+  const recipPub = secp256k1.getPublicKey(recipPriv, true);
+  const senderPub = secp256k1.getPublicKey(senderPriv, true);
+  const locktime = 800000;
+  const rs = htlcScript(payHash, recipPub, senderPub, locktime);
+  const fakeTxid = b2h(rand(32));
+  const fakeValue = 100000;
+
+  try {
+    const tx = buildRefundTx(fakeTxid, 0, fakeValue, rs, locktime, senderPriv,
+      pubHashToCashAddr(Array.from(ripemd160(sha256(senderPub)))), 1);
+    const txBytes = h2b(tx);
+    tlog('refund', 'tx builds without error', true, 'len=' + txBytes.length);
+    // Check locktime > 0
+    const ltBytes = txBytes.slice(txBytes.length - 4);
+    const lt = (ltBytes[0] | (ltBytes[1] << 8) | (ltBytes[2] << 16) | (ltBytes[3] << 24)) >>> 0;
+    tlog('refund', 'locktime = ' + locktime, lt === locktime, 'lt=' + lt);
+    // Check sequence < 0xffffffff (for CLTV)
+    // Input sequence is at: version(4) + varint(1) + txid(32) + vout(4) + scriptSig_varint + scriptSig + SEQUENCE(4)
+    // Instead just check tx contains OP_FALSE (0x00 before redeemScript push)
+    const txHex = tx;
+    tlog('refund', 'tx contains redeemScript', txHex.includes(b2h(rs)), '');
+    // The scriptSig should NOT contain the preimage
+    tlog('refund', 'no preimage in scriptSig', !txHex.includes(b2h(preimage)), '');
+  } catch (e) {
+    tlog('refund', 'tx builds without error', false, e.message);
+  }
+}
+
+async function testSighash() {
+  const priv = rand(32);
+  const pub = secp256k1.getPublicKey(priv, true);
+  const preimage = sha256(utf8('sighash-test'));
+  const payHash = sha256(preimage);
+  const senderPub = secp256k1.getPublicKey(rand(32), true);
+  const rs = htlcScript(payHash, pub, senderPub, 800000);
+
+  const inputs = [{
+    txidLE: rand(32), vout: 0, value: 100000,
+    sequence: 0xffffffff, scriptSig: new Uint8Array(0)
+  }];
+  const outputs = [{ value: 99000, script: p2pkhScript(ripemd160(sha256(pub))) }];
+
+  const hash = bchSighash(1, 0, inputs, outputs, 0, rs, 100000);
+  tlog('sighash', 'hash is 32 bytes', hash.length === 32, 'len=' + hash.length);
+
+  const sig = secp256k1.sign(hash, priv, { lowS: true });
+  tlog('sighash', 'signature produced', sig !== null, '');
+
+  // Verify signature
+  const valid = secp256k1.verify(sig, hash, pub);
+  tlog('sighash', 'signature verifies', valid, '');
+}
+
+async function testOnion() {
+  // Create 3 hop keypairs
+  const keys = [];
+  for (let i = 0; i < 3; i++) {
+    const priv = rand(32);
+    const pub = b2h(secp256k1.getPublicKey(priv, true).slice(1)); // x-only
+    keys.push({ priv, pub });
+  }
+
+  const masterSecret = rand(32);
+  const hops = keys.map((k, i) => ({
+    pub: k.pub,
+    amt: 100000 - i * 500,
+    fee: 500,
+    cltv: 800000 + (3 - i) * 6,
+  }));
+
+  try {
+    const packet = await buildOnionPacket(hops, masterSecret);
+    tlog('onion', 'packet built', packet.length > 0, 'size=' + packet.length + ' bytes');
+
+    // Peel first layer
+    const layer1 = await peelOnionLayer(packet, keys[0].priv);
+    tlog('onion', 'layer 1 peeled', layer1.payload !== null, 'next=' + (layer1.payload.next?.slice(0, 12) || 'null'));
+    tlog('onion', 'layer 1 has correct hash', layer1.payload.hash === b2h(deriveHopHash(masterSecret, 0)), '');
+
+    // Peel second layer
+    const layer2 = await peelOnionLayer(layer1.blob, keys[1].priv);
+    tlog('onion', 'layer 2 peeled', layer2.payload !== null, 'next=' + (layer2.payload.next?.slice(0, 12) || 'null'));
+    tlog('onion', 'layer 2 has correct hash', layer2.payload.hash === b2h(deriveHopHash(masterSecret, 1)), '');
+
+    // Peel third layer (final)
+    const layer3 = await peelOnionLayer(layer2.blob, keys[2].priv);
+    tlog('onion', 'layer 3 (final) peeled', layer3.payload !== null, '');
+    tlog('onion', 'layer 3 is final', layer3.payload.next === 'final', 'next=' + layer3.payload.next);
+    tlog('onion', 'layer 3 has preimage', layer3.payload.preimage !== undefined, '');
+    // Verify preimage matches hash
+    const pi = h2b(layer3.payload.preimage);
+    const ph = sha256(pi);
+    tlog('onion', 'preimage verifies hash', b2h(ph) === layer3.payload.hash, '');
+  } catch (e) {
+    tlog('onion', 'onion build/peel', false, e.message);
+  }
+}
+
+async function testDecorrelation() {
+  const master = rand(32);
+  const h0 = b2h(deriveHopHash(master, 0));
+  const h1 = b2h(deriveHopHash(master, 1));
+  const h2 = b2h(deriveHopHash(master, 2));
+
+  tlog('decorrelation', 'all hashes different', h0 !== h1 && h1 !== h2 && h0 !== h2, '');
+
+  // Verify each preimage matches its hash
+  for (let i = 0; i < 3; i++) {
+    const pi = deriveHopPreimage(master, i);
+    const h = sha256(pi);
+    const expected = deriveHopHash(master, i);
+    tlog('decorrelation', `hop ${i}: SHA256(preimage) == hash`, b2h(h) === b2h(expected), '');
+  }
+
+  // Verify different master secrets produce different hashes
+  const master2 = rand(32);
+  const h0b = b2h(deriveHopHash(master2, 0));
+  tlog('decorrelation', 'different master → different hash', h0 !== h0b, '');
+}
+
+/* ══════════════════════════════════════════
+   CHIPNET LIVE HTLC TEST
+   ══════════════════════════════════════════ */
+let _chipState = null; // {redeemScript, preimage, payHash, locktime, txid, vout, value, recipPriv, senderPriv, recipPub, senderPub}
+
+function chipLog(msg) {
+  const el = $('#chip-status');
+  el.textContent += (el.textContent ? '\n' : '') + msg;
+  el.scrollTop = el.scrollHeight;
+}
+
+window.chipTestCreate = async function() {
+  if (!_privKey) { chipLog('✗ WALLET NOT UNLOCKED'); return; }
+  if (!_fulcrumConnected) { chipLog('✗ FULCRUM NOT CONNECTED'); return; }
+  chipLog('── CREATE HTLC ──');
+  try {
+    // Refresh UTXOs first
+    await refreshBalance();
+    if (_utxos.length === 0) { chipLog('✗ NO UTXOs — fund your wallet on chipnet first'); return; }
+
+    const amtSats = parseInt($('#chip-amount').value) || 10000;
+    let locktime = parseInt($('#chip-locktime').value);
+
+    chipLog('fetching current block height...');
+    const headerHex = await fulcrumCall('blockchain.headers.subscribe', []);
+    const currentHeight = headerHex.height || headerHex.block_height || 0;
+    if (!locktime || locktime === 0) {
+      locktime = currentHeight + 20;
+      $('#chip-locktime').value = locktime;
+    }
+    chipLog('block height: ' + currentHeight + ' · locktime: ' + locktime);
+
+    // Self-HTLC: sender = recipient = us
+    const preimage = rand(32);
+    const payHash = sha256(preimage);
+    const recipPriv = _privKey;
+    const senderPriv = _privKey;
+    const recipPub = secp256k1.getPublicKey(recipPriv, true);
+    const senderPub = secp256k1.getPublicKey(senderPriv, true);
+    const rs = htlcScript(payHash, recipPub, senderPub, locktime);
+    const p2shAddr = p2shAddress(rs);
+
+    chipLog('preimage: ' + b2h(preimage).slice(0, 16) + '...');
+    chipLog('payHash:  ' + b2h(payHash).slice(0, 16) + '...');
+    chipLog('P2SH addr: ' + p2shAddr);
+    chipLog('amount: ' + amtSats + ' sats · building tx...');
+
+    // Build funding TX: all UTXOs signed with our single privkey
+    const privKeys = _utxos.map(u => u._priv || _privKey);
+    const fundTxHex = buildHtlcFundTx(_utxos, privKeys, rs, amtSats, _bchAddr, 1);
+    chipLog('fund tx: ' + fundTxHex.length / 2 + ' bytes');
+
+    // Broadcast
+    chipLog('broadcasting...');
+    const txid = await bcBroadcast(fundTxHex);
+    chipLog('✓ HTLC FUNDED — txid: ' + txid);
+
+    // Find the P2SH output vout
+    // The first output is always the P2SH HTLC
+    const vout = 0;
+
+    // Save state for claim/refund
+    _chipState = { redeemScript: rs, preimage, payHash, locktime, txid, vout, value: amtSats, recipPriv, senderPriv, recipPub, senderPub };
+    chipLog('state saved — ready for CLAIM or REFUND');
+    chipLog('txid: ' + txid);
+
+    // Monitor the P2SH scripthash
+    const sh = p2shScriptHash(rs);
+    chipLog('monitoring scripthash: ' + sh.slice(0, 16) + '...');
+
+    // Refresh balance after funding
+    setTimeout(refreshBalance, 2000);
+  } catch (e) {
+    chipLog('✗ ERROR: ' + e.message);
+    console.error('[CHIP]', e);
+  }
+};
+
+window.chipTestClaim = async function() {
+  if (!_chipState) { chipLog('✗ NO HTLC — create one first'); return; }
+  if (!_fulcrumConnected) { chipLog('✗ FULCRUM NOT CONNECTED'); return; }
+  chipLog('── CLAIM HTLC ──');
+  try {
+    const { redeemScript, preimage, txid, vout, value, recipPriv } = _chipState;
+    chipLog('claiming txid: ' + txid.slice(0, 16) + '... vout: ' + vout);
+    chipLog('preimage: ' + b2h(preimage).slice(0, 16) + '...');
+
+    const claimTxHex = buildClaimTx(txid, vout, value, redeemScript, preimage, recipPriv, _bchAddr, 1);
+    chipLog('claim tx: ' + claimTxHex.length / 2 + ' bytes');
+
+    chipLog('broadcasting claim...');
+    const claimTxid = await bcBroadcast(claimTxHex);
+    chipLog('✓ HTLC CLAIMED — txid: ' + claimTxid);
+    chipLog('sats returned to wallet!');
+
+    _chipState = null;
+    setTimeout(refreshBalance, 2000);
+  } catch (e) {
+    chipLog('✗ ERROR: ' + e.message);
+    console.error('[CHIP]', e);
+  }
+};
+
+window.chipTestRefund = async function() {
+  if (!_chipState) { chipLog('✗ NO HTLC — create one first'); return; }
+  if (!_fulcrumConnected) { chipLog('✗ FULCRUM NOT CONNECTED'); return; }
+  chipLog('── REFUND HTLC ──');
+  try {
+    const { redeemScript, locktime, txid, vout, value, senderPriv } = _chipState;
+
+    // Check if locktime has been reached
+    const headerHex = await fulcrumCall('blockchain.headers.subscribe', []);
+    const currentHeight = headerHex.height || headerHex.block_height || 0;
+    chipLog('current height: ' + currentHeight + ' · locktime: ' + locktime);
+    if (currentHeight < locktime) {
+      chipLog('⚠ LOCKTIME NOT REACHED — ' + (locktime - currentHeight) + ' blocks remaining');
+      chipLog('TX will be built but broadcast may fail (non-final)');
+    }
+
+    const refundTxHex = buildRefundTx(txid, vout, value, redeemScript, locktime, senderPriv, _bchAddr, 1);
+    chipLog('refund tx: ' + refundTxHex.length / 2 + ' bytes');
+
+    chipLog('broadcasting refund...');
+    const refundTxid = await bcBroadcast(refundTxHex);
+    chipLog('✓ HTLC REFUNDED — txid: ' + refundTxid);
+    chipLog('sats returned to wallet!');
+
+    _chipState = null;
+    setTimeout(refreshBalance, 2000);
+  } catch (e) {
+    chipLog('✗ ERROR: ' + e.message);
+    if (e.message && e.message.includes('non-final')) {
+      chipLog('⚠ locktime not reached yet — wait for block ' + (_chipState?.locktime || '?'));
+    }
+    console.error('[CHIP]', e);
+  }
+};
+
+/* ══════════════════════════════════════════
+   BOOT
+   ══════════════════════════════════════════ */
+async function boot() {
+  initConfig();
+  fulcrumConnect();
+  nostrConnect();
+  renderHTLCList();
+  renderRelayList();
+  renderRelayForwards();
+  updateRelayEarnings();
+  // Settlement checker (every 30s, first check after 5s)
+  _settlementInterval = setInterval(checkSettlements, 30000);
+  setTimeout(checkSettlements, 5000);
+  // Relay discovery: refresh UI every 30s, prune stale every 60s
+  setInterval(renderRelayList, 30000);
+  setInterval(pruneStaleRelays, 60000);
+  // Refresh button
+  $('#btn-refresh').onclick = () => { refreshBalance(); };
+}
+
+// Loading screen
+setTimeout(() => {
+  $('#loading').style.display = 'none';
+  // Try auto-login from shared session
+  const sess = localStorage.getItem('00_session_auth');
+  if (sess) {
+    try {
+      const { p, ts } = JSON.parse(sess);
+      if (Date.now() - ts < 30 * 60000) {
+        tryUnlock(atob(p));
+        return;
+      }
+    } catch {}
+  }
+  $('#auth-view').style.display = 'flex';
+}, 2500);
+
+window.toggleOnionInfo = function(){
+  var modal = document.getElementById('onion-info-modal');
+  if (!modal) return;
+  if (modal.parentElement !== document.body) document.body.appendChild(modal);
+  var isOpen = modal.style.display === 'flex';
+  modal.style.display = isOpen ? 'none' : 'flex';
+};
+
+</script>
+
+<div id="onion-info-modal" onclick="if(event.target===this)toggleOnionInfo()" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center">
+  <div style="max-width:480px;width:90%;background:#1e1e1e;border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:32px 36px;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.6)">
+    <div onclick="toggleOnionInfo()" style="position:absolute;top:16px;right:20px;cursor:pointer;font-size:20px;color:rgba(255,255,255,.25);line-height:1">&times;</div>
+    <div style="font-size:20px;font-weight:700;color:rgba(255,255,255,.9);margin-bottom:24px">How Onion Payments Work</div>
+    <div style="font-size:15px;font-weight:600;color:rgba(255,255,255,.85);margin-bottom:8px">Stealth HTLCs</div>
+    <div style="font-size:13px;line-height:1.7;color:rgba(255,255,255,.4);margin-bottom:20px">Funds are locked in a Hashed Time-Locked Contract (HTLC) on BCH. The recipient claims with a preimage; if unclaimed, the sender refunds after a timelock. Each payment uses a one-time stealth address derived via ECDH — the real recipient never appears on-chain.</div>
+    <div style="font-size:15px;font-weight:600;color:rgba(255,255,255,.85);margin-bottom:8px">Onion Routing</div>
+    <div style="font-size:13px;line-height:1.7;color:rgba(255,255,255,.4);margin-bottom:20px">Payments can hop through relay nodes. Each relay peels one encryption layer, forwards the HTLC to the next hop, and earns a fee. No relay sees the full route — only its immediate neighbors.</div>
+    <div style="font-size:15px;font-weight:600;color:rgba(255,255,255,.85);margin-bottom:8px">Nostr Coordination</div>
+    <div style="font-size:13px;line-height:1.7;color:rgba(255,255,255,.4)">Relay discovery, onion blobs, and settlement notifications travel through Nostr relays as encrypted events. No server, no account — just encrypted P2P signaling over a decentralized relay mesh.</div>
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#00ff41">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-name" content="0penw0rld">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <title>00 Config — 0penw0rld</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{--green:#00ff41;--green-dim:#00c832;--green-dark:#003d0f;--black:#020a03;--grey:#0a110a;--panel:#060e06;--red:#ff4040;--gold:#f0a500;--purple:#9d4edd;--cyan:#00f5ff}
+    html,body{width:100%;height:100%;background:var(--black);font-family:'Share Tech Mono',monospace;display:flex;align-items:center;justify-content:center;overflow:hidden}
+    #rain{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.12}
+    .scanlines{position:fixed;inset:0;z-index:1;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.12) 2px,rgba(0,0,0,.12) 4px)}
+    .vignette{position:fixed;inset:0;z-index:1;pointer-events:none;background:radial-gradient(ellipse at center,transparent 30%,rgba(0,0,0,.9) 100%)}
+    #loading{position:fixed;inset:0;z-index:100;background:var(--black);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px}
+    .loader-logo{font-family:'Orbitron',monospace;font-size:52px;font-weight:900;color:var(--green);text-shadow:0 0 20px var(--green),0 0 50px var(--green),0 0 100px rgba(0,255,65,.3);animation:logoPulse 1s ease-in-out infinite}
+    @keyframes logoPulse{0%,100%{text-shadow:0 0 20px var(--green),0 0 50px var(--green)}50%{text-shadow:0 0 30px var(--green),0 0 70px var(--green),0 0 140px rgba(0,255,65,.5)}}
+    .loader-bar-wrap{width:200px;height:2px;background:rgba(0,255,65,.1);border-radius:2px;overflow:hidden}
+    .loader-bar{height:100%;background:var(--green);box-shadow:0 0 8px var(--green);animation:loadBar 2.5s ease-in-out forwards}
+    @keyframes loadBar{from{width:0}to{width:100%}}
+    .loader-status{font-size:10px;color:rgba(0,255,65,.3);letter-spacing:2px;min-height:14px}
+    .blink{animation:blink .8s step-end infinite}
+    @keyframes blink{50%{opacity:0}}
+
+    .phone-wrap{position:relative;z-index:10;display:flex;align-items:center;justify-content:center}
+    .phone{width:375px;height:780px;background:var(--panel);border-radius:42px;border:2px solid rgba(0,255,65,.2);box-shadow:0 0 0 1px rgba(0,255,65,.05),0 0 40px rgba(0,255,65,.08),0 0 80px rgba(0,255,65,.04),inset 0 0 30px rgba(0,0,0,.5);display:flex;flex-direction:column;overflow:hidden;position:relative}
+    .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:120px;height:28px;background:var(--black);border-radius:0 0 18px 18px;z-index:50;display:flex;align-items:center;justify-content:center;gap:8px}
+    .notch-cam{width:8px;height:8px;border-radius:50%;background:#111;border:1px solid #222}
+    .notch-speaker{width:40px;height:4px;border-radius:2px;background:#111}
+    .status-bar{padding:10px 20px 4px;display:flex;align-items:center;justify-content:space-between;font-size:10px;color:rgba(0,255,65,.5);flex-shrink:0;margin-top:14px}
+    .app-header{padding:10px 20px 0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+    .app-title{font-family:'Orbitron',monospace;font-size:18px;font-weight:700;color:var(--green);text-shadow:0 0 10px rgba(0,255,65,.4)}
+    .app-title span{font-size:11px;color:rgba(0,255,65,.4);display:block;letter-spacing:2px}
+
+    /* ── Config sections ── */
+    .cfg-scroll{flex:1;overflow-y:auto;scrollbar-width:none;min-height:0}
+    .cfg-scroll::-webkit-scrollbar{display:none}
+    .cfg-section{padding:16px 20px 8px;border-bottom:1px solid rgba(0,255,65,.07)}
+    .cfg-section-title{font-size:9px;color:rgba(0,255,65,.35);letter-spacing:3px;margin-bottom:12px;text-transform:uppercase}
+    .cfg-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(0,255,65,.04);min-height:40px}
+    .cfg-row:last-child{border-bottom:none}
+    .cfg-label{font-size:10px;color:rgba(0,255,65,.5);letter-spacing:1px;flex-shrink:0}
+    .cfg-value{font-size:10px;color:var(--green);text-align:right;max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .cfg-select{
+      background:rgba(0,255,65,.04);border:1px solid rgba(0,255,65,.15);
+      color:var(--green);font-family:'Share Tech Mono',monospace;font-size:10px;
+      padding:5px 24px 5px 8px;outline:none;cursor:pointer;letter-spacing:1px;
+      -webkit-appearance:none;appearance:none;border-radius:4px;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%2300ff41' d='M2 3l3 4 3-4'/%3E%3C/svg%3E");
+      background-repeat:no-repeat;background-position:right 6px center
+    }
+    .cfg-select:focus{border-color:rgba(0,255,65,.4)}
+    .cfg-select option{background:#060e06;color:var(--green)}
+
+    /* ── Network textareas / inputs ── */
+    .cfg-field{margin-bottom:12px}
+    .cfg-field-label{font-size:9px;color:rgba(0,255,65,.35);letter-spacing:2px;margin-bottom:4px;text-transform:uppercase}
+    .cfg-input{
+      width:100%;background:rgba(0,255,65,.03);border:1px solid rgba(0,255,65,.12);
+      color:var(--green);font-family:'Share Tech Mono',monospace;font-size:10px;
+      padding:8px 10px;outline:none;transition:.15s;border-radius:4px
+    }
+    .cfg-input:focus{border-color:rgba(0,255,65,.4)}
+    .cfg-textarea{
+      width:100%;background:rgba(0,255,65,.03);border:1px solid rgba(0,255,65,.12);
+      color:var(--green);font-family:'Share Tech Mono',monospace;font-size:10px;
+      padding:8px 10px;outline:none;transition:.15s;resize:none;line-height:1.6;
+      border-radius:4px
+    }
+    .cfg-textarea:focus{border-color:rgba(0,255,65,.4)}
+    .cfg-hint{font-size:8px;color:rgba(0,255,65,.2);margin-top:2px;letter-spacing:.5px}
+
+    /* ── Buttons ── */
+    .cfg-btn{
+      width:100%;padding:11px;margin-top:8px;
+      background:rgba(0,255,65,.06);border:1px solid rgba(0,255,65,.2);
+      border-radius:6px;color:var(--green);font-family:'Share Tech Mono',monospace;
+      font-size:10px;letter-spacing:2px;cursor:pointer;transition:.15s;text-align:center
+    }
+    .cfg-btn:hover{background:rgba(0,255,65,.12);border-color:rgba(0,255,65,.4)}
+    .cfg-btn.danger{border-color:rgba(255,64,64,.25);color:var(--red)}
+    .cfg-btn.danger:hover{background:rgba(255,64,64,.08);border-color:rgba(255,64,64,.5)}
+
+    /* ── Status indicators ── */
+    .cfg-status{display:flex;align-items:center;gap:6px}
+    .cfg-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+    .cfg-dot.green{background:var(--green);box-shadow:0 0 6px var(--green)}
+    .cfg-dot.orange{background:var(--gold);box-shadow:0 0 6px var(--gold)}
+    .cfg-dot.red{background:var(--red);box-shadow:0 0 6px var(--red)}
+    .cfg-dot.dim{background:rgba(0,255,65,.15)}
+
+    .cfg-addr{font-size:9px;color:rgba(0,255,65,.5);font-family:'Share Tech Mono',monospace;word-break:break-all;line-height:1.4}
+    .cfg-copy{
+      padding:3px 10px;background:rgba(0,255,65,.06);border:1px solid rgba(0,255,65,.15);
+      border-radius:4px;color:rgba(0,255,65,.5);font-family:'Share Tech Mono',monospace;
+      font-size:9px;cursor:pointer;transition:.15s;flex-shrink:0;letter-spacing:1px
+    }
+    .cfg-copy:hover{background:rgba(0,255,65,.12);color:var(--green)}
+
+    .cfg-version{font-size:10px;color:rgba(0,255,65,.3);letter-spacing:1px}
+    .cfg-link{color:rgba(0,255,65,.4);text-decoration:none;font-size:10px;letter-spacing:1px;transition:.15s}
+    .cfg-link:hover{color:var(--green)}
+
+    .app-toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);padding:12px 24px;border-radius:8px;font:12px 'Share Tech Mono',monospace;z-index:9999;animation:toastIn .3s ease,toastOut .3s ease 2.7s;pointer-events:none;max-width:340px;text-align:center}
+    .app-toast.success{background:rgba(0,255,65,.1);border:1px solid rgba(0,255,65,.3);color:var(--green)}
+    .app-toast.info{background:rgba(0,245,255,.1);border:1px solid rgba(0,245,255,.3);color:var(--cyan)}
+    @keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+    @keyframes toastOut{from{opacity:1}to{opacity:0}}
+
+    /* ── Responsive ── */
+    @media(max-width:420px){
+      .phone{width:100%;height:100vh;border-radius:0;border:none;box-shadow:none}
+      .notch{display:none}
+      .status-bar{margin-top:0;padding-top:env(safe-area-inset-top,10px)}
+    }
+  </style>
+  <link rel="stylesheet" href="desktop.css">
+</head>
+<body>
+
+<canvas id="rain"></canvas>
+<div class="scanlines"></div>
+<div class="vignette"></div>
+
+<!-- ═══ Loading ═══ -->
+<div id="loading">
+  <div class="loader-logo">00</div>
+  <div class="loader-bar-wrap"><div class="loader-bar"></div></div>
+  <div class="loader-status">LOADING CONFIG<span class="blink">_</span></div>
+</div>
+
+<!-- ═══ Phone frame ═══ -->
+<div class="phone-wrap">
+  <div class="phone">
+    <div class="notch">
+      <div class="notch-cam"></div>
+      <div class="notch-speaker"></div>
+      <div class="notch-cam"></div>
+    </div>
+
+    <div class="status-bar">
+      <span id="clock">--:--</span>
+      <span style="font-size:9px;color:rgba(0,255,65,.5)">CONFIG</span>
+      <span>⚡ ▮▮▮</span>
+    </div>
+
+    <div class="app-header">
+      <div class="app-title">
+        CONFIG
+        <span>// SETTINGS</span>
+      </div>
+    </div>
+
+    <!-- ═══ Scrollable config body ═══ -->
+    <div class="cfg-scroll" id="cfg-scroll">
+
+      <!-- ── GENERAL ── -->
+      <div class="cfg-section">
+        <div class="cfg-section-title">// GENERAL</div>
+        <div class="cfg-row">
+          <div class="cfg-label">LANGUAGE</div>
+          <select class="cfg-select" id="cfg-lang">
+            <option value="EN">EN</option>
+            <option value="FR">FR</option>
+            <option value="ES">ES</option>
+            <option value="CN">CN</option>
+          </select>
+        </div>
+        <div class="cfg-row">
+          <div class="cfg-label">THEME</div>
+          <div class="cfg-value" style="color:var(--green)">MATRIX</div>
+        </div>
+        <div class="cfg-row">
+          <div class="cfg-label">AUTO-LOCK</div>
+          <select class="cfg-select" id="cfg-autolock">
+            <option value="5">5 MIN</option>
+            <option value="15">15 MIN</option>
+            <option value="30" selected>30 MIN</option>
+            <option value="60">60 MIN</option>
+            <option value="120">120 MIN</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- ── NETWORK ── -->
+      <div class="cfg-section">
+        <div class="cfg-section-title">// NETWORK</div>
+
+        <div class="cfg-field">
+          <div class="cfg-field-label">BCH FULCRUM</div>
+          <textarea class="cfg-textarea" id="cfg-fulcrum" rows="3"></textarea>
+          <div class="cfg-hint">one wss:// URL per line</div>
+        </div>
+
+        <div class="cfg-field">
+          <div class="cfg-field-label">BTC ELECTRUM</div>
+          <textarea class="cfg-textarea" id="cfg-btc-electrum" rows="3"></textarea>
+          <div class="cfg-hint">one wss:// URL per line</div>
+        </div>
+
+        <div class="cfg-field">
+          <div class="cfg-field-label">NOSTR RELAYS</div>
+          <textarea class="cfg-textarea" id="cfg-relays" rows="3"></textarea>
+          <div class="cfg-hint">one wss:// URL per line</div>
+        </div>
+
+        <div class="cfg-field">
+          <div class="cfg-field-label">ETH RPC</div>
+          <input class="cfg-input" id="cfg-eth-rpc">
+        </div>
+
+        <div class="cfg-field">
+          <div class="cfg-field-label">CAULDRON INDEXER</div>
+          <input class="cfg-input" id="cfg-indexer">
+        </div>
+
+        <div class="cfg-field">
+          <div class="cfg-field-label">THORCHAIN MIDGARD</div>
+          <input class="cfg-input" id="cfg-midgard">
+        </div>
+
+        <div class="cfg-field">
+          <div class="cfg-field-label">META SERVICE</div>
+          <input class="cfg-input" id="cfg-meta">
+        </div>
+
+        <button class="cfg-btn" id="cfg-net-save">SAVE ENDPOINTS</button>
+        <div style="height:6px"></div>
+        <button class="cfg-btn danger" id="cfg-net-reset">RESET DEFAULTS</button>
+      </div>
+
+      <!-- ── SECURITY ── -->
+      <div class="cfg-section">
+        <div class="cfg-section-title">// SECURITY</div>
+        <div class="cfg-row">
+          <div class="cfg-label">SESSION</div>
+          <div class="cfg-status" id="cfg-session-status">
+            <div class="cfg-dot dim"></div>
+            <div class="cfg-value">CHECKING...</div>
+          </div>
+        </div>
+        <div class="cfg-row" id="cfg-session-ts-row" style="display:none">
+          <div class="cfg-label">EXPIRES</div>
+          <div class="cfg-value" id="cfg-session-ts">—</div>
+        </div>
+        <button class="cfg-btn danger" id="cfg-clear-session">CLEAR SESSION</button>
+      </div>
+
+      <!-- ── WALLET ── -->
+      <div class="cfg-section">
+        <div class="cfg-section-title">// WALLET</div>
+        <div class="cfg-row">
+          <div class="cfg-label">STATUS</div>
+          <div class="cfg-status" id="cfg-wallet-status">
+            <div class="cfg-dot dim"></div>
+            <div class="cfg-value">CHECKING...</div>
+          </div>
+        </div>
+        <div id="cfg-wallet-addr-row" style="display:none">
+          <div class="cfg-row" style="flex-direction:column;align-items:flex-start;gap:6px">
+            <div class="cfg-label">BCH ADDRESS</div>
+            <div style="display:flex;align-items:center;gap:8px;width:100%">
+              <div class="cfg-addr" id="cfg-bch-addr" style="flex:1">—</div>
+              <button class="cfg-copy" id="cfg-copy-addr">COPY</button>
+            </div>
+          </div>
+        </div>
+        <button class="cfg-btn danger" id="cfg-disconnect" style="display:none">DISCONNECT WALLET</button>
+      </div>
+
+      <!-- ── ABOUT ── -->
+      <div class="cfg-section" style="border-bottom:none">
+        <div class="cfg-section-title">// ABOUT</div>
+        <div class="cfg-row">
+          <div class="cfg-label">VERSION</div>
+          <div class="cfg-version">v0.82</div>
+        </div>
+        <div class="cfg-row">
+          <div class="cfg-label">DOCUMENTATION</div>
+          <a class="cfg-link" href="docs.html">OPEN DOCS &rarr;</a>
+        </div>
+        <div class="cfg-row">
+          <div class="cfg-label">BUILD</div>
+          <div class="cfg-version">0penw0rld / matrix</div>
+        </div>
+      </div>
+
+      <div style="height:20px"></div>
+    </div><!-- /cfg-scroll -->
+  </div>
+</div>
+
+<script>(function(){var v=localStorage.getItem('00wallet_vault');if(!v){window.location.href='/wallet.html';return;}try{var s=JSON.parse(localStorage.getItem('00_session_auth')||'{}');if(!s.ts||Date.now()-s.ts>30*60*1000){window.location.href='/wallet.html';}}catch(e){window.location.href='/wallet.html';}})();</script>
+<script src="/shell.js?v=263"></script>
+<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{});}</script>
+<script>
+document.getElementById('loading').remove();
+
+// ═══ Clock ═══
+function updateClock(){document.getElementById('clock').textContent=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});}
+setInterval(updateClock,1000);updateClock();
+
+// ═══ Remove loading ═══
+setTimeout(()=>{const l=document.getElementById('loading');if(l)l.remove();},800);
+
+// ═══ Helpers ═══
+function toast(msg,type='success'){
+  const t=document.createElement('div');t.className='app-toast '+type;t.textContent=msg;
+  document.body.appendChild(t);setTimeout(()=>t.remove(),3200);
+}
+
+// ═══ GENERAL — Language ═══
+(function(){
+  const sel=document.getElementById('cfg-lang');
+  sel.value=localStorage.getItem('00_lang')||'EN';
+  sel.onchange=function(){
+    if(typeof window._shellSetLang==='function') window._shellSetLang(sel.value);
+    else{localStorage.setItem('00_lang',sel.value);}
+    toast('LANGUAGE: '+sel.value);
+  };
+})();
+
+// ═══ GENERAL — Auto-lock ═══
+(function(){
+  const sel=document.getElementById('cfg-autolock');
+  const saved=localStorage.getItem('00_autolock');
+  if(saved) sel.value=saved;
+  sel.onchange=function(){
+    localStorage.setItem('00_autolock',sel.value);
+    toast('AUTO-LOCK: '+sel.value+' MIN');
+  };
+})();
+
+// ═══ NETWORK — Load & Save ═══
+(function(){
+  const EP_DEFAULTS=window._00ep?window._00ep.defaults:{
+    fulcrum:['wss://bch.imaginary.cash:50004','wss://electroncash.de:50004','wss://bch.loping.net:50004'],
+    btc_electrum:['wss://e2.keff.org:50004','wss://fulcrum.grey.pw:50004','wss://btc.electroncash.dk:50004'],
+    relays:['wss://relay.damus.io','wss://nos.lol','wss://relay.nostr.band','wss://relay.snort.social'],
+    eth_rpc:'https://ethereum-rpc.publicnode.com',
+    indexer:'https://indexer.riften.net',
+    midgard:'https://midgard.ninerealms.com/v2',
+    meta:'https://meta.riften.net'
+  };
+
+  function loadEp(key,fallback){
+    try{const v=localStorage.getItem('00_ep_'+key);if(!v)return fallback;const p=JSON.parse(v);return Array.isArray(fallback)?((Array.isArray(p)&&p.length)?p:fallback):(typeof p==='string'&&p?p:fallback);}catch{return fallback;}
+  }
+
+  function refreshFields(){
+    document.getElementById('cfg-fulcrum').value=loadEp('fulcrum',EP_DEFAULTS.fulcrum).join('\n');
+    document.getElementById('cfg-btc-electrum').value=loadEp('btc_electrum',EP_DEFAULTS.btc_electrum).join('\n');
+    document.getElementById('cfg-relays').value=loadEp('relays',EP_DEFAULTS.relays).join('\n');
+    document.getElementById('cfg-eth-rpc').value=loadEp('eth_rpc',EP_DEFAULTS.eth_rpc);
+    document.getElementById('cfg-indexer').value=loadEp('indexer',EP_DEFAULTS.indexer);
+    document.getElementById('cfg-midgard').value=loadEp('midgard',EP_DEFAULTS.midgard);
+    document.getElementById('cfg-meta').value=loadEp('meta',EP_DEFAULTS.meta);
+  }
+  refreshFields();
+
+  document.getElementById('cfg-net-save').onclick=function(){
+    const lines=s=>s.split('\n').map(l=>l.trim()).filter(l=>l.startsWith('wss://'));
+    const fulcrum=lines(document.getElementById('cfg-fulcrum').value);
+    const btcElectrum=lines(document.getElementById('cfg-btc-electrum').value);
+    const relays=lines(document.getElementById('cfg-relays').value);
+    const ethRpc=document.getElementById('cfg-eth-rpc').value.trim();
+    const indexer=document.getElementById('cfg-indexer').value.trim();
+    const midgard=document.getElementById('cfg-midgard').value.trim();
+    const meta=document.getElementById('cfg-meta').value.trim();
+    if(fulcrum.length) localStorage.setItem('00_ep_fulcrum',JSON.stringify(fulcrum)); else localStorage.removeItem('00_ep_fulcrum');
+    if(btcElectrum.length) localStorage.setItem('00_ep_btc_electrum',JSON.stringify(btcElectrum)); else localStorage.removeItem('00_ep_btc_electrum');
+    if(relays.length) localStorage.setItem('00_ep_relays',JSON.stringify(relays)); else localStorage.removeItem('00_ep_relays');
+    if(ethRpc) localStorage.setItem('00_ep_eth_rpc',JSON.stringify(ethRpc)); else localStorage.removeItem('00_ep_eth_rpc');
+    if(indexer) localStorage.setItem('00_ep_indexer',JSON.stringify(indexer)); else localStorage.removeItem('00_ep_indexer');
+    if(midgard) localStorage.setItem('00_ep_midgard',JSON.stringify(midgard)); else localStorage.removeItem('00_ep_midgard');
+    if(meta) localStorage.setItem('00_ep_meta',JSON.stringify(meta)); else localStorage.removeItem('00_ep_meta');
+    toast('ENDPOINTS SAVED');
+  };
+
+  document.getElementById('cfg-net-reset').onclick=function(){
+    ['fulcrum','btc_electrum','relays','eth_rpc','indexer','midgard','meta'].forEach(k=>localStorage.removeItem('00_ep_'+k));
+    refreshFields();
+    toast('DEFAULTS RESTORED','info');
+  };
+})();
+
+// ═══ SECURITY — Session ═══
+(function(){
+  function refreshSession(){
+    const statusEl=document.getElementById('cfg-session-status');
+    const tsRow=document.getElementById('cfg-session-ts-row');
+    const tsEl=document.getElementById('cfg-session-ts');
+    try{
+      const sess=JSON.parse(localStorage.getItem('00_session_auth')||'{}');
+      if(sess.p&&sess.ts){
+        const ttl=parseInt(localStorage.getItem('00_autolock')||'30',10)*60*1000;
+        const remaining=ttl-(Date.now()-sess.ts);
+        if(remaining>0){
+          statusEl.innerHTML='<div class="cfg-dot green"></div><div class="cfg-value" style="color:var(--green)">ACTIVE</div>';
+          tsRow.style.display='flex';
+          const mins=Math.ceil(remaining/60000);
+          tsEl.textContent=mins+' MIN REMAINING';
+          return;
+        }
+      }
+    }catch{}
+    statusEl.innerHTML='<div class="cfg-dot orange"></div><div class="cfg-value" style="color:var(--gold)">EXPIRED</div>';
+    tsRow.style.display='none';
+  }
+  refreshSession();
+  setInterval(refreshSession,5000);
+
+  document.getElementById('cfg-clear-session').onclick=function(){
+    localStorage.removeItem('00_session_auth');
+    refreshSession();
+    toast('SESSION CLEARED','info');
+  };
+})();
+
+// ═══ WALLET — Status ═══
+(function(){
+  const statusEl=document.getElementById('cfg-wallet-status');
+  const addrRow=document.getElementById('cfg-wallet-addr-row');
+  const addrEl=document.getElementById('cfg-bch-addr');
+  const disconnBtn=document.getElementById('cfg-disconnect');
+  const copyBtn=document.getElementById('cfg-copy-addr');
+
+  function refreshWallet(){
+    const hasVault=!!localStorage.getItem('00wallet_vault');
+    if(hasVault){
+      statusEl.innerHTML='<div class="cfg-dot green"></div><div class="cfg-value" style="color:var(--green)">CONNECTED</div>';
+      disconnBtn.style.display='block';
+      // Try to show BCH address from session
+      try{
+        const sess=JSON.parse(localStorage.getItem('00_session_auth')||'{}');
+        if(sess.p&&sess.ts&&Date.now()-sess.ts<(parseInt(localStorage.getItem('00_autolock')||'30',10)*60*1000)){
+          // We have an active session — try to read address from any vault
+          const payVault=localStorage.getItem('00pay_vault');
+          const idVault=localStorage.getItem('00id_vault');
+          // For now show a truncated indicator — actual address needs vault decryption
+          addrRow.style.display='block';
+          addrEl.textContent='Wallet active — open Wallet app for full address';
+          addrEl.style.fontStyle='italic';
+          addrEl.style.color='rgba(0,255,65,.3)';
+        }else{
+          addrRow.style.display='none';
+        }
+      }catch{addrRow.style.display='none';}
+    }else{
+      statusEl.innerHTML='<div class="cfg-dot dim"></div><div class="cfg-value" style="color:rgba(0,255,65,.3)">NOT SET UP</div>';
+      addrRow.style.display='none';
+      disconnBtn.style.display='none';
+    }
+  }
+  refreshWallet();
+
+  disconnBtn.onclick=function(){
+    if(typeof window._shellDisconnect==='function') window._shellDisconnect();
+    else{
+      if(!confirm('Clear all data and disconnect?'))return;
+      localStorage.clear();sessionStorage.clear();
+      window.location.replace('/');
+    }
+  };
+
+  copyBtn.onclick=function(){
+    const text=addrEl.textContent;
+    if(text&&!text.startsWith('Wallet')){
+      navigator.clipboard.writeText(text).then(()=>toast('COPIED'));
+    }
+  };
+})();
+
+// ═══ Rain ═══
+const canvas=document.getElementById('rain');
+const ctx=canvas.getContext('2d');
+let drops=[];
+function resizeCanvas(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;}
+resizeCanvas();window.addEventListener('resize',resizeCanvas);
+for(let i=0;i<80;i++){drops.push({x:Math.random()*window.innerWidth,y:Math.random()*window.innerHeight,len:Math.random()*18+5,speed:Math.random()*5+3,opacity:Math.random()*.35+.06,width:Math.random()*.7+.2});}
+function drawRain(){ctx.clearRect(0,0,canvas.width,canvas.height);for(const d of drops){ctx.beginPath();ctx.moveTo(d.x,d.y);ctx.lineTo(d.x-.4,d.y+d.len);ctx.strokeStyle=`rgba(0,255,65,${d.opacity})`;ctx.lineWidth=d.width;ctx.stroke();d.y+=d.speed;if(d.y>canvas.height){d.y=-d.len;d.x=Math.random()*canvas.width;}}requestAnimationFrame(drawRain);}
+drawRain();
+</script>
+</body>
+</html>

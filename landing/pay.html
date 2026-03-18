@@ -1,0 +1,1490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#00ff41">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-name" content="0penw0rld">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <title>00 Pay — 0penw0rld</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --green: #00ff41; --green-dim: #00c832; --green-dark: #003d0f;
+      --black: #020a03; --grey: #0a110a; --panel: #060e06;
+      --red: #ff4040; --gold: #f0a500; --blue: #00d4ff;
+    }
+    html, body { width:100%; height:100%; background:var(--black); font-family:'Share Tech Mono',monospace; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+    #rain { position:fixed; inset:0; z-index:0; pointer-events:none; opacity:.12; }
+    .scanlines { position:fixed; inset:0; z-index:1; pointer-events:none; background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.12) 2px,rgba(0,0,0,.12) 4px); }
+    .vignette { position:fixed; inset:0; z-index:1; pointer-events:none; background:radial-gradient(ellipse at center,transparent 30%,rgba(0,0,0,.9) 100%); }
+    #loading { position:fixed; inset:0; z-index:100; background:var(--black); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:24px; }
+    .loader-logo { font-family:'Orbitron',monospace; font-size:52px; font-weight:900; color:var(--green); text-shadow:0 0 20px var(--green),0 0 50px var(--green),0 0 100px rgba(0,255,65,.3); animation:logoPulse 1s ease-in-out infinite; }
+    @keyframes logoPulse { 0%,100%{text-shadow:0 0 20px var(--green),0 0 50px var(--green)} 50%{text-shadow:0 0 30px var(--green),0 0 70px var(--green),0 0 140px rgba(0,255,65,.5)} }
+    .loader-bar-wrap { width:200px; height:2px; background:rgba(0,255,65,.1); border-radius:2px; overflow:hidden; }
+    .loader-bar { height:100%; background:var(--green); box-shadow:0 0 8px var(--green); animation:loadBar 2.5s ease-in-out forwards; }
+    @keyframes loadBar { from{width:0} to{width:100%} }
+    .loader-status { font-size:10px; color:rgba(0,255,65,.3); letter-spacing:2px; min-height:14px; }
+    .blink { animation:blink .8s step-end infinite; }
+    @keyframes blink { 50%{opacity:0} }
+
+    .phone-wrap { position:relative; z-index:10; display:flex; align-items:center; justify-content:center; }
+    .phone { width:375px; height:780px; background:var(--panel); border-radius:42px; border:2px solid rgba(0,255,65,.2); box-shadow:0 0 0 1px rgba(0,255,65,.05),0 0 40px rgba(0,255,65,.08),0 0 80px rgba(0,255,65,.04),inset 0 0 30px rgba(0,0,0,.5); display:flex; flex-direction:column; overflow:hidden; position:relative; }
+    .notch { position:absolute; top:0; left:50%; transform:translateX(-50%); width:120px; height:28px; background:var(--black); border-radius:0 0 18px 18px; z-index:50; display:flex; align-items:center; justify-content:center; gap:8px; }
+    .notch-cam { width:8px; height:8px; border-radius:50%; background:#111; border:1px solid #222; }
+    .notch-speaker { width:40px; height:4px; border-radius:2px; background:#111; }
+    .status-bar { padding:10px 20px 4px; display:flex; align-items:center; justify-content:space-between; font-size:10px; color:rgba(0,255,65,.5); flex-shrink:0; margin-top:14px; }
+    .app-header { padding:10px 20px 0; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+    .app-title { font-family:'Orbitron',monospace; font-size:18px; font-weight:700; color:var(--green); text-shadow:0 0 10px rgba(0,255,65,.4); }
+    .app-title span { font-size:11px; color:rgba(0,255,65,.4); display:block; letter-spacing:2px; }
+
+    .oracle-bar { display:flex; align-items:center; justify-content:space-between; padding:5px 20px; border-bottom:1px solid rgba(0,255,65,.08); flex-shrink:0; font-size:9px; color:rgba(0,255,65,.4); letter-spacing:1px; }
+    .oracle-price { color:var(--green); font-size:11px; letter-spacing:1px; }
+    .oracle-dot { width:5px; height:5px; border-radius:50%; background:rgba(0,255,65,.2); flex-shrink:0; transition:.3s; margin-right:4px; }
+    .oracle-dot.on { background:var(--green); box-shadow:0 0 4px var(--green); }
+
+    .tabs { display:flex; padding:0 16px; border-bottom:1px solid rgba(0,255,65,.1); flex-shrink:0; }
+    .tab { flex:1; padding:10px; text-align:center; font-size:10px; letter-spacing:2px; text-transform:uppercase; color:rgba(0,255,65,.3); cursor:pointer; border-bottom:2px solid transparent; transition:.2s; }
+    .tab.active { color:var(--green); border-bottom-color:var(--green); }
+    .tab-pane { display:none; flex:1; overflow-y:auto; scrollbar-width:none; min-height:0; flex-direction:column; }
+    .tab-pane::-webkit-scrollbar { display:none; }
+    .tab-pane.active { display:flex; }
+    #main-view { min-height:0; display:flex; flex-direction:column; flex:1; }
+
+    /* Auth */
+    #auth-import, #auth-unlock { display:none; flex:1; flex-direction:column; }
+    #auth-view { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:30px 24px; gap:16px; }
+    .auth-logo { font-family:'Orbitron',monospace; font-size:28px; font-weight:900; color:var(--green); text-shadow:0 0 20px rgba(0,255,65,.5); }
+    .auth-sub { font-size:10px; color:rgba(0,255,65,.35); letter-spacing:3px; margin-top:-8px; }
+    .auth-input { width:100%; background:rgba(0,255,65,.04); border:1px solid rgba(0,255,65,.2); border-radius:8px; padding:12px 14px; color:var(--green); font-family:'Share Tech Mono',monospace; font-size:12px; outline:none; transition:.2s; }
+    .auth-input:focus { border-color:rgba(0,255,65,.5); box-shadow:0 0 8px rgba(0,255,65,.1); }
+    .auth-input::placeholder { color:rgba(0,255,65,.2); }
+    .auth-btn { width:100%; padding:14px; background:rgba(0,255,65,.1); border:1px solid rgba(0,255,65,.4); border-radius:8px; color:var(--green); font-family:'Share Tech Mono',monospace; font-size:13px; letter-spacing:3px; cursor:pointer; transition:.2s; }
+    .auth-btn:hover { background:rgba(0,255,65,.18); box-shadow:0 0 16px rgba(0,255,65,.2); }
+    .auth-btn-secondary { background:transparent; border-color:rgba(0,255,65,.2); color:rgba(0,255,65,.5); font-size:11px; padding:10px; }
+    .auth-error { font-size:10px; color:#ff4040; letter-spacing:1px; min-height:14px; }
+    .auth-lbl { font-size:9px; color:rgba(0,255,65,.35); letter-spacing:2px; align-self:flex-start; }
+    .auth-divider { width:100%; border-top:1px solid rgba(0,255,65,.1); }
+
+    /* Invoice tab */
+    .invoice-wrap { padding:20px; display:flex; flex-direction:column; gap:14px; flex:1; }
+    .currency-toggle { display:flex; border:1px solid rgba(0,255,65,.2); border-radius:8px; overflow:hidden; flex-shrink:0; }
+    .cur-btn { flex:1; padding:10px; text-align:center; font-size:12px; letter-spacing:2px; cursor:pointer; transition:.2s; color:rgba(0,255,65,.4); border:none; background:none; font-family:'Share Tech Mono',monospace; }
+    .cur-btn.active { background:rgba(0,255,65,.12); color:var(--green); }
+    .form-lbl { font-size:9px; color:rgba(0,255,65,.4); letter-spacing:2px; margin-bottom:4px; }
+    .form-input { width:100%; background:rgba(0,255,65,.04); border:1px solid rgba(0,255,65,.2); border-radius:8px; padding:11px 14px; color:var(--green); font-family:'Share Tech Mono',monospace; font-size:11px; outline:none; transition:.2s; }
+    .form-input:focus { border-color:rgba(0,255,65,.5); box-shadow:0 0 8px rgba(0,255,65,.08); }
+    .form-input::placeholder { color:rgba(0,255,65,.2); }
+    .amount-hero { font-family:'Orbitron',monospace; font-size:36px; font-weight:900; color:var(--green); text-shadow:0 0 20px rgba(0,255,65,.3); text-align:center; padding:6px 0; }
+    .amount-hero.price-loading { animation:pricePulse 1.2s ease-in-out infinite; opacity:.4; }
+    @keyframes pricePulse { 0%,100%{opacity:.25} 50%{opacity:.6} }
+    .amount-sub { font-size:11px; color:rgba(0,255,65,.4); text-align:center; letter-spacing:2px; }
+    .gen-btn { width:100%; padding:14px; background:rgba(0,255,65,.1); border:1px solid rgba(0,255,65,.4); border-radius:8px; color:var(--green); font-family:'Share Tech Mono',monospace; font-size:13px; letter-spacing:3px; cursor:pointer; transition:.2s; }
+    .gen-btn:hover { background:rgba(0,255,65,.18); box-shadow:0 0 16px rgba(0,255,65,.2); }
+
+    /* QR section */
+    .qr-section { display:none; flex-direction:column; align-items:center; gap:10px; padding:0 0 10px; }
+    .qr-section.visible { display:flex; }
+    .qr-wrap { background:#000; border:2px solid rgba(0,255,65,.3); border-radius:12px; padding:10px; box-shadow:0 0 20px rgba(0,255,65,.1); }
+    #pay-qr { display:block; }
+    .pay-status { display:flex; align-items:center; gap:8px; font-size:10px; letter-spacing:1px; padding:6px 12px; border-radius:6px; }
+    .pay-status.watching { color:rgba(0,255,65,.6); background:rgba(0,255,65,.05); border:1px solid rgba(0,255,65,.15); }
+    .pay-status.received { color:var(--green); background:rgba(0,255,65,.1); border:1px solid rgba(0,255,65,.3); }
+    .pay-status-dot { width:6px; height:6px; border-radius:50%; background:var(--green); animation:pulseDot 1.2s ease-in-out infinite; }
+    @keyframes pulseDot { 0%,100%{opacity:1} 50%{opacity:.2} }
+    .pay-uri { font-size:8px; color:rgba(0,255,65,.35); word-break:break-all; text-align:center; padding:0 4px; line-height:1.5; }
+    .copy-row { display:flex; gap:8px; width:100%; }
+    .copy-btn { flex:1; background:none; border:1px solid rgba(0,255,65,.25); color:rgba(0,255,65,.6); font-family:'Share Tech Mono',monospace; font-size:10px; letter-spacing:1px; padding:8px; border-radius:6px; cursor:pointer; transition:.15s; }
+    .copy-btn:hover { border-color:rgba(0,255,65,.6); color:var(--green); }
+    .new-inv-btn { background:transparent; border:1px solid rgba(0,255,65,.15); color:rgba(0,255,65,.4); font-family:'Share Tech Mono',monospace; font-size:10px; padding:6px 16px; border-radius:6px; cursor:pointer; transition:.15s; }
+    .new-inv-btn:hover { border-color:rgba(0,255,65,.4); color:rgba(0,255,65,.7); }
+
+    /* History */
+    .pay-item { padding:12px 20px; border-bottom:1px solid rgba(0,255,65,.05); cursor:pointer; transition:.15s; }
+    .pay-item:hover { background:rgba(0,255,65,.03); }
+    .pay-top { display:flex; justify-content:space-between; margin-bottom:4px; }
+    .pay-label { font-size:10px; color:rgba(0,255,65,.7); }
+    .pay-amount-hist { font-size:12px; color:var(--green); font-family:'Orbitron',monospace; }
+    .pay-usd { font-size:9px; color:rgba(0,255,65,.4); }
+    .pay-date { font-size:9px; color:rgba(0,255,65,.25); }
+    .pay-status-badge { font-size:8px; padding:1px 6px; border-radius:3px; }
+    .pay-status-badge.received { color:var(--green); border:1px solid rgba(0,255,65,.3); }
+    .pay-status-badge.pending { color:var(--gold); border:1px solid rgba(240,165,0,.3); }
+    .empty-state { padding:40px 20px; text-align:center; font-size:11px; color:rgba(0,255,65,.25); letter-spacing:2px; line-height:2.5; }
+
+    /* Received overlay */
+    .success-overlay { position:absolute; inset:0; z-index:40; background:rgba(2,10,3,.97); border-radius:42px; display:none; flex-direction:column; align-items:center; justify-content:center; gap:18px; padding:28px 24px; }
+    .success-icon { font-size:56px; }
+    .success-title { font-family:'Orbitron',monospace; font-size:16px; color:var(--green); letter-spacing:3px; text-shadow:0 0 20px var(--green); }
+    .success-amount { font-family:'Orbitron',monospace; font-size:28px; font-weight:900; color:var(--green); }
+    .success-usd { font-size:12px; color:rgba(0,255,65,.5); }
+    .success-close { padding:12px 40px; border:1px solid rgba(0,255,65,.4); color:var(--green); font-family:'Share Tech Mono',monospace; font-size:12px; letter-spacing:2px; cursor:pointer; border-radius:8px; background:rgba(0,255,65,.08); transition:.2s; }
+    .success-close:hover { background:rgba(0,255,65,.15); }
+
+    /* SEND tab */
+    .send-wrap{padding:16px;display:flex;flex-direction:column;gap:12px;overflow-y:auto;scrollbar-width:none;flex:1;min-height:0;}
+    .send-wrap::-webkit-scrollbar{display:none}
+    .send-card{background:rgba(0,255,65,.03);border:1px solid rgba(0,255,65,.1);border-radius:10px;padding:12px 14px;}
+    .send-lbl{font-size:9px;color:rgba(0,255,65,.4);letter-spacing:2px;margin-bottom:6px;}
+    /* Balance bar */
+    .balance-bar{display:flex;align-items:center;gap:6px;padding:5px 20px;background:rgba(0,255,65,.025);border-bottom:1px solid rgba(0,255,65,.07);flex-shrink:0;}
+    .balance-lbl{font-size:8px;color:rgba(0,255,65,.3);letter-spacing:2px;flex-shrink:0;}
+    .balance-val{font-family:'Orbitron',monospace;font-size:11px;color:var(--green);flex:1;text-align:right;}
+    .balance-usd{font-size:9px;color:rgba(0,255,65,.4);flex-shrink:0;}
+    .balance-refresh{background:none;border:none;color:rgba(0,255,65,.35);cursor:pointer;font-size:13px;padding:0 2px;transition:.2s;flex-shrink:0;}
+    .balance-refresh:hover{color:var(--green);}
+    /* Coin Control */
+    .pay-cc-wrap{border:1px solid rgba(0,255,65,.3);border-radius:8px;overflow:hidden;flex-shrink:0;}
+    .pay-cc-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;background:rgba(0,255,65,.08);transition:.15s;}
+    .pay-cc-header:hover{background:rgba(0,255,65,.13);}
+    .pay-cc-title{font-size:11px;color:rgba(0,255,65,.85);letter-spacing:2px;}
+    .pay-cc-body{display:none;flex-direction:column;}
+    .pay-cc-body.open{display:flex;}
+    #pay-cc-list{max-height:180px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(0,255,65,.2) transparent;}
+    #pay-cc-list::-webkit-scrollbar{width:4px;}
+    #pay-cc-list::-webkit-scrollbar-thumb{background:rgba(0,255,65,.2);border-radius:2px;}
+    .pay-cc-row{display:flex;align-items:center;gap:10px;padding:7px 12px;border-top:1px solid rgba(0,255,65,.07);cursor:pointer;transition:.15s;}
+    .pay-cc-row:hover{background:rgba(0,255,65,.05);}
+    .pay-cc-chk{width:14px;height:14px;border:1px solid rgba(0,255,65,.35);border-radius:3px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:8px;color:transparent;transition:.15s;}
+    .pay-cc-chk.on{background:rgba(0,255,65,.15);border-color:var(--green);color:var(--green);}
+    .pay-cc-amt{font-size:10px;color:var(--green);}
+    .pay-cc-txid{font-size:8px;color:rgba(0,255,65,.3);margin-top:1px;}
+    .pay-cc-footer{display:flex;align-items:center;justify-content:space-between;padding:7px 12px;border-top:1px solid rgba(0,255,65,.1);background:rgba(0,255,65,.04);}
+    .pay-cc-total{font-size:9px;color:rgba(0,255,65,.5);}
+    .pay-cc-total span{color:var(--green);}
+    .pay-cc-btn{font-size:8px;color:rgba(0,255,65,.6);background:none;border:1px solid rgba(0,255,65,.2);border-radius:4px;padding:3px 8px;cursor:pointer;font-family:'Share Tech Mono',monospace;transition:.15s;}
+    .pay-cc-btn:hover{border-color:rgba(0,255,65,.5);color:var(--green);}
+    .pay-cc-arrow{font-size:14px;color:rgba(0,255,65,.6);transition:.2s;display:inline-block;}
+    .pay-cc-arrow.open{transform:rotate(90deg);}
+    /* Desktop: skip loading, hide phone overlays */
+    @media (min-width: 900px) {
+      #loading { display: none !important; }
+      #rain, .scanlines, .vignette { display: none !important; }
+    }
+  </style>
+  <link rel="stylesheet" href="desktop.css">
+</head>
+<body>
+<canvas id="rain"></canvas>
+<div class="scanlines"></div>
+<div class="vignette"></div>
+
+<div id="loading">
+  <div class="loader-logo">00 PAY</div>
+  <div class="loader-bar-wrap"><div class="loader-bar"></div></div>
+  <div class="loader-status" id="loader-status">BOOT 0penw0rld OS...<span class="blink">_</span></div>
+</div>
+
+<!-- ── Desktop Pay View (hidden on mobile) ── -->
+<div id="pay-desktop" style="display:none">
+  <div class="dt-inner">
+    <div class="dt-page-header">
+      <div class="dt-page-title-wrap">
+        <div class="dt-page-icon">↯</div>
+        <div>
+          <div class="dt-page-title">Pay</div>
+          <div class="dt-page-sub" id="dt-pay-sub">BCH Payment Terminal</div>
+        </div>
+      </div>
+      <div class="dt-page-actions">
+        <div class="dt-oracle" id="dt-pay-oracle">BCH $—</div>
+      </div>
+    </div>
+
+    <div class="dt-tabs" id="dt-pay-tabs">
+      <button class="dt-tab active" onclick="dtPayTab('invoice')">Invoice</button>
+      <button class="dt-tab" onclick="dtPayTab('history')"><span>📋</span> History</button>
+      <button class="dt-tab" onclick="dtPayTab('address')">Address</button>
+      <button class="dt-tab" onclick="dtPayTab('send')"><span>↑</span> Send</button>
+    </div>
+
+    <!-- INVOICE pane -->
+    <div class="dt-pane active" id="dt-pay-p-invoice">
+      <div class="dt-card" id="dt-pay-inv-form">
+        <div class="dt-card-title">Create Invoice</div>
+        <div class="dt-form-group">
+          <div class="dt-form-lbl">Currency</div>
+          <div class="dt-toggle-group">
+            <button class="dt-toggle-btn active" id="dt-cur-usd" onclick="dtPayCur('usd')">$ USD</button>
+            <button class="dt-toggle-btn" id="dt-cur-bch" onclick="dtPayCur('bch')">₿ BCH</button>
+          </div>
+        </div>
+        <div class="dt-form-group">
+          <div class="dt-form-lbl">Amount</div>
+          <input class="dt-form-input" id="dt-inv-amount" type="number" step="any" placeholder="0.00" oninput="dtPayConvert()">
+        </div>
+        <div class="dt-amount-hero" id="dt-convert-display">—</div>
+        <div class="dt-amount-sub" id="dt-convert-label">Enter amount above</div>
+        <div class="dt-form-group">
+          <div class="dt-form-lbl">Label (Optional)</div>
+          <input class="dt-form-input" id="dt-inv-label" placeholder="e.g. Coffee, Invoice #42...">
+        </div>
+        <button class="dt-action-btn" onclick="dtPayGenerate()">Generate Invoice</button>
+      </div>
+
+      <div class="dt-card" id="dt-pay-qr-card" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div class="dt-card-title" style="margin:0">Payment QR</div>
+          <button class="dt-action-btn-outline" onclick="dtPayNewInv()" style="width:auto;padding:6px 16px;font-size:11px">+ New Invoice</button>
+        </div>
+        <div class="dt-qr-wrap"><canvas id="dt-pay-qr"></canvas></div>
+        <div class="dt-watch-status watching" id="dt-pay-watch">
+          <div class="dt-watch-dot"></div>
+          <span id="dt-pay-watch-label">Watching for payment...</span>
+        </div>
+        <div class="dt-addr" id="dt-pay-uri" style="font-size:11px;line-height:1.6"></div>
+        <div class="dt-copy-row">
+          <button class="dt-copy-btn" onclick="dtPayCopyURI()">Copy URI</button>
+          <button class="dt-copy-btn" onclick="dtPayCopyAddr()">Copy Address</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTORY pane -->
+    <div class="dt-pane" id="dt-pay-p-history">
+      <div class="dt-list" id="dt-pay-history-list">
+        <div class="dt-empty"><div class="dt-empty-icon">📋</div><div class="dt-empty-text">No payments yet</div></div>
+      </div>
+    </div>
+
+    <!-- ADDRESS pane -->
+    <div class="dt-pane" id="dt-pay-p-address">
+      <div class="dt-card" style="text-align:center">
+        <div class="dt-card-title">Your BCH Address</div>
+        <div class="dt-qr-wrap"><canvas id="dt-addr-qr"></canvas></div>
+        <div class="dt-addr" id="dt-addr-display"></div>
+        <div class="dt-copy-row" style="justify-content:center">
+          <button class="dt-copy-btn" onclick="dtPayCopyAddr()">Copy Address</button>
+        </div>
+        <div style="margin-top:16px;font-size:11px;color:var(--dt-text-secondary);letter-spacing:.5px">
+          BIP44 · m/44'/145'/0'/0/0 · Bitcoin Cash Mainnet
+        </div>
+      </div>
+    </div>
+
+    <!-- SEND pane -->
+    <div class="dt-pane" id="dt-pay-p-send">
+      <div class="dt-card">
+        <div class="dt-card-title">Send BCH</div>
+        <div class="dt-form-group">
+          <div class="dt-form-lbl">Recipient Address</div>
+          <input class="dt-form-input" id="dt-send-addr" placeholder="bitcoincash:qp..." oninput="dtSendUpdate()">
+        </div>
+        <div class="dt-form-group">
+          <div class="dt-form-lbl">Amount (BCH)</div>
+          <input class="dt-form-input" id="dt-send-amt" type="number" step="0.00000001" placeholder="0.00000000" oninput="dtSendUpdate()">
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <div style="font-size:12px;color:var(--dt-text-secondary)" id="dt-send-usd2">≈ $0.00 USD</div>
+          <button class="dt-action-btn-outline" style="width:auto;padding:5px 14px;font-size:11px" onclick="dtSendMax()">MAX</button>
+        </div>
+        <div class="dt-error" id="dt-send-err"></div>
+        <button class="dt-action-btn" id="dt-send-btn" onclick="dtSendExec()" disabled>Send →</button>
+      </div>
+      <div class="dt-card" id="dt-send-result" style="display:none">
+        <div class="dt-card-title">Transaction Sent ✓</div>
+        <div style="font-size:12px;color:var(--dt-text-secondary);line-height:1.8;word-break:break-all" id="dt-send-txid"></div>
+      </div>
+    </div>
+
+    <!-- Payment received overlay -->
+    <div id="dt-success-overlay" style="display:none;position:fixed;inset:0;z-index:2000;background:var(--dt-overlay);align-items:center;justify-content:center">
+      <div class="dt-card" style="width:400px;text-align:center;padding:40px">
+        <div style="font-size:56px;margin-bottom:16px">💸</div>
+        <div style="font-size:18px;font-weight:700;color:var(--dt-accent);margin-bottom:12px">Payment Received</div>
+        <div style="font-size:28px;font-weight:800;color:var(--dt-text);margin-bottom:8px" id="dt-succ-amount"></div>
+        <div style="font-size:14px;color:var(--dt-text-secondary);margin-bottom:24px" id="dt-succ-usd"></div>
+        <button class="dt-action-btn" onclick="dtPayCloseSuccess()">Close</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  if(!window.matchMedia('(min-width:900px)').matches) return;
+  var el=document.getElementById('pay-desktop');if(!el)return;
+  el.style.display='';
+
+  /* ── Tab switching ─── */
+  var _tabs=['invoice','history','address','send'];
+  window.dtPayTab=function(t){
+    _tabs.forEach(function(x){
+      var btns=document.querySelectorAll('#dt-pay-tabs .dt-tab');
+      btns.forEach(function(b){b.classList.toggle('active',b.textContent.toLowerCase()===t);});
+      var p=document.getElementById('dt-pay-p-'+x);
+      if(p)p.classList.toggle('active',x===t);
+    });
+    if(t==='history')dtPayRenderHistory();
+  };
+
+  /* ── Currency toggle ─── */
+  var _dtCur='usd';
+  window.dtPayCur=function(m){
+    _dtCur=m;
+    document.getElementById('dt-cur-usd').classList.toggle('active',m==='usd');
+    document.getElementById('dt-cur-bch').classList.toggle('active',m==='bch');
+    document.getElementById('dt-inv-amount').placeholder=m==='usd'?'0.00 USD':'0.00000000 BCH';
+    document.getElementById('dt-inv-amount').value='';
+    document.getElementById('dt-convert-display').textContent='—';
+    document.getElementById('dt-convert-label').textContent='Enter amount above';
+  };
+
+  /* ── Convert display ─── */
+  window.dtPayConvert=function(){
+    var val=parseFloat(document.getElementById('dt-inv-amount').value)||0;
+    var price=window._dtPayPrice||0;
+    var hero=document.getElementById('dt-convert-display');
+    var sub=document.getElementById('dt-convert-label');
+    if(!val){hero.textContent='—';hero.classList.remove('price-loading');sub.textContent='Enter amount above';return;}
+    if(_dtCur==='usd'){
+      if(price<=0){
+        hero.textContent='...';hero.classList.add('price-loading');
+        sub.textContent='Loading price oracle...';
+        if(!window._dtPriceWaiter){window._dtPriceWaiter=setInterval(function(){if(window._dtPayPrice>0){clearInterval(window._dtPriceWaiter);window._dtPriceWaiter=null;dtPayConvert();}},400);}
+        return;
+      }
+      hero.classList.remove('price-loading');
+      var bch=val/price;
+      hero.textContent=bch.toFixed(8)+' BCH';
+      sub.textContent='≈ $'+val.toFixed(2)+' USD · @$'+price.toFixed(2)+'/BCH';
+    }else{
+      hero.classList.remove('price-loading');
+      var usd=val*price;
+      hero.textContent='$'+usd.toFixed(2)+' USD';
+      sub.textContent=price>0?'≈ '+val.toFixed(8)+' BCH · @$'+price.toFixed(2)+'/BCH':'≈ '+val.toFixed(8)+' BCH';
+    }
+  };
+
+  /* ── Generate invoice — delegates to mobile ─── */
+  window.dtPayGenerate=function(){
+    // Sync currency mode FIRST (_setCur clears the mobile input)
+    if(_dtCur==='usd'){window._setCur('usd');}else{window._setCur('bch');}
+    // Sync desktop inputs to mobile AFTER _setCur (which resets inv-amount)
+    var mAmt=document.getElementById('inv-amount');
+    var mLbl=document.getElementById('inv-label');
+    mAmt.value=document.getElementById('dt-inv-amount').value;
+    mLbl.value=document.getElementById('dt-inv-label').value;
+    // Trigger mobile generate (it handles QR, watching etc.)
+    window._generateInvoice();
+    // Generate QR directly on desktop canvas (mobile canvas is hidden on desktop)
+    setTimeout(function(){_dtRenderInvQR();},300);
+  };
+
+  function _dtRenderInvQR(){
+    var uri='';
+    try{uri=document.getElementById('pay-uri-display').textContent||'';}catch(e){}
+    if(!uri)return;
+    var QR=window._QRCode;
+    if(QR){
+      QR.toCanvas(document.getElementById('dt-pay-qr'),uri,{width:200,margin:1,errorCorrectionLevel:'M',color:{dark:'#0AC18E',light:'#00000000'}});
+    }
+    document.getElementById('dt-pay-uri').textContent=uri;
+    document.getElementById('dt-pay-inv-form').style.display='none';
+    document.getElementById('dt-pay-qr-card').style.display='';
+  }
+
+  window.dtPayNewInv=function(){
+    window._newInvoice();
+    document.getElementById('dt-pay-inv-form').style.display='';
+    document.getElementById('dt-pay-qr-card').style.display='none';
+    document.getElementById('dt-inv-amount').value='';
+    document.getElementById('dt-inv-label').value='';
+    document.getElementById('dt-convert-display').textContent='—';
+    document.getElementById('dt-convert-label').textContent='Enter amount above';
+  };
+
+  window.dtPayCopyURI=function(){
+    var t=document.getElementById('dt-pay-uri').textContent;
+    if(t)navigator.clipboard.writeText(t);
+  };
+  window.dtPayCopyAddr=function(){
+    if(window._copyAddr)window._copyAddr();
+  };
+
+  /* ── History ─── */
+  window.dtPayRenderHistory=function(){
+    var raw=localStorage.getItem('00pay_history');
+    var hist=[];try{hist=JSON.parse(raw)||[];}catch(e){}
+    var el=document.getElementById('dt-pay-history-list');
+    if(!hist.length){el.innerHTML='<div class="dt-empty"><div class="dt-empty-icon">📋</div><div class="dt-empty-text">No payments yet</div></div>';return;}
+    el.innerHTML=hist.map(function(p){
+      return '<div class="dt-row">'+
+        '<div class="dt-row-left">'+
+          '<div class="dt-row-icon in">↓</div>'+
+          '<div><div class="dt-row-title">'+(p.label||'Payment')+'</div>'+
+          '<div class="dt-row-sub">'+new Date(p.date).toLocaleDateString()+' · <span class="dt-badge '+(p.status||'received')+'">'+((p.status||'received').toUpperCase())+'</span></div></div>'+
+        '</div>'+
+        '<div class="dt-row-right">'+
+          '<div class="dt-row-amount in">'+p.bch+' BCH</div>'+
+          '<div class="dt-row-fiat">'+(p.usd||'')+'</div>'+
+        '</div>'+
+      '</div>';
+    }).join('');
+  };
+
+  /* ── Address — render when ready ─── */
+  function _dtRenderAddr(){
+    var addr='';
+    try{addr=document.getElementById('addr-display').textContent||'';}catch(e){}
+    if(!addr)return;
+    document.getElementById('dt-addr-display').textContent=addr;
+    // QR
+    var QR=window._QRCode;
+    if(QR){
+      QR.toCanvas(document.getElementById('dt-addr-qr'),addr,{width:200,margin:1,errorCorrectionLevel:'M',color:{dark:'#0AC18E',light:'#00000000'}});
+    }
+  }
+
+  /* ── Cross-chain Send — delegates to mobile ─── */
+  window.dtSendUpdate=function(){
+    var amt=parseFloat(document.getElementById('dt-send-amt').value)||0;
+    var addr=document.getElementById('dt-send-addr').value.trim();
+    var price=window._dtPayPrice||0;
+    document.getElementById('dt-send-usd2').textContent='≈ $'+(amt*price).toFixed(2)+' USD';
+    var ok=addr.length>20&&amt>=0.00000546;
+    document.getElementById('dt-send-btn').disabled=!ok;
+  };
+  window.dtSendMax=function(){
+    var bal=window._payBalance||0;
+    var fee=400;
+    var max=Math.max(0,(bal-fee)/1e8);
+    document.getElementById('dt-send-amt').value=max.toFixed(8);
+    dtSendUpdate();
+  };
+  window.dtSendExec=function(){
+    var addr=document.getElementById('dt-send-addr').value.trim();
+    var amt=parseFloat(document.getElementById('dt-send-amt').value)||0;
+    document.getElementById('dt-send-btn').disabled=true;
+    document.getElementById('dt-send-err').textContent='Sending...';
+    window._simpleSendBch(addr,amt).then(function(txid){
+      document.getElementById('dt-send-result').style.display='';
+      document.getElementById('dt-send-txid').innerHTML='TXID: <span style="color:var(--dt-accent);cursor:pointer" onclick="navigator.clipboard.writeText(this.textContent)">'+txid+'</span>';
+      document.getElementById('dt-send-err').textContent='';
+      document.getElementById('dt-send-amt').value='';
+      document.getElementById('dt-send-addr').value='';
+      if(window._refreshBalance)window._refreshBalance();
+    }).catch(function(e){
+      document.getElementById('dt-send-err').textContent=e.message||'Send failed';
+      document.getElementById('dt-send-btn').disabled=false;
+    });
+  };
+
+  /* ── Success overlay ─── */
+  window.dtPayCloseSuccess=function(){
+    document.getElementById('dt-success-overlay').style.display='none';
+    dtPayNewInv();
+  };
+
+  /* ── Poll for price + address updates ─── */
+  function _dtPoll(){
+    // Price from mobile oracle
+    var oEl=document.getElementById('oracle-price');
+    if(oEl){
+      var txt=oEl.textContent;
+      var m=txt.match(/\$([\d.]+)/);
+      if(m){
+        window._dtPayPrice=parseFloat(m[1]);
+        document.getElementById('dt-pay-oracle').textContent='BCH $'+parseFloat(m[1]).toFixed(2);
+      }
+    }
+    // Balance
+    var bEl=document.getElementById('pay-bal-bch');
+    if(bEl&&bEl.textContent!=='—'){
+      document.getElementById('dt-pay-sub').textContent='Balance: '+bEl.textContent;
+    }
+    // Payment received — mirror mobile success overlay
+    var sOv=document.getElementById('success-overlay');
+    if(sOv&&sOv.style.display==='flex'){
+      document.getElementById('dt-succ-amount').textContent=document.getElementById('succ-amount').textContent;
+      document.getElementById('dt-succ-usd').textContent=document.getElementById('succ-usd').textContent;
+      document.getElementById('dt-success-overlay').style.display='flex';
+      sOv.style.display='none';
+    }
+    // Address
+    _dtRenderAddr();
+  }
+  setInterval(_dtPoll,1000);
+  // Initial render after module loads
+  setTimeout(function(){_dtPoll();_dtRenderAddr();dtPayRenderHistory();},3000);
+})();
+</script>
+
+<div class="phone-wrap">
+  <div class="phone">
+    <div class="notch"><div class="notch-speaker"></div><div class="notch-cam"></div></div>
+
+    <!-- Auth: Setup -->
+    <div id="auth-import">
+      <div id="auth-view">
+        <div class="auth-logo">00 PAY</div>
+        <div class="auth-sub">// PAYMENT TERMINAL</div>
+        <div class="auth-divider"></div>
+        <div class="auth-lbl">SEED PHRASE OR HEX KEY</div>
+        <textarea id="ai-seed" class="auth-input" rows="3" placeholder="12 words or 64-char hex..."></textarea>
+        <div class="auth-lbl">PASSWORD</div>
+        <input id="ai-pass" type="password" class="auth-input" placeholder="min 8 chars...">
+        <div class="auth-lbl">CONFIRM</div>
+        <input id="ai-conf" type="password" class="auth-input" placeholder="confirm...">
+        <button class="auth-btn" onclick="window._setupVault()">SETUP TERMINAL →</button>
+        <div class="auth-error" id="ai-err"></div>
+        <button class="auth-btn auth-btn-secondary" onclick="window._genKey()">⚡ GENERATE NEW KEY</button>
+      </div>
+    </div>
+
+    <!-- Auth: Unlock -->
+    <div id="auth-unlock">
+      <div id="auth-view">
+        <div class="auth-logo">00 PAY</div>
+        <div class="auth-sub">// PAYMENT TERMINAL</div>
+        <div class="auth-divider"></div>
+        <div class="auth-lbl">PASSWORD</div>
+        <input id="au-pass" type="password" class="auth-input" placeholder="unlock vault...">
+        <button class="auth-btn" onclick="window._unlock()">UNLOCK →</button>
+        <div class="auth-error" id="au-err"></div>
+        <div style="width:100%;text-align:center;color:rgba(0,255,65,.18);font-size:9px;letter-spacing:3px;margin:2px 0">── OR ──</div>
+        <button class="auth-btn" id="ledger-pay-btn" onclick="window._connectLedger()" style="background:transparent;border-color:rgba(0,212,255,.35);color:#00d4ff">🔑 CONNECT LEDGER</button>
+        <div class="auth-error" id="ledger-pay-err"></div>
+      </div>
+    </div>
+
+    <!-- Main UI -->
+    <div id="main-view" style="display:none; flex:1; flex-direction:column; min-height:0;">
+      <div class="status-bar">
+        <span id="clock">00:00</span>
+        <span>00 PAY ◆</span>
+      </div>
+      <div class="app-header">
+        <div class="app-title">00 PAY<span>// PAYMENT TERMINAL</span></div>
+        <span class="header-icon" onclick="window._logout()" title="Lock">⏏</span>
+      </div>
+
+      <!-- Oracle price bar -->
+      <div class="oracle-bar">
+        <span style="display:flex;align-items:center;gap:6px">
+          <span class="oracle-dot" id="oracle-dot"></span>
+          <span id="oracle-label">FETCHING PRICE...</span>
+        </span>
+        <span class="oracle-price" id="oracle-price">---</span>
+      </div>
+
+      <!-- Balance -->
+      <div class="balance-bar">
+        <span class="balance-lbl">BALANCE</span>
+        <span class="balance-val" id="pay-bal-bch">—</span>
+        <span class="balance-usd" id="pay-bal-usd"></span>
+        <button class="balance-refresh" onclick="window._refreshBalance()" title="Refresh">↺</button>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <div class="tab active" id="tab-invoice" onclick="window._switchTab('invoice')" style="padding:10px 4px;letter-spacing:1px">INVOICE</div>
+        <div class="tab" id="tab-history" onclick="window._switchTab('history')" style="padding:10px 4px;letter-spacing:1px">HISTORY</div>
+        <div class="tab" id="tab-addr" onclick="window._switchTab('addr')" style="padding:10px 4px;letter-spacing:1px">ADDRESS</div>
+        <div class="tab" id="tab-send" onclick="window._switchTab('send')" style="padding:10px 4px;letter-spacing:1px">SEND</div>
+      </div>
+
+      <!-- INVOICE tab -->
+      <div class="tab-pane active" id="pane-invoice">
+        <div class="invoice-wrap" id="invoice-form">
+          <div>
+            <div class="form-lbl">CURRENCY</div>
+            <div class="currency-toggle">
+              <button class="cur-btn active" id="cur-usd" onclick="window._setCur('usd')">$ USD</button>
+              <button class="cur-btn" id="cur-bch" onclick="window._setCur('bch')">⊕ BCH</button>
+            </div>
+          </div>
+          <div>
+            <div class="form-lbl">AMOUNT</div>
+            <input class="form-input" id="inv-amount" type="number" step="any" placeholder="0.00" oninput="window._updateConvert()">
+          </div>
+          <div class="amount-hero" id="convert-display">—</div>
+          <div class="amount-sub" id="convert-label">enter amount above</div>
+          <div>
+            <div class="form-lbl">LABEL (OPTIONAL)</div>
+            <input class="form-input" id="inv-label" placeholder="e.g. Coffee, Invoice #42...">
+          </div>
+          <button class="gen-btn" onclick="window._generateInvoice()">⊕ GENERATE INVOICE →</button>
+        </div>
+
+        <div class="qr-section" id="qr-section">
+          <div style="display:flex;align-items:center;justify-content:space-between;width:100%;padding:0 20px 0;">
+            <span style="font-size:9px;color:rgba(0,255,65,.4);letter-spacing:2px">// PAYMENT QR</span>
+            <button class="new-inv-btn" onclick="window._newInvoice()">+ NEW</button>
+          </div>
+          <div class="qr-wrap"><canvas id="pay-qr"></canvas></div>
+          <div class="pay-status watching" id="pay-watch-status">
+            <div class="pay-status-dot"></div>
+            <span id="pay-watch-label">WATCHING FOR PAYMENT...</span>
+          </div>
+          <div class="pay-uri" id="pay-uri-display"></div>
+          <div class="copy-row" style="padding:0 20px;width:100%">
+            <button class="copy-btn" onclick="window._copyURI()">⊕ COPY URI</button>
+            <button class="copy-btn" onclick="window._copyAddr()">⊕ COPY ADDRESS</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- HISTORY tab -->
+      <div class="tab-pane" id="pane-history">
+        <div id="history-list"></div>
+      </div>
+
+      <!-- ADDRESS tab -->
+      <div class="tab-pane" id="pane-addr">
+        <div style="display:flex;flex-direction:column;align-items:center;padding:24px 20px;gap:16px;flex:1">
+          <div style="font-size:9px;color:rgba(0,255,65,.4);letter-spacing:2px;align-self:flex-start">// YOUR BCH ADDRESS</div>
+          <div class="qr-wrap"><canvas id="addr-qr"></canvas></div>
+          <div class="addr-box" id="addr-display" style="width:100%;background:rgba(0,255,65,.03);border:1px solid rgba(0,255,65,.1);border-radius:8px;padding:10px 14px;font-size:9px;color:rgba(0,255,65,.7);word-break:break-all;line-height:1.7"></div>
+          <button class="copy-btn" onclick="window._copyAddr2()" style="width:100%;flex:none">⊕ COPY ADDRESS</button>
+          <div style="font-size:9px;color:rgba(0,255,65,.25);text-align:center;line-height:2;letter-spacing:1px">
+            // BIP44 m/44'/145'/0'/0/0<br>
+            // BITCOIN CASH MAINNET
+          </div>
+        </div>
+      </div>
+
+      <!-- SEND tab (simple BCH send) -->
+      <div class="tab-pane" id="pane-send">
+        <div class="send-wrap">
+          <div class="send-card">
+            <div class="send-lbl">RECIPIENT ADDRESS</div>
+            <input class="form-input" id="m-send-addr" placeholder="bitcoincash:qp..." style="font-size:10px">
+          </div>
+          <div class="send-card">
+            <div class="send-lbl">AMOUNT (BCH)</div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input class="form-input" id="m-send-amt" type="number" step="0.00000001" placeholder="0.00000000" style="flex:1;margin:0" oninput="window._mSendUpdate()">
+              <button style="background:rgba(0,255,65,.08);border:1px solid rgba(0,255,65,.25);border-radius:8px;padding:8px 10px;font-size:9px;color:var(--green);letter-spacing:1px;flex-shrink:0;cursor:pointer" onclick="window._mSendMax()">MAX</button>
+            </div>
+            <div style="font-size:9px;color:rgba(0,255,65,.35);margin-top:5px" id="m-send-usd">≈ $0.00 USD</div>
+          </div>
+          <div id="m-send-err" style="font-size:9px;color:rgba(255,64,64,.7);letter-spacing:1px;text-align:center;min-height:12px"></div>
+          <button class="gen-btn" id="m-send-btn" onclick="window._mSendExec()" style="opacity:.4;pointer-events:none">↑ SEND →</button>
+          <div id="m-send-result" style="display:none;font-size:9px;color:rgba(0,255,65,.5);letter-spacing:1px;text-align:center;margin-top:8px;word-break:break-all"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payment Received Overlay -->
+    <div class="success-overlay" id="success-overlay">
+      <div class="success-icon">💸</div>
+      <div class="success-title">PAYMENT RECEIVED</div>
+      <div class="success-amount" id="succ-amount"></div>
+      <div class="success-usd" id="succ-usd"></div>
+      <button class="success-close" onclick="window._closeSuccess()">CLOSE</button>
+    </div>
+  </div>
+</div>
+
+<script>(function(){var v=localStorage.getItem('00wallet_vault');if(!v){window.location.href='/wallet.html';return;}try{var s=JSON.parse(localStorage.getItem('00_session_auth')||'{}');if(!s.ts||Date.now()-s.ts>30*60*1000){window.location.href='/wallet.html';}}catch(e){window.location.href='/wallet.html';}})();</script>
+<script src="ledger.js"></script>
+<script>
+// Rain
+(function(){
+  const c = document.getElementById('rain'), ctx = c.getContext('2d');
+  c.width = window.innerWidth; c.height = window.innerHeight;
+  const drops = Array.from({length:120},()=>({x:Math.random()*c.width,y:Math.random()*c.height,len:Math.random()*18+6,speed:Math.random()*7+5,op:Math.random()*.4+.08,w:Math.random()*.8+.2}));
+  function draw(){ctx.clearRect(0,0,c.width,c.height);drops.forEach(d=>{ctx.beginPath();ctx.moveTo(d.x,d.y);ctx.lineTo(d.x-1,d.y+d.len);ctx.strokeStyle=`rgba(0,255,65,${d.op})`;ctx.lineWidth=d.w;ctx.stroke();d.y+=d.speed;if(d.y>c.height){d.y=-d.len;d.x=Math.random()*c.width;}});requestAnimationFrame(draw);}
+  draw();
+  setInterval(()=>{const now=new Date();const el=document.getElementById('clock');if(el)el.textContent=now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});},1000);
+})();
+
+// Loader
+(function(){
+  const statuses=['BOOT 0penw0rld OS...','LOADING BCH KEYS...','FETCHING PRICE ORACLE...','PAYMENT TERMINAL READY'];
+  let si=0;const iv=setInterval(()=>{if(si<statuses.length){document.getElementById('loader-status').innerHTML=statuses[si]+'<span class="blink">_</span>';si++;}else clearInterval(iv);},480);
+  setTimeout(()=>{
+    const l=document.getElementById('loading');l.style.transition='opacity .5s';l.style.opacity='0';
+    setTimeout(()=>{l.style.display='none';if(typeof window._payBoot==='function')window._payBoot();else document.getElementById('auth-import').style.display='flex';},500);
+  },2200);
+})();
+</script>
+
+<script src="/ws-bridge.js"></script>
+<script type="module">
+import { secp256k1 }  from 'https://esm.sh/@noble/curves@1.8.1/secp256k1';
+import { hmac }       from 'https://esm.sh/@noble/hashes@1.7.1/hmac';
+import { sha256 }     from 'https://esm.sh/@noble/hashes@1.7.1/sha256';
+import { sha512 }     from 'https://esm.sh/@noble/hashes@1.7.1/sha512';
+import { ripemd160 }  from 'https://esm.sh/@noble/hashes@1.7.1/ripemd160';
+import QRCode         from 'https://esm.sh/qrcode@1.5.4';
+
+// ── Utils ──────────────────────────────────────────
+const b2h = b => Array.from(b).map(x=>x.toString(16).padStart(2,'0')).join('');
+const h2b = h => new Uint8Array(h.match(/.{2}/g).map(b=>parseInt(b,16)));
+const concat = (...a) => { const t=new Uint8Array(a.reduce((s,x)=>s+x.length,0));let o=0;for(const x of a){t.set(x,o);o+=x.length;}return t; };
+const utf8 = s => new TextEncoder().encode(s);
+const rand = n => crypto.getRandomValues(new Uint8Array(n));
+
+// ── BIP32 ──────────────────────────────────────────
+const N_SECP = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141n;
+function bip32Master(seed){const I=hmac(sha512,utf8('Bitcoin seed'),seed);return{priv:I.slice(0,32),chain:I.slice(32)};}
+function _bip32Child(priv,chain,idx,hard){
+  const ib=new Uint8Array([idx>>>24,(idx>>>16)&0xff,(idx>>>8)&0xff,idx&0xff]);
+  const data=hard?concat(new Uint8Array([0]),priv,ib):concat(secp256k1.getPublicKey(priv,true),ib);
+  const I=hmac(sha512,chain,data);
+  const child=((BigInt('0x'+b2h(I.slice(0,32)))+BigInt('0x'+b2h(priv)))%N_SECP).toString(16).padStart(64,'0');
+  return{priv:h2b(child),chain:I.slice(32)};
+}
+function bip32Child(parentPub,parentChain,index){
+  const idxB=new Uint8Array([index>>>24,(index>>>16)&0xff,(index>>>8)&0xff,index&0xff]);
+  const I=hmac(sha512,parentChain,concat(parentPub,idxB));
+  const childPub=secp256k1.ProjectivePoint.fromHex(parentPub)
+    .add(secp256k1.ProjectivePoint.BASE.multiply(BigInt('0x'+b2h(I.slice(0,32)))))
+    .toRawBytes(true);
+  return{pubKey:childPub,chainCode:I.slice(32)};
+}
+function ledgerAddrPath(changeIdx,addrIdx){
+  return[0x8000002c,0x80000091,0x80000000,changeIdx,addrIdx];
+}
+function deriveBchPriv(seed64){
+  let n=bip32Master(seed64);
+  n=_bip32Child(n.priv,n.chain,0x8000002c,true);
+  n=_bip32Child(n.priv,n.chain,0x80000091,true);
+  n=_bip32Child(n.priv,n.chain,0x80000000,true);
+  n=_bip32Child(n.priv,n.chain,0,false);
+  n=_bip32Child(n.priv,n.chain,0,false);
+  return n.priv;
+}
+async function mnemonicToSeed(words){
+  const norm=words.trim().toLowerCase().replace(/\s+/g,' ');
+  const key=await crypto.subtle.importKey('raw',utf8(norm),'PBKDF2',false,['deriveBits']);
+  const bits=await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-512',salt:utf8('mnemonic'),iterations:2048},key,512);
+  return new Uint8Array(bits);
+}
+
+// ── CashAddr ───────────────────────────────────────
+const _caCharset='qpzry9x8gf2tvdw0s3jn54khce6mua7l';
+function _caPolymod(v){
+  const G=[0x98f2bc8e61n,0x79b76d99e2n,0xf33e5fb3c4n,0xae2eabe2a8n,0x1e4f43e470n];let c=1n;
+  for(const d of v){const c0=c>>35n;c=((c&0x07ffffffffn)<<5n)^BigInt(d);if(c0&1n)c^=G[0];if(c0&2n)c^=G[1];if(c0&4n)c^=G[2];if(c0&8n)c^=G[3];if(c0&16n)c^=G[4];}
+  return c^1n;
+}
+function pubHashToCashAddr(hash20){
+  const payload=new Uint8Array([0x00,...hash20]);const d5=[];let acc=0,bits=0;
+  for(const b of payload){acc=(acc<<8)|b;bits+=8;while(bits>=5){bits-=5;d5.push((acc>>bits)&31);}}
+  if(bits>0)d5.push((acc<<(5-bits))&31);
+  const prefix='bitcoincash';const pe=[...prefix.split('').map(c=>c.charCodeAt(0)&31),0];
+  const mod=_caPolymod([...pe,...d5,0,0,0,0,0,0,0,0]);
+  const cs=[];for(let i=7;i>=0;i--)cs.push(Number((mod>>(BigInt(i)*5n))&31n));
+  return'bitcoincash:'+ [...d5,...cs].map(v=>_caCharset[v]).join('');
+}
+function cashAddrToHash20(addr){
+  const raw=addr.toLowerCase().replace(/^bitcoincash:/,'');
+  const d5=raw.split('').map(c=>_caCharset.indexOf(c));if(d5.includes(-1))throw new Error('invalid cashaddr');
+  const payload5=d5.slice(0,-8);const bytes=[];let acc=0,bits=0;
+  for(const v of payload5){acc=(acc<<5)|v;bits+=5;while(bits>=8){bits-=8;bytes.push((acc>>bits)&0xff);}}
+  return new Uint8Array(bytes.slice(1));
+}
+function privToBchAddr(priv32){const pub=secp256k1.getPublicKey(priv32,true);return pubHashToCashAddr(Array.from(ripemd160(sha256(pub))));}
+
+// ── Vault ──────────────────────────────────────────
+async function _pbkdf2Key(pass,salt){
+  const km=await crypto.subtle.importKey('raw',utf8(pass),'PBKDF2',false,['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2',hash:'SHA-256',salt,iterations:200000},km,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
+}
+async function encryptVault(data,pass){
+  const salt=rand(16),iv=rand(12);const key=await _pbkdf2Key(pass,salt);
+  const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,utf8(JSON.stringify(data)));
+  return JSON.stringify({v:1,salt:b2h(salt),iv:b2h(iv),data:b2h(new Uint8Array(ct))});
+}
+async function decryptVault(enc,pass){
+  const{salt,iv,data}=JSON.parse(enc);const key=await _pbkdf2Key(pass,h2b(salt));
+  const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:h2b(iv)},key,h2b(data));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+
+// ── Fulcrum — SharedWorker or fallback ───────────────
+let _fvCall, _fvConnect;
+if (window._wsSharedWorkerAvailable) {
+  _fvCall = (method, params) => window._fvCall(method, params);
+  _fvConnect = () => window._fvConnect();
+} else {
+  const _FV=JSON.parse(localStorage.getItem('00_ep_fulcrum')||'null')||['wss://bch.imaginary.cash:50004','wss://electroncash.de:50004','wss://bch.loping.net:50004'];
+  let _fvWs=null,_fvId=0,_fvIdx=0;const _fvPend=new Map();
+  _fvConnect=()=>{
+    return new Promise((res,rej)=>{
+      const url=_FV[_fvIdx%_FV.length],ws=new WebSocket(url);
+      const t=setTimeout(()=>{ws.close();rej(new Error('timeout'));},8000);
+      ws.onopen=()=>{clearTimeout(t);_fvWs=ws;const id=++_fvId;_fvPend.set(id,[()=>res(ws),rej]);ws.send(JSON.stringify({id,method:'server.version',params:['00pay','1.4']}));};
+      ws.onmessage=e=>{try{const msg=JSON.parse(e.data);if(!_fvPend.has(msg.id)){if(msg.method==='blockchain.scripthash.subscribe'&&_subCb)_subCb(msg.params);return;}const[rv,rj]=_fvPend.get(msg.id);_fvPend.delete(msg.id);if(msg.error)rj(new Error(msg.error.message));else rv(msg.result);}catch{}};
+      ws.onclose=()=>{clearTimeout(t);_fvWs=null;};
+      ws.onerror=()=>{clearTimeout(t);_fvWs=null;rej(new Error('ws error'));};
+    });
+  };
+  _fvCall=async(method,params)=>{
+    if(!_fvWs||_fvWs.readyState!==WebSocket.OPEN){_fvIdx=(_fvIdx+1)%_FV.length;await _fvConnect();}
+    return new Promise((res,rej)=>{const id=++_fvId;_fvPend.set(id,[res,rej]);_fvWs.send(JSON.stringify({id,method,params}));setTimeout(()=>{if(_fvPend.has(id)){_fvPend.delete(id);rej(new Error('timeout'));}},15000);});
+  };
+}
+function _addrSH(addr){
+  const h=cashAddrToHash20(addr);const script=new Uint8Array([0x76,0xa9,0x14,...h,0x88,0xac]);
+  return b2h(sha256(script).reverse());
+}
+
+// ── Oracle (Riften Labs D3lphi) ─────────────────────
+const INDEXER=localStorage.getItem('00_ep_indexer')||'https://indexer.riften.net';
+const DELPHI_TOKEN='d0d46f5cbd82188acede0d3e49c75700c19cb8331a30101f0bb6a260066ac972';
+let _bchUsd=0;
+async function fetchBchPrice(){
+  try{
+    const now=Math.floor(Date.now()/1000);
+    const r=await fetch(`${INDEXER}/oracle/delphi/closest?timestamp=${now}&token_id=${DELPHI_TOKEN}`);
+    const d=await r.json();
+    _bchUsd=d.oracle_price/100;
+    document.getElementById('oracle-price').textContent=`$${_bchUsd.toFixed(2)}/BCH`;
+    const dot=document.getElementById('oracle-dot');dot.className='oracle-dot on';
+    document.getElementById('oracle-label').textContent='D3LPHI ORACLE';
+    return _bchUsd;
+  }catch(e){document.getElementById('oracle-label').textContent='PRICE UNAVAILABLE';return 0;}
+}
+
+// ── State ───────────────────────────────────────────
+let _bchAddr='', _bchPriv=null;
+let _ledgerDevice=null, _ledgerPubKey=null;
+let _ledgerAddresses=[], _ledgerChangePub=null, _ledgerChangePath=null;
+let _payCcActive=false, _payCcSel=new Set(), _payCcUtxos=[];
+let _payBalance=0;
+let _curMode='usd'; // 'usd' or 'bch'
+let _invBch=0, _invLabel='', _watchInterval=null;
+let _subCb=null, _curInvTxSH=null;
+const _history=[];
+
+// ── Boot ────────────────────────────────────────────
+window._payBoot = async function(){
+  const enc=localStorage.getItem('00pay_vault');
+  if(enc){
+    // Auto-unlock from shared session (cross-app, 30 min TTL)
+    try{
+      const sess=JSON.parse(localStorage.getItem('00_session_auth')||'{}');
+      if(sess.p&&sess.ts&&Date.now()-sess.ts<30*60*1000){
+        const pass=atob(sess.p);
+        const data=await decryptVault(enc,pass);
+        localStorage.setItem('00_session_auth',JSON.stringify({p:sess.p,ts:Date.now()}));
+        let seed64;
+        if(/^[0-9a-fA-F]{64}$/.test(data.seed)){seed64=h2b(data.seed);}
+        else{seed64=await mnemonicToSeed(data.seed);}
+        _bchPriv=deriveBchPriv(seed64);
+        _bchAddr=privToBchAddr(_bchPriv);
+        await _initMain();
+        return;
+      }
+    }catch{/* wrong password for this vault */}
+    document.getElementById('auth-unlock').style.display='flex';
+  }
+  else{
+    // No pay vault — try auto-create from wallet vault + session
+    try{
+      const sess=JSON.parse(localStorage.getItem('00_session_auth')||'{}');
+      const wv=localStorage.getItem('00wallet_vault');
+      if(sess.p&&sess.ts&&Date.now()-sess.ts<30*60*1000&&wv){
+        const pass=atob(sess.p);
+        const wp=await decryptVault(wv,pass);
+        const seedHex=wp.seedHex||wp.bchPrivHex;
+        localStorage.setItem('00pay_vault',await encryptVault({seed:seedHex},pass));
+        let seed64;
+        if(/^[0-9a-fA-F]{64}$/.test(seedHex)){seed64=h2b(seedHex);}
+        else{seed64=await mnemonicToSeed(seedHex);}
+        _bchPriv=deriveBchPriv(seed64);
+        _bchAddr=privToBchAddr(_bchPriv);
+        localStorage.setItem('00_session_auth',JSON.stringify({p:sess.p,ts:Date.now()}));
+        await _initMain();
+        return;
+      }
+    }catch{/* wallet decrypt failed */}
+    document.getElementById('auth-import').style.display='flex';
+  }
+};
+
+window._setupVault = async function(){
+  const seed=document.getElementById('ai-seed').value.trim();
+  const pass=document.getElementById('ai-pass').value;
+  const conf=document.getElementById('ai-conf').value;
+  const err=document.getElementById('ai-err');
+  if(!seed){err.textContent='// seed required';return;}
+  if(pass.length<8){err.textContent='// min 8 chars';return;}
+  if(pass!==conf){err.textContent='// passwords do not match';return;}
+  err.textContent='';
+  try{
+    let seed64;
+    if(/^[0-9a-fA-F]{64}$/.test(seed)){seed64=h2b(seed);}
+    else{seed64=await mnemonicToSeed(seed);}
+    _bchPriv=deriveBchPriv(seed64);
+    _bchAddr=privToBchAddr(_bchPriv);
+    const enc=await encryptVault({seed:seed.trim()},pass);
+    localStorage.setItem('00pay_vault',enc);
+    await _initMain();
+  }catch(e){err.textContent='// '+e.message;}
+};
+
+window._unlock = async function(){
+  const pass=document.getElementById('au-pass').value;
+  const err=document.getElementById('au-err');err.textContent='';
+  try{
+    const enc=localStorage.getItem('00pay_vault');
+    const data=await decryptVault(enc,pass);
+    // Shared session — all apps auto-unlock
+    localStorage.setItem('00_session_auth',JSON.stringify({p:btoa(pass),ts:Date.now()}));
+    let seed64;
+    if(/^[0-9a-fA-F]{64}$/.test(data.seed)){seed64=h2b(data.seed);}
+    else{seed64=await mnemonicToSeed(data.seed);}
+    _bchPriv=deriveBchPriv(seed64);
+    _bchAddr=privToBchAddr(_bchPriv);
+    await _initMain();
+  }catch(e){err.textContent='// invalid password';}
+};
+
+window._genKey = async function(){
+  const bytes=rand(32);
+  document.getElementById('ai-seed').value=b2h(bytes);
+};
+
+window._connectLedger = async function(){
+  const btn=document.getElementById('ledger-pay-btn');
+  const err=document.getElementById('ledger-pay-err');
+  err.textContent='';btn.textContent='🔑 CONNECTING...';btn.disabled=true;
+  try{
+    const device=await Ledger.connectLedger();
+    err.textContent='// reading account xpub...';
+    // Get account-level xpub at m/44'/145'/0' (silent, no on-device confirmation needed)
+    const{pubKey:rawAcct,chainCode:acctChain}=await Ledger.getLedgerPubKey(device,Ledger.ACCOUNT_PATH);
+    const acctPub=rawAcct.length===65
+      ?concat(new Uint8Array([rawAcct[64]&1?0x03:0x02]),rawAcct.slice(1,33))
+      :rawAcct;
+    _ledgerDevice=device;_ledgerAddresses=[];_ledgerPubKey=acctPub;
+    // BIP44 scan: change=0 + change=1, gap limit 10, max 50 each
+    err.textContent='// scanning addresses...';
+    let found=0;
+    for(const ci of [0,1]){
+      const ck=bip32Child(acctPub,acctChain,ci);
+      let gap=0;
+      for(let i=0;i<50&&gap<10;i++){
+        const{pubKey:ap}=bip32Child(ck.pubKey,ck.chainCode,i);
+        const h160=ripemd160(sha256(ap));
+        const addr=pubHashToCashAddr(Array.from(h160));
+        try{
+          const sh=_addrSH(addr);
+          // Use get_history for gap detection — finds used+spent addresses
+          const hist=await _fvCall('blockchain.scripthash.get_history',[sh]);
+          if(hist&&hist.length>0){
+            gap=0; // address was ever used — don't break the scan
+            const utxos=await _fvCall('blockchain.scripthash.listunspent',[sh]);
+            if(utxos&&utxos.length>0){
+              _ledgerAddresses.push({pubKey:ap,addr,path5:ledgerAddrPath(ci,i),utxos});
+              found++;
+              const totalSat=_ledgerAddresses.reduce((s,a)=>(a.utxos||[]).reduce((ss,u)=>ss+u.value,s),0);
+              err.textContent=`// scanning... ${found} addr(s) · ${(totalSat/1e8).toFixed(4)} BCH`;
+            }
+          }else{gap++;}
+        }catch(e){gap++;}
+      }
+    }
+    // Primary display address: external chain index 0
+    const ext0=bip32Child(acctPub,acctChain,0);
+    const{pubKey:ext0Pub}=bip32Child(ext0.pubKey,ext0.chainCode,0);
+    _bchAddr=pubHashToCashAddr(Array.from(ripemd160(sha256(ext0Pub))));
+    if(!_ledgerAddresses.some(a=>a.addr===_bchAddr)){
+      _ledgerAddresses.unshift({pubKey:ext0Pub,addr:_bchAddr,path5:ledgerAddrPath(0,0),utxos:[]});
+    }
+    // Change address: next unused change=1 slot
+    const usedChg1=_ledgerAddresses.filter(a=>a.path5[3]===1);
+    const nextCi=usedChg1.length>0?Math.max(...usedChg1.map(a=>a.path5[4]))+1:0;
+    const chgLvl=bip32Child(acctPub,acctChain,1);
+    const{pubKey:chgPub}=bip32Child(chgLvl.pubKey,chgLvl.chainCode,nextCi);
+    _ledgerChangePub=chgPub;_ledgerChangePath=ledgerAddrPath(1,nextCi);
+    const chgAddr=pubHashToCashAddr(Array.from(ripemd160(sha256(chgPub))));
+    if(!_ledgerAddresses.some(a=>a.addr===chgAddr)){
+      _ledgerAddresses.push({pubKey:chgPub,addr:chgAddr,path5:_ledgerChangePath,utxos:[]});
+    }
+    console.log('[Ledger] scanned',_ledgerAddresses.length,'addresses, primary:',_bchAddr);
+    _bchPriv=null;
+    await _initMain();
+  }catch(e){
+    err.textContent='// '+e.message;
+    btn.textContent='🔑 CONNECT LEDGER';btn.disabled=false;
+  }
+};
+
+window._logout = function(){
+  _bchAddr='';_bchPriv=null;_ledgerDevice=null;_ledgerPubKey=null;
+  _ledgerAddresses=[];_ledgerChangePub=null;_ledgerChangePath=null;
+  _payCcActive=false;_payCcSel=new Set();_payCcUtxos=[];_payBalance=0;
+  document.getElementById('pay-bal-bch').textContent='—';
+  document.getElementById('pay-bal-usd').textContent='';
+  if(_watchInterval){clearInterval(_watchInterval);_watchInterval=null;}
+  document.getElementById('main-view').style.display='none';
+  document.getElementById('auth-unlock').style.display='flex';
+};
+
+async function _initMain(){
+  document.getElementById('auth-import').style.display='none';
+  document.getElementById('auth-unlock').style.display='none';
+  const mv=document.getElementById('main-view');mv.style.display='flex';
+  await fetchBchPrice();
+  setInterval(fetchBchPrice,60000);
+  _renderHistory();
+  // Connect Fulcrum (skip if already open — e.g. after Ledger scan)
+  try{if(!_fvWs||_fvWs.readyState!==WebSocket.OPEN)await _fvConnect();}catch(e){}
+  // Pre-load THORChain data
+  _loadThorData().catch(()=>{});
+  // Fetch balance
+  _fetchBalance().catch(()=>{});
+  setInterval(()=>_fetchBalance().catch(()=>{}),60000);
+  // Draw address QR
+  try{
+    document.getElementById('addr-display').textContent=_bchAddr;
+    await QRCode.toCanvas(document.getElementById('addr-qr'),_bchAddr,{width:200,color:{dark:'#0AC18E',light:'#000000'}});
+  }catch(e){}
+}
+
+// ── Balance ─────────────────────────────────────────
+async function _fetchBalance(){
+  let sats=0;
+  if(_ledgerDevice){
+    sats=_ledgerAddresses.reduce((s,a)=>(a.utxos||[]).reduce((ss,u)=>ss+u.value,s),0);
+  }else if(_bchAddr){
+    const sh=_addrSH(_bchAddr);
+    const us=await _fvCall('blockchain.scripthash.listunspent',[sh]);
+    sats=(us||[]).reduce((s,u)=>s+u.value,0);
+  }
+  _payBalance=sats;
+  const bch=(sats/1e8).toFixed(8);
+  const usd=_bchUsd>0?`≈ $${(sats/1e8*_bchUsd).toFixed(2)}`:'';
+  document.getElementById('pay-bal-bch').textContent=bch+' BCH';
+  document.getElementById('pay-bal-usd').textContent=usd;
+}
+window._refreshBalance=function(){_fetchBalance().catch(e=>{document.getElementById('pay-bal-bch').textContent='— ERR';});};
+
+// ── Tab switching ───────────────────────────────────
+window._switchTab = function(tab){
+  ['invoice','history','addr','send'].forEach(t=>{
+    document.getElementById('tab-'+t).classList.toggle('active',t===tab);
+    document.getElementById('pane-'+t).classList.toggle('active',t===tab);
+  });
+  if(tab==='history')_renderHistory();
+};
+
+// ── Currency mode ───────────────────────────────────
+window._setCur = function(mode){
+  _curMode=mode;
+  document.getElementById('cur-usd').classList.toggle('active',mode==='usd');
+  document.getElementById('cur-bch').classList.toggle('active',mode==='bch');
+  document.getElementById('inv-amount').placeholder=mode==='usd'?'0.00 USD':'0.00000000 BCH';
+  document.getElementById('inv-amount').value='';
+  document.getElementById('convert-display').textContent='—';
+  document.getElementById('convert-label').textContent='enter amount above';
+};
+
+window._updateConvert = function(){
+  const val=parseFloat(document.getElementById('inv-amount').value)||0;
+  const hero=document.getElementById('convert-display');
+  const sub=document.getElementById('convert-label');
+  if(!val){hero.textContent='—';hero.classList.remove('price-loading');sub.textContent='enter amount above';return;}
+  if(_curMode==='usd'){
+    if(_bchUsd<=0){
+      hero.textContent='...';hero.classList.add('price-loading');
+      sub.textContent='loading price oracle...';
+      // Retry when price arrives
+      if(!window._priceWaiter){window._priceWaiter=setInterval(()=>{if(_bchUsd>0){clearInterval(window._priceWaiter);window._priceWaiter=null;window._updateConvert();}},400);}
+      return;
+    }
+    hero.classList.remove('price-loading');
+    const bch=val/_bchUsd;
+    hero.textContent=bch.toFixed(8)+' BCH';
+    sub.textContent=`≈ $${val.toFixed(2)} USD • @$${_bchUsd.toFixed(2)}/BCH`;
+  } else {
+    hero.classList.remove('price-loading');
+    const usd=val*_bchUsd;
+    hero.textContent='$'+usd.toFixed(2)+' USD';
+    sub.textContent=_bchUsd>0?`≈ ${val.toFixed(8)} BCH • @$${_bchUsd.toFixed(2)}/BCH`:`≈ ${val.toFixed(8)} BCH`;
+  }
+};
+
+// ── Generate Invoice ────────────────────────────────
+window._generateInvoice = async function(){
+  const rawVal=parseFloat(document.getElementById('inv-amount').value)||0;
+  _invLabel=document.getElementById('inv-label').value.trim();
+  if(rawVal<=0){return;}
+
+  if(_curMode==='usd'){
+    if(_bchUsd<=0){alert('// price oracle unavailable');return;}
+    _invBch=rawVal/_bchUsd;
+  } else {
+    _invBch=rawVal;
+  }
+
+  const bchAmountStr=_invBch.toFixed(8);
+  let uri=_bchAddr+'?amount='+bchAmountStr;
+  if(_invLabel)uri+='&label='+encodeURIComponent(_invLabel);
+
+  document.getElementById('invoice-form').style.display='none';
+  const qs=document.getElementById('qr-section');qs.classList.add('visible');
+
+  document.getElementById('pay-uri-display').textContent=uri;
+
+  // Generate QR
+  await QRCode.toCanvas(document.getElementById('pay-qr'),uri,{width:200,color:{dark:'#0AC18E',light:'#000000'}});
+
+  // Start watching for payment
+  _startWatching(bchAmountStr);
+};
+
+let _watchSH=null, _watchPoll=null;
+async function _startWatching(bchStr){
+  const label=document.getElementById('pay-watch-label');
+  label.textContent='WATCHING FOR PAYMENT...';
+  if(_watchPoll)clearInterval(_watchPoll);
+
+  // Get initial scripthash status
+  _watchSH=_addrSH(_bchAddr);
+  let initStatus=null;
+  try{
+    initStatus=await _fvCall('blockchain.scripthash.subscribe',[_watchSH]);
+  }catch(e){}
+
+  // Poll every 5s for status change
+  _watchPoll=setInterval(async()=>{
+    try{
+      const utxos=await _fvCall('blockchain.scripthash.listunspent',[_watchSH]);
+      if(utxos&&utxos.length>0){
+        // Check if any new UTXO roughly matches expected amount
+        const satTarget=Math.round(_invBch*1e8);
+        for(const u of utxos){
+          if(Math.abs(u.value-satTarget)<1000){
+            clearInterval(_watchPoll);
+            _onPaymentReceived(u.value);
+            return;
+          }
+        }
+      }
+    }catch(e){}
+  },5000);
+}
+
+function _onPaymentReceived(satoshis){
+  const bch=(satoshis/1e8).toFixed(8);
+  const usd=_bchUsd>0?'≈ $'+(satoshis/1e8*_bchUsd).toFixed(2)+' USD':'';
+
+  // Save to history
+  _history.unshift({
+    label:_invLabel||'Payment',
+    bch:bch,usd:usd,
+    date:new Date().toISOString(),
+    status:'received'
+  });
+  _saveHistory();
+
+  // Show overlay
+  document.getElementById('succ-amount').textContent=bch+' BCH';
+  document.getElementById('succ-usd').textContent=usd;
+  document.getElementById('success-overlay').style.display='flex';
+}
+
+window._closeSuccess = function(){
+  document.getElementById('success-overlay').style.display='none';
+  _newInvoice();
+};
+
+window._newInvoice = function(){
+  if(_watchPoll){clearInterval(_watchPoll);_watchPoll=null;}
+  document.getElementById('qr-section').classList.remove('visible');
+  document.getElementById('invoice-form').style.display='flex';
+  document.getElementById('inv-amount').value='';
+  document.getElementById('inv-label').value='';
+  document.getElementById('convert-display').textContent='—';
+  document.getElementById('convert-label').textContent='enter amount above';
+};
+
+window._copyURI = function(){
+  navigator.clipboard.writeText(document.getElementById('pay-uri-display').textContent);
+};
+window._copyAddr = function(){
+  navigator.clipboard.writeText(_bchAddr);
+};
+window._copyAddr2 = function(){
+  navigator.clipboard.writeText(_bchAddr);
+};
+
+// ── History ─────────────────────────────────────────
+function _saveHistory(){localStorage.setItem('00pay_history',JSON.stringify(_history));}
+function _loadHistory(){
+  const s=localStorage.getItem('00pay_history');
+  if(s)try{const d=JSON.parse(s);d.forEach(x=>_history.push(x));}catch(e){}
+}
+function _renderHistory(){
+  const el=document.getElementById('history-list');
+  if(!_history.length){el.innerHTML='<div class="empty-state">// NO PAYMENTS YET<br>// CREATE AN INVOICE<br>// TO GET STARTED</div>';return;}
+  el.innerHTML=_history.map((p,i)=>`
+    <div class="pay-item">
+      <div class="pay-top">
+        <span class="pay-label">${p.label||'Payment'}</span>
+        <span class="pay-status-badge ${p.status}">${p.status.toUpperCase()}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span class="pay-amount-hist">${p.bch} BCH</span>
+        <span class="pay-date">${new Date(p.date).toLocaleDateString()}</span>
+      </div>
+      <div class="pay-usd">${p.usd}</div>
+    </div>
+  `).join('');
+}
+
+// ── BCH Raw TX Builder (BIP143 / SIGHASH_ALL|FORKID) ────────────────
+const sha256d = d => sha256(sha256(d));
+function le32(n){const b=new Uint8Array(4);new DataView(b.buffer).setUint32(0,n>>>0,true);return b;}
+function le64(n){const big=typeof n==='bigint'?n:BigInt(n);const b=new Uint8Array(8);const v=new DataView(b.buffer);v.setUint32(0,Number(big&0xFFFFFFFFn)>>>0,true);v.setUint32(4,Number((big>>32n)&0xFFFFFFFFn)>>>0,true);return b;}
+function varInt(n){if(n<0xfd)return new Uint8Array([n]);if(n<=0xffff)return new Uint8Array([0xfd,n&0xff,(n>>8)&0xff]);return new Uint8Array([0xfe,n&0xff,(n>>8)&0xff,(n>>16)&0xff,(n>>24)&0xff]);}
+function revHex(h){return h.match(/.{2}/g).reverse().join('');}
+function p2pkhScript(h20){return new Uint8Array([0x76,0xa9,0x14,...h20,0x88,0xac]);}
+function opRetScript(text){const d=new TextEncoder().encode(text);if(d.length<=75)return new Uint8Array([0x6a,d.length,...d]);return new Uint8Array([0x6a,0x4c,d.length,...d]);}
+
+function bip143Hash(inputs,outputs,idx,scriptCode,valueSat){
+  const SIGHASH=0x41; // ALL|FORKID
+  const hPO=sha256d(concat(...inputs.map(i=>concat(h2b(revHex(i.txid)),le32(i.vout)))));
+  const hSQ=sha256d(concat(...inputs.map(()=>le32(0xffffffff))));
+  const hOP=sha256d(concat(...outputs.map(o=>concat(le64(o.value),varInt(o.script.length),o.script))));
+  const inp=inputs[idx];
+  const pre=concat(le32(1),hPO,hSQ,h2b(revHex(inp.txid)),le32(inp.vout),varInt(scriptCode.length),scriptCode,le64(BigInt(valueSat)),le32(0xffffffff),hOP,le32(0),le32(SIGHASH));
+  return sha256d(pre);
+}
+
+async function buildSwapTx(priv,addr,utxos,vaultRaw,amtSat,memo){
+  let vault=vaultRaw;
+  if(!vault.startsWith('bitcoincash:'))vault='bitcoincash:'+vault;
+  const userH20=cashAddrToHash20(addr);
+  const vaultH20=cashAddrToHash20(vault);
+  const userScript=p2pkhScript(userH20);
+  const vaultScript=p2pkhScript(vaultH20);
+  const memoScript=opRetScript(memo);
+  const pubKey=secp256k1.getPublicKey(priv,true);
+
+  // Greedy UTXO selection
+  const sorted=[...utxos].sort((a,b)=>b.value-a.value);
+  const memoOutSize=9+memoScript.length;
+  const estSize=10+148*sorted.length+34*2+memoOutSize;
+  const feeSat=BigInt(Math.max(300,estSize*2));
+  const needed=BigInt(amtSat)+feeSat;
+  let totalIn=0n;const sel=[];
+  for(const u of sorted){sel.push(u);totalIn+=BigInt(u.value);if(totalIn>=needed)break;}
+  if(totalIn<needed)throw new Error(`Insufficient funds (have ${totalIn} sat, need ${needed} sat)`);
+  const change=totalIn-BigInt(amtSat)-feeSat;
+
+  const outputs=[{value:BigInt(amtSat),script:vaultScript},{value:0n,script:memoScript}];
+  if(change>=546n)outputs.push({value:change,script:userScript});
+
+  const inputs=sel.map(u=>({txid:u.tx_hash,vout:u.tx_pos,sequence:0xffffffff,value:u.value,sig:null}));
+
+  // Sign each input
+  for(let i=0;i<inputs.length;i++){
+    const hash=bip143Hash(inputs,outputs,i,userScript,inputs[i].value);
+    const sig=secp256k1.sign(hash,priv,{lowS:true});
+    const der=sig.toDERRawBytes();
+    inputs[i].sig=new Uint8Array([...der,0x41]);
+  }
+
+  // Serialize
+  const scriptSigs=inputs.map(i=>concat(varInt(i.sig.length),i.sig,varInt(pubKey.length),pubKey));
+  const raw=concat(
+    le32(1),varInt(inputs.length),
+    ...inputs.map((i,n)=>concat(h2b(revHex(i.txid)),le32(i.vout),varInt(scriptSigs[n].length),scriptSigs[n],le32(i.sequence))),
+    varInt(outputs.length),
+    ...outputs.map(o=>concat(le64(o.value),varInt(o.script.length),o.script)),
+    le32(0)
+  );
+  return b2h(raw);
+}
+
+// ── Ledger swap signing — multi-address, per-UTXO path ───────────────────────
+// utxos must have _pubKey (Uint8Array) and _path ([5]number) tags
+async function buildSwapTxLedger(utxos,vaultRaw,amtSat,memo){
+  // Ledger BCH app rejects all OP_RETURN outputs (0x6a80 in FINALIZE_FULL)
+  // regardless of memo length — confirmed for both <75b and >75b memos.
+  throw new Error('Ledger: cross-chain swaps need OP_RETURN, which the BCH app rejects\n→ Use seed phrase mode for cross-chain swaps');
+  // eslint-disable-next-line no-unreachable
+  let vault=vaultRaw;
+  if(!vault.startsWith('bitcoincash:'))vault='bitcoincash:'+vault;
+  const vaultH20=cashAddrToHash20(vault);
+  const vaultScript=p2pkhScript(vaultH20);
+  const memoScript=opRetScript(memo);
+  const sorted=[...utxos].sort((a,b)=>b.value-a.value);
+  const memoOutSize=9+memoScript.length;
+  const estSize=10+148*sorted.length+34*2+memoOutSize;
+  const feeSat=BigInt(Math.max(300,estSize*2));
+  const needed=BigInt(amtSat)+feeSat;
+  let totalIn=0n;const sel=[];
+  for(const u of sorted){sel.push(u);totalIn+=BigInt(u.value);if(totalIn>=needed)break;}
+  if(totalIn<needed)throw new Error(`Insufficient funds (have ${totalIn} sat, need ${needed} sat)`);
+  const change=totalIn-BigInt(amtSat)-feeSat;
+  const outputs=[
+    {value:BigInt(amtSat),script:vaultScript},
+    {value:0n,script:memoScript},
+  ];
+  // Change goes to BIP44 internal chain (change=1) — avoids "unusual change path" warning
+  const chgH20=ripemd160(sha256(_ledgerChangePub));
+  if(change>=546n)outputs.push({value:change,script:p2pkhScript(chgH20)});
+  // Per-input scripts and paths (each UTXO may be at a different BIP44 address)
+  const scripts=sel.map(u=>p2pkhScript(ripemd160(sha256(u._pubKey))));
+  const paths=sel.map(u=>u._path);
+  const lUtxos=sel.map(u=>({txid:u.tx_hash,vout:u.tx_pos,value:u.value}));
+  const sigs=await Ledger.signLedgerTx(_ledgerDevice,lUtxos,outputs,scripts,paths);
+  return Ledger.buildLedgerTx(lUtxos,sigs,sel.map(u=>u._pubKey),outputs);
+}
+
+// ── Coin Control ─────────────────────────────────────────────────────────────
+function _ccId(u){return u.tx_hash+':'+u.tx_pos;}
+async function _payGetAllUtxos(){
+  if(_ledgerDevice){
+    return _ledgerAddresses.flatMap(a=>(a.utxos||[]).map(u=>({...u,_pubKey:a.pubKey,_path:a.path5})));
+  }
+  const sh=_addrSH(_bchAddr);
+  return(await _fvCall('blockchain.scripthash.listunspent',[sh]))||[];
+}
+function _payGetCcUtxos(all){
+  if(!_payCcActive)return null;
+  return all.filter(u=>_payCcSel.has(_ccId(u)));
+}
+function _payRenderCcList(){
+  const list=document.getElementById('pay-cc-list');
+  if(!_payCcUtxos.length){list.innerHTML='<div style="padding:10px 12px;font-size:9px;color:rgba(0,255,65,.3)">// NO UTXOS</div>';return;}
+  list.innerHTML=_payCcUtxos.map(u=>{
+    const id=_ccId(u);const on=_payCcSel.has(id);
+    const bch=(u.value/1e8).toFixed(8);
+    const lbl=u._path?` <span style="font-size:8px;color:rgba(0,255,65,.3)">·${u._path[3]}/${u._path[4]}</span>`:'';
+    return`<div class="pay-cc-row" onclick="window._payToggleUtxo('${id}')">
+      <div class="pay-cc-chk ${on?'on':''}">✓</div>
+      <div style="flex:1">
+        <div class="pay-cc-amt">${bch} BCH${lbl}</div>
+        <div class="pay-cc-txid">${u.tx_hash.slice(0,18)}...${u.tx_hash.slice(-6)}</div>
+      </div>
+    </div>`;
+  }).join('');
+  const sel=_payCcUtxos.filter(u=>_payCcSel.has(_ccId(u)));
+  const total=sel.reduce((s,u)=>s+u.value,0);
+  document.getElementById('pay-cc-total').innerHTML=`${sel.length}/${_payCcUtxos.length} · <span>${(total/1e8).toFixed(8)} BCH</span>`;
+}
+window._payToggleCc=function(){
+  if(_ledgerDevice)return;
+  _payCcActive=!_payCcActive;
+  document.getElementById('pay-cc-body').classList.toggle('open',_payCcActive);
+  document.getElementById('pay-cc-arrow').classList.toggle('open',_payCcActive);
+  if(_payCcActive){
+    document.getElementById('pay-cc-list').innerHTML='<div style="padding:10px 12px;font-size:9px;color:rgba(0,255,65,.3)">// LOADING...</div>';
+    _payGetAllUtxos()
+      .then(u=>{_payCcUtxos=u||[];if(!_payCcSel.size)_payCcUtxos.forEach(v=>_payCcSel.add(_ccId(v)));_payRenderCcList();})
+      .catch(()=>{_payCcUtxos=[];_payRenderCcList();});
+  }
+};
+window._payToggleUtxo=function(id){
+  if(_payCcSel.has(id))_payCcSel.delete(id);else _payCcSel.add(id);
+  _payRenderCcList();
+};
+window._paySelectAll=function(){_payCcUtxos.forEach(u=>_payCcSel.add(_ccId(u)));_payRenderCcList();};
+window._payClearAll=function(){_payCcSel=new Set();_payRenderCcList();};
+
+// ── Simple BCH Send ──────────────────────────────────────────────────
+window._simpleSendBch=async function(destAddrRaw,bchAmount){
+  if(!_bchPriv)throw new Error('Wallet not loaded');
+  let dest=destAddrRaw;
+  if(!dest.startsWith('bitcoincash:'))dest='bitcoincash:'+dest;
+  const destH20=cashAddrToHash20(dest);
+  const userH20=cashAddrToHash20(_bchAddr);
+  const destScript=p2pkhScript(destH20);
+  const userScript=p2pkhScript(userH20);
+  const pubKey=secp256k1.getPublicKey(_bchPriv,true);
+  const amtSat=BigInt(Math.round(bchAmount*1e8));
+  if(amtSat<546n)throw new Error('Amount below dust limit (546 sat)');
+  // Fetch UTXOs
+  const sh=_addrSH(_bchAddr);
+  const utxos=await _fvCall('blockchain.scripthash.listunspent',[sh]);
+  if(!utxos||!utxos.length)throw new Error('No UTXOs available');
+  // Greedy selection
+  const sorted=[...utxos].sort((a,b)=>b.value-a.value);
+  const estSize=10+148*sorted.length+34*2;
+  const feeSat=BigInt(Math.max(300,estSize*2));
+  const needed=amtSat+feeSat;
+  let totalIn=0n;const sel=[];
+  for(const u of sorted){sel.push(u);totalIn+=BigInt(u.value);if(totalIn>=needed)break;}
+  if(totalIn<needed)throw new Error(`Insufficient funds (have ${totalIn} sat, need ${needed} sat)`);
+  const change=totalIn-amtSat-feeSat;
+  // Outputs
+  const outputs=[{value:amtSat,script:destScript}];
+  if(change>=546n)outputs.push({value:change,script:userScript});
+  // Inputs
+  const inputs=sel.map(u=>({txid:u.tx_hash,vout:u.tx_pos,sequence:0xffffffff,value:u.value,sig:null}));
+  // Sign each input (BIP143)
+  for(let i=0;i<inputs.length;i++){
+    const hash=bip143Hash(inputs,outputs,i,userScript,inputs[i].value);
+    const sig=secp256k1.sign(hash,_bchPriv,{lowS:true});
+    const der=sig.toDERRawBytes();
+    inputs[i].sig=new Uint8Array([...der,0x41]);
+  }
+  // Serialize
+  const scriptSigs=inputs.map(inp=>concat(varInt(inp.sig.length),inp.sig,varInt(pubKey.length),pubKey));
+  const raw=concat(
+    le32(1),varInt(inputs.length),
+    ...inputs.map((inp,n)=>concat(h2b(revHex(inp.txid)),le32(inp.vout),varInt(scriptSigs[n].length),scriptSigs[n],le32(inp.sequence))),
+    varInt(outputs.length),
+    ...outputs.map(o=>concat(le64(o.value),varInt(o.script.length),o.script)),
+    le32(0)
+  );
+  const rawHex=b2h(raw);
+  // Broadcast
+  const txid=await _fvCall('blockchain.transaction.broadcast',[rawHex]);
+  if(typeof txid!=='string'||txid.length<60)throw new Error(txid||'Broadcast failed');
+  return txid;
+};
+
+// ── Mobile Send JS ───────────────────────────────────────────────────
+window._mSendUpdate=function(){
+  const amt=parseFloat(document.getElementById('m-send-amt').value)||0;
+  const addr=(document.getElementById('m-send-addr').value||'').trim();
+  document.getElementById('m-send-usd').textContent='≈ $'+(amt*_bchUsd).toFixed(2)+' USD';
+  const ok=addr.length>20&&amt>=0.00000546;
+  const btn=document.getElementById('m-send-btn');
+  btn.style.opacity=ok?'1':'.4';
+  btn.style.pointerEvents=ok?'auto':'none';
+};
+window._mSendMax=function(){
+  const fee=400;
+  const max=Math.max(0,(_payBalance-fee)/1e8);
+  document.getElementById('m-send-amt').value=max.toFixed(8);
+  window._mSendUpdate();
+};
+window._mSendExec=async function(){
+  const addr=(document.getElementById('m-send-addr').value||'').trim();
+  const amt=parseFloat(document.getElementById('m-send-amt').value)||0;
+  const btn=document.getElementById('m-send-btn');
+  btn.style.opacity='.4';btn.style.pointerEvents='none';
+  document.getElementById('m-send-err').textContent='Sending...';
+  try{
+    const txid=await window._simpleSendBch(addr,amt);
+    document.getElementById('m-send-result').style.display='';
+    document.getElementById('m-send-result').textContent='TXID: '+txid;
+    document.getElementById('m-send-err').textContent='';
+    document.getElementById('m-send-amt').value='';
+    document.getElementById('m-send-addr').value='';
+    if(window._refreshBalance)window._refreshBalance();
+  }catch(e){
+    document.getElementById('m-send-err').textContent=e.message||'Send failed';
+    btn.style.opacity='1';btn.style.pointerEvents='auto';
+  }
+};
+
+// Window bridge for desktop IIFE
+window._QRCode = QRCode;
+
+// Init
+_loadHistory();
+</script>
+<script src="/shell.js?v=263"></script>
+<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{});}</script>
+</body>
+</html>

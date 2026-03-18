@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#00ff41">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-name" content="0penw0rld">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <title>00 Loan — 0penw0rld</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --green: #00ff41; --green-dim: #00c832; --green-dark: #003d0f;
+      --black: #020a03; --panel: #060e06;
+      --red: #ff4040; --gold: #f0a500; --teal: #00d4aa;
+    }
+    html, body { width:100%; height:100%; background:var(--black); font-family:'Share Tech Mono',monospace; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+    #rain { position:fixed; inset:0; z-index:0; pointer-events:none; opacity:.12; }
+    .scanlines { position:fixed; inset:0; z-index:1; pointer-events:none; background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.12) 2px,rgba(0,0,0,.12) 4px); }
+    .vignette { position:fixed; inset:0; z-index:1; pointer-events:none; background:radial-gradient(ellipse at center,transparent 30%,rgba(0,0,0,.9) 100%); }
+    #loading { position:fixed; inset:0; z-index:100; background:var(--black); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:24px; }
+    .loader-logo { font-family:'Orbitron',monospace; font-size:48px; font-weight:900; color:var(--green); text-shadow:0 0 20px var(--green),0 0 50px var(--green); animation:logoPulse 1s ease-in-out infinite; }
+    @keyframes logoPulse { 0%,100%{text-shadow:0 0 20px var(--green),0 0 50px var(--green)} 50%{text-shadow:0 0 30px var(--green),0 0 70px var(--green),0 0 140px rgba(0,255,65,.5)} }
+    .loader-bar-wrap { width:200px; height:2px; background:rgba(0,255,65,.1); overflow:hidden; border-radius:2px; }
+    .loader-bar { height:100%; background:var(--green); box-shadow:0 0 8px var(--green); animation:loadBar 2.5s ease-in-out forwards; }
+    @keyframes loadBar { from{width:0} to{width:100%} }
+    .loader-status { font-size:10px; color:rgba(0,255,65,.3); letter-spacing:2px; }
+    .blink { animation:blink .8s step-end infinite; }
+    @keyframes blink { 50%{opacity:0} }
+
+    .phone-wrap { position:relative; z-index:10; }
+    .phone { width:375px; height:780px; background:var(--panel); border-radius:42px; border:2px solid rgba(0,255,65,.2); box-shadow:0 0 40px rgba(0,255,65,.08),inset 0 0 30px rgba(0,0,0,.5); display:flex; flex-direction:column; overflow:hidden; position:relative; }
+    .notch { position:absolute; top:0; left:50%; transform:translateX(-50%); width:120px; height:28px; background:var(--black); border-radius:0 0 18px 18px; z-index:50; display:flex; align-items:center; justify-content:center; gap:8px; }
+    .notch-cam { width:8px; height:8px; border-radius:50%; background:#111; border:1px solid #222; }
+    .notch-speaker { width:40px; height:4px; border-radius:2px; background:#111; }
+    .status-bar { padding:10px 20px 4px; display:flex; align-items:center; justify-content:space-between; font-size:10px; color:rgba(0,255,65,.5); flex-shrink:0; margin-top:14px; }
+    .app-header { padding:8px 20px 0; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+    .app-title { font-family:'Orbitron',monospace; font-size:18px; font-weight:700; color:var(--green); text-shadow:0 0 10px rgba(0,255,65,.4); }
+    .app-title span { font-size:11px; color:rgba(0,255,65,.4); display:block; letter-spacing:2px; }
+
+    .oracle-bar { display:flex; align-items:center; justify-content:space-between; padding:5px 20px; border-bottom:1px solid rgba(0,255,65,.08); flex-shrink:0; font-size:9px; color:rgba(0,255,65,.4); letter-spacing:1px; }
+    .oracle-price { color:var(--green); font-size:11px; }
+    .oracle-dot { width:5px; height:5px; border-radius:50%; background:rgba(0,255,65,.2); transition:.3s; }
+    .oracle-dot.on { background:var(--green); box-shadow:0 0 4px var(--green); }
+
+    .tabs { display:flex; padding:0 16px; border-bottom:1px solid rgba(0,255,65,.1); flex-shrink:0; }
+    .tab { flex:1; padding:10px; text-align:center; font-size:10px; letter-spacing:2px; text-transform:uppercase; color:rgba(0,255,65,.3); cursor:pointer; border-bottom:2px solid transparent; transition:.2s; }
+    .tab.active { color:var(--green); border-bottom-color:var(--green); }
+    .tab-pane { display:none; flex:1; overflow-y:auto; scrollbar-width:none; min-height:0; flex-direction:column; }
+    .tab-pane::-webkit-scrollbar { display:none; }
+    .tab-pane.active { display:flex; }
+    #main-view { min-height:0; display:flex; flex-direction:column; flex:1; }
+
+    /* CALC tab */
+    .calc-wrap { padding:16px 20px; display:flex; flex-direction:column; gap:14px; flex:1; }
+    .calc-section { background:rgba(0,255,65,.03); border:1px solid rgba(0,255,65,.1); border-radius:12px; padding:14px 16px; }
+    .calc-label { font-size:9px; color:rgba(0,255,65,.4); letter-spacing:2px; margin-bottom:8px; }
+    .form-input { width:100%; background:rgba(0,255,65,.05); border:1px solid rgba(0,255,65,.2); border-radius:8px; padding:11px 14px; color:var(--green); font-family:'Share Tech Mono',monospace; font-size:13px; outline:none; transition:.2s; }
+    .form-input:focus { border-color:rgba(0,255,65,.5); box-shadow:0 0 8px rgba(0,255,65,.08); }
+    .form-input::placeholder { color:rgba(0,255,65,.2); }
+    .slider-wrap { margin-top:8px; }
+    .ratio-slider { width:100%; -webkit-appearance:none; height:4px; background:rgba(0,255,65,.15); border-radius:2px; outline:none; cursor:pointer; }
+    .ratio-slider::-webkit-slider-thumb { -webkit-appearance:none; width:16px; height:16px; border-radius:50%; background:var(--green); box-shadow:0 0 8px var(--green); cursor:pointer; }
+    .ratio-labels { display:flex; justify-content:space-between; font-size:8px; color:rgba(0,255,65,.3); margin-top:4px; letter-spacing:1px; }
+    .ratio-display { text-align:center; font-family:'Orbitron',monospace; font-size:24px; color:var(--green); padding:4px 0; }
+    .ratio-zone { font-size:9px; text-align:center; letter-spacing:2px; padding:2px 0 6px; }
+    .zone-safe { color:var(--teal); }
+    .zone-ok { color:var(--green); }
+    .zone-warn { color:var(--gold); }
+    .zone-danger { color:var(--red); }
+
+    /* Results panel */
+    .results-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .result-card { background:rgba(0,255,65,.04); border:1px solid rgba(0,255,65,.1); border-radius:10px; padding:12px; }
+    .result-card.highlight { background:rgba(0,255,65,.08); border-color:rgba(0,255,65,.3); }
+    .result-card.danger { background:rgba(255,64,64,.04); border-color:rgba(255,64,64,.2); }
+    .result-lbl { font-size:8px; color:rgba(0,255,65,.4); letter-spacing:1px; margin-bottom:5px; }
+    .result-val { font-family:'Orbitron',monospace; font-size:16px; color:var(--green); }
+    .result-val.red { color:var(--red); }
+    .result-val.gold { color:var(--gold); }
+    .result-val.teal { color:var(--teal); }
+    .result-sub { font-size:8px; color:rgba(0,255,65,.3); margin-top:3px; }
+
+    /* Health bar */
+    .health-bar-wrap { background:rgba(0,0,0,.4); border-radius:4px; height:8px; overflow:hidden; margin-top:6px; }
+    .health-bar { height:100%; border-radius:4px; transition:width .4s ease,background .4s ease; }
+
+    /* Borrow button */
+    .borrow-btn { width:100%; padding:14px; background:rgba(0,255,65,.1); border:1px solid rgba(0,255,65,.4); border-radius:10px; color:var(--green); font-family:'Share Tech Mono',monospace; font-size:13px; letter-spacing:3px; cursor:pointer; transition:.2s; text-decoration:none; display:block; text-align:center; margin-top:4px; }
+    .borrow-btn:hover { background:rgba(0,255,65,.18); box-shadow:0 0 16px rgba(0,255,65,.2); }
+    .moria-note { font-size:9px; color:rgba(0,255,65,.25); text-align:center; letter-spacing:1px; line-height:1.8; }
+
+    /* SIMULATE tab (existing vault) */
+    .sim-wrap { padding:16px 20px; display:flex; flex-direction:column; gap:14px; flex:1; }
+    .vault-card { background:rgba(0,255,65,.04); border:1px solid rgba(0,255,65,.12); border-radius:12px; padding:16px; }
+    .vault-row { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid rgba(0,255,65,.05); font-size:10px; }
+    .vault-row:last-child { border-bottom:none; }
+    .vault-key { color:rgba(0,255,65,.4); letter-spacing:1px; }
+    .vault-val { color:var(--green); font-family:'Orbitron',monospace; font-size:11px; }
+    .vault-val.warn { color:var(--gold); }
+    .vault-val.danger { color:var(--red); }
+
+    /* INFO tab */
+    .info-wrap { padding:16px 20px; display:flex; flex-direction:column; gap:14px; overflow-y:auto; flex:1; }
+    .info-card { background:rgba(0,255,65,.03); border:1px solid rgba(0,255,65,.1); border-radius:10px; padding:14px; }
+    .info-title { font-size:10px; color:var(--green); letter-spacing:2px; margin-bottom:8px; border-bottom:1px solid rgba(0,255,65,.08); padding-bottom:6px; }
+    .info-row { display:flex; justify-content:space-between; font-size:10px; padding:4px 0; }
+    .info-k { color:rgba(0,255,65,.4); }
+    .info-v { color:rgba(0,255,65,.8); }
+    .info-text { font-size:10px; color:rgba(0,255,65,.5); line-height:1.8; }
+    .open-moria-btn { display:block; width:100%; padding:14px; background:rgba(0,255,65,.08); border:1px solid rgba(0,255,65,.3); border-radius:10px; color:var(--green); font-family:'Share Tech Mono',monospace; font-size:12px; letter-spacing:2px; cursor:pointer; text-align:center; text-decoration:none; transition:.2s; }
+    .open-moria-btn:hover { background:rgba(0,255,65,.15); }
+    @media (min-width: 900px) {
+      #loading { display: none !important; }
+      #rain, .scanlines, .vignette { display: none !important; }
+    }
+  </style>
+  <link rel="stylesheet" href="desktop.css">
+</head>
+<body>
+<canvas id="rain"></canvas>
+<div class="scanlines"></div>
+<div class="vignette"></div>
+
+<div id="loading">
+  <div class="loader-logo">00 LOAN</div>
+  <div class="loader-bar-wrap"><div class="loader-bar"></div></div>
+  <div class="loader-status" id="loader-status">CONNECTING MORIA ORACLE...<span class="blink">_</span></div>
+</div>
+
+<!-- ── Desktop Loan View (hidden on mobile) ── -->
+<div id="loan-desktop" style="display:none">
+  <div class="dt-inner">
+    <div class="dt-page-header">
+      <div class="dt-page-title-wrap">
+        <div class="dt-page-icon">◆</div>
+        <div>
+          <div class="dt-page-title">Loan</div>
+          <div class="dt-page-sub">Moria Protocol · BCH Collateralized Lending</div>
+        </div>
+      </div>
+      <div class="dt-page-actions">
+        <div class="dt-oracle" id="dt-loan-oracle">BCH $—</div>
+      </div>
+    </div>
+
+    <div class="dt-tabs" id="dt-loan-tabs">
+      <button class="dt-tab active" onclick="dtLoanTab('borrow')">Borrow</button>
+      <button class="dt-tab" onclick="dtLoanTab('info')"><span>ℹ</span> Info</button>
+    </div>
+
+    <!-- BORROW pane -->
+    <div class="dt-pane active" id="dt-loan-p-borrow">
+      <div class="dt-card">
+        <div class="dt-card-title">Borrow Calculator</div>
+        <div class="dt-form-group">
+          <div class="dt-form-lbl">Collateral (BCH)</div>
+          <input class="dt-form-input" id="dt-coll-bch" type="number" step="any" placeholder="e.g. 0.5" oninput="dtCalcLoan()">
+        </div>
+        <div class="dt-form-group">
+          <div class="dt-form-lbl">Collateral Ratio</div>
+          <div style="text-align:center;font-family:'Inter',sans-serif;font-size:32px;font-weight:800;color:var(--dt-text);padding:4px 0" id="dt-ratio-display">200%</div>
+          <div style="text-align:center;font-size:12px;font-weight:600;margin-bottom:8px" id="dt-ratio-zone">
+            <span style="color:var(--dt-accent)">Safe Zone</span>
+          </div>
+          <input class="dt-slider" type="range" id="dt-ratio-slider" min="150" max="500" value="200" oninput="dtCalcLoan()">
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--dt-text-secondary);margin-top:4px">
+            <span style="color:var(--dt-danger)">150% Min</span>
+            <span>200%</span>
+            <span style="color:var(--dt-accent)">500%</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="dt-results-grid" id="dt-results-grid">
+        <div class="dt-result-card highlight">
+          <div class="dt-result-label">Max MUSD</div>
+          <div class="dt-result-value safe" id="dt-res-musd">—</div>
+        </div>
+        <div class="dt-result-card">
+          <div class="dt-result-label">Collateral Value</div>
+          <div class="dt-result-value" id="dt-res-coll">—</div>
+        </div>
+        <div class="dt-result-card">
+          <div class="dt-result-label">Interest Rate</div>
+          <div class="dt-result-value" id="dt-res-rate">—</div>
+        </div>
+        <div class="dt-result-card">
+          <div class="dt-result-label">Liquidation Price</div>
+          <div class="dt-result-value danger" id="dt-res-liq">—</div>
+        </div>
+      </div>
+
+      <div class="dt-card" style="margin-top:20px;padding:16px 28px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div class="dt-form-lbl" style="margin:0">Vault Health</div>
+          <span style="font-size:11px;color:var(--dt-text-secondary)" id="dt-health-pct">—</span>
+        </div>
+        <div class="dt-health-bar">
+          <div class="dt-health-fill" id="dt-health-bar" style="width:0%"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--dt-text-secondary);margin-top:6px">
+          <span style="color:var(--dt-danger)">Liquidation 120%</span>
+          <span>Safe</span>
+          <span style="color:var(--dt-accent)">Max Safe</span>
+        </div>
+      </div>
+
+      <a class="dt-action-btn" href="https://www.moria.money" target="_blank" style="display:block;text-align:center;text-decoration:none;margin-top:20px">Borrow MUSD on Moria →</a>
+      <div style="text-align:center;font-size:11px;color:var(--dt-text-secondary);margin-top:8px">Powered by Moria Protocol · Open Source · Decentralized</div>
+    </div>
+
+    <!-- SIMULATE pane -->
+    <!-- INFO pane -->
+    <div class="dt-pane" id="dt-loan-p-info">
+      <div class="dt-card">
+        <div class="dt-info-section">
+          <div class="dt-info-title">Moria Protocol</div>
+          <div class="dt-info-text">Borrow MUSD (USD stablecoin) by locking BCH as collateral. Open source, immutable, zero custodians.</div>
+        </div>
+      </div>
+
+      <div class="dt-card">
+        <div class="dt-card-title">Key Parameters</div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--dt-border-subtle);font-size:13px"><span style="color:var(--dt-text-secondary)">Min Collateral</span><span style="color:var(--dt-text);font-weight:600">150%</span></div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--dt-border-subtle);font-size:13px"><span style="color:var(--dt-text-secondary)">Liquidation</span><span style="color:var(--dt-text);font-weight:600">120%</span></div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--dt-border-subtle);font-size:13px"><span style="color:var(--dt-text-secondary)">Min Debt</span><span style="color:var(--dt-text);font-weight:600">10 MUSD</span></div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--dt-border-subtle);font-size:13px"><span style="color:var(--dt-text-secondary)">Collateral</span><span style="color:var(--dt-text);font-weight:600">BCH only</span></div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--dt-border-subtle);font-size:13px"><span style="color:var(--dt-text-secondary)">Interest</span><span style="color:var(--dt-text);font-weight:600">Self-set</span></div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--dt-border-subtle);font-size:13px"><span style="color:var(--dt-text-secondary)">Oracle</span><span style="color:var(--dt-text);font-weight:600">D3lphi (on-chain)</span></div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px"><span style="color:var(--dt-text-secondary)">Version</span><span style="color:var(--dt-text);font-weight:600">V5</span></div>
+      </div>
+
+      <div class="dt-card">
+        <div class="dt-info-section">
+          <div class="dt-info-title">How Liquidation Works</div>
+          <div class="dt-info-text">If your collateral ratio drops below 120%, a liquidator can repay your MUSD debt and receive your BCH. You keep the MUSD but lose your collateral.</div>
+        </div>
+      </div>
+
+      <div class="dt-card">
+        <div class="dt-info-section">
+          <div class="dt-info-title">Redemption Risk</div>
+          <div class="dt-info-text">Third parties can redeem loans at face value. Lower interest rates mean higher redemption risk. Set rates carefully to protect your vault.</div>
+        </div>
+      </div>
+
+      <div class="dt-card">
+        <div class="dt-card-title">Oracle Live Data</div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--dt-border-subtle);font-size:13px"><span style="color:var(--dt-text-secondary)">BCH/USD</span><span style="color:var(--dt-accent);font-weight:600" id="dt-info-bch">—</span></div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px"><span style="color:var(--dt-text-secondary)">Source</span><span style="color:var(--dt-text);font-weight:600">D3lphi / Riften Labs</span></div>
+      </div>
+
+      <div style="display:flex;gap:12px;margin-top:8px">
+        <a class="dt-action-btn" href="https://www.moria.money" target="_blank" style="text-align:center;text-decoration:none;flex:1">Open Moria →</a>
+        <a class="dt-action-btn-outline" href="https://docs.riftenlabs.com/moria/" target="_blank" style="text-align:center;text-decoration:none;flex:1">Documentation →</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  if(!window.matchMedia('(min-width:900px)').matches) return;
+  var el=document.getElementById('loan-desktop');if(!el)return;
+  el.style.display='';
+
+  var LIQ_RATIO=120;
+
+  /* ── Tabs ─── */
+  window.dtLoanTab=function(t){
+    ['borrow','info'].forEach(function(x){
+      var p=document.getElementById('dt-loan-p-'+x);if(p)p.classList.toggle('active',x===t);
+    });
+    document.querySelectorAll('#dt-loan-tabs .dt-tab').forEach(function(b){
+      b.classList.toggle('active',b.textContent.toLowerCase()===t||(t==='borrow'&&b.textContent==='Borrow'));
+    });
+  };
+
+  /* ── Borrow calculator (standalone, same math as mobile) ─── */
+  window.dtCalcLoan=function(){
+    var collBch=parseFloat(document.getElementById('dt-coll-bch').value)||0;
+    var ratio=parseInt(document.getElementById('dt-ratio-slider').value)||200;
+    var price=window._dtLoanPrice||0;
+
+    document.getElementById('dt-ratio-display').textContent=ratio+'%';
+
+    var zoneEl=document.getElementById('dt-ratio-zone');
+    if(ratio>=300){zoneEl.innerHTML='<span style="color:var(--dt-accent)">Very Safe Zone</span>';}
+    else if(ratio>=200){zoneEl.innerHTML='<span style="color:var(--dt-accent)">Safe Zone</span>';}
+    else if(ratio>=160){zoneEl.innerHTML='<span style="color:var(--dt-warning)">Caution Zone</span>';}
+    else{zoneEl.innerHTML='<span style="color:var(--dt-danger)">Risk Zone — Near Liquidation</span>';}
+
+    if(!collBch||!price){
+      document.getElementById('dt-res-musd').textContent='—';
+      document.getElementById('dt-res-coll').textContent='—';
+      document.getElementById('dt-res-rate').textContent='—';
+      document.getElementById('dt-res-liq').textContent='—';
+      document.getElementById('dt-health-bar').style.width='0%';
+      document.getElementById('dt-health-pct').textContent='—';
+      return;
+    }
+
+    var collUsd=collBch*price;
+    var maxMUSD=collUsd/(ratio/100);
+    var liqPrice=(maxMUSD*(LIQ_RATIO/100))/collBch;
+
+    document.getElementById('dt-res-musd').textContent=maxMUSD.toFixed(2)+' MUSD';
+    document.getElementById('dt-res-coll').textContent='$'+collUsd.toFixed(2);
+    document.getElementById('dt-res-rate').textContent='1-10%';
+    document.getElementById('dt-res-liq').textContent='$'+liqPrice.toFixed(2);
+
+    var health=Math.min(100,Math.max(0,((ratio-LIQ_RATIO)/(500-LIQ_RATIO))*100));
+    var bar=document.getElementById('dt-health-bar');
+    bar.style.width=health+'%';
+    bar.style.background=ratio>=200?'var(--dt-accent)':ratio>=160?'var(--dt-success)':ratio>=140?'var(--dt-warning)':'var(--dt-danger)';
+    document.getElementById('dt-health-pct').textContent=Math.round(health)+'%';
+  };
+
+  /* ── Simulator ─── */
+  /* ── Poll price from mobile oracle ─── */
+  function _dtPoll(){
+    var oEl=document.getElementById('oracle-price');
+    if(oEl){
+      var m=oEl.textContent.match(/\$([\d.]+)/);
+      if(m){
+        window._dtLoanPrice=parseFloat(m[1]);
+        document.getElementById('dt-loan-oracle').textContent='BCH $'+parseFloat(m[1]).toFixed(2);
+        document.getElementById('dt-info-bch').textContent='$'+parseFloat(m[1]).toFixed(2);
+      }
+    }
+  }
+  setInterval(_dtPoll,1000);
+  setTimeout(function(){_dtPoll();dtCalcLoan();},3000);
+})();
+</script>
+
+<div class="phone-wrap">
+  <div class="phone">
+    <div class="notch"><div class="notch-speaker"></div><div class="notch-cam"></div></div>
+
+    <div id="main-view" style="display:flex">
+      <div class="status-bar">
+        <span id="clock">00:00</span>
+        <span>00 LOAN ◆</span>
+      </div>
+      <div class="app-header">
+        <div class="app-title">00 LOAN<span>// MORIA PROTOCOL</span></div>
+        <a href="https://www.moria.money" target="_blank" style="font-size:18px;color:rgba(0,255,65,.6);text-decoration:none">⤴</a>
+      </div>
+
+      <!-- Oracle bar -->
+      <div class="oracle-bar">
+        <span style="display:flex;align-items:center;gap:6px">
+          <span class="oracle-dot" id="oracle-dot"></span>
+          <span id="oracle-label">D3LPHI ORACLE</span>
+        </span>
+        <span class="oracle-price" id="oracle-price">$---/BCH</span>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <div class="tab active" id="tab-calc" onclick="window._switchTab('calc')">BORROW</div>
+        <div class="tab" id="tab-info" onclick="window._switchTab('info')">INFO</div>
+      </div>
+
+      <!-- BORROW / CALC tab -->
+      <div class="tab-pane active" id="pane-calc">
+        <div class="calc-wrap">
+          <!-- Collateral input -->
+          <div class="calc-section">
+            <div class="calc-label">COLLATERAL (BCH)</div>
+            <input class="form-input" id="coll-bch" type="number" step="any" placeholder="e.g. 0.5" oninput="window._calcLoan()">
+          </div>
+
+          <!-- Ratio slider -->
+          <div class="calc-section">
+            <div class="calc-label">COLLATERAL RATIO</div>
+            <div class="ratio-display" id="ratio-display">200%</div>
+            <div class="ratio-zone zone-safe" id="ratio-zone">// SAFE ZONE</div>
+            <div class="slider-wrap">
+              <input class="ratio-slider" type="range" id="ratio-slider" min="150" max="500" value="200" oninput="window._calcLoan()">
+              <div class="ratio-labels">
+                <span style="color:var(--red)">150% MIN</span>
+                <span>200%</span>
+                <span style="color:var(--teal)">500%</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Results -->
+          <div class="results-grid" id="results-grid">
+            <div class="result-card highlight">
+              <div class="result-lbl">MAX MUSD</div>
+              <div class="result-val teal" id="res-musd">---</div>
+              <div class="result-sub" id="res-musd-sub">at current ratio</div>
+            </div>
+            <div class="result-card">
+              <div class="result-lbl">COLLATERAL VALUE</div>
+              <div class="result-val" id="res-coll-usd">---</div>
+              <div class="result-sub">in USD</div>
+            </div>
+            <div class="result-card">
+              <div class="result-lbl">INTEREST RATE</div>
+              <div class="result-val" id="res-rate">---</div>
+              <div class="result-sub">set your own rate</div>
+            </div>
+            <div class="result-card danger">
+              <div class="result-lbl">LIQ. PRICE BCH</div>
+              <div class="result-val red" id="res-liq">---</div>
+              <div class="result-sub">below 120% ratio</div>
+            </div>
+          </div>
+
+          <!-- Health bar -->
+          <div class="calc-section" style="padding:12px 16px">
+            <div class="calc-label" style="margin-bottom:6px">VAULT HEALTH</div>
+            <div class="health-bar-wrap">
+              <div class="health-bar" id="health-bar" style="width:0%;background:var(--teal)"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:8px;color:rgba(0,255,65,.3);margin-top:4px">
+              <span style="color:var(--red)">LIQUIDATION 120%</span>
+              <span>SAFE</span>
+              <span style="color:var(--teal)">MAX SAFE</span>
+            </div>
+          </div>
+
+          <a class="borrow-btn" href="https://www.moria.money" target="_blank">⊕ BORROW MUSD ON MORIA →</a>
+          <div class="moria-note">// POWERED BY MORIA PROTOCOL<br>// OPEN SOURCE · IMMUTABLE · DECENTRALIZED</div>
+        </div>
+      </div>
+
+      <!-- INFO tab -->
+      <div class="tab-pane" id="pane-info">
+        <div class="info-wrap">
+          <div class="info-card">
+            <div class="info-title">// MORIA PROTOCOL</div>
+            <div class="info-text">Borrow MUSD (USD stablecoin) by locking BCH as collateral. Open source, immutable, zero custodians.</div>
+          </div>
+          <div class="info-card">
+            <div class="info-title">// KEY PARAMETERS</div>
+            <div class="info-row"><span class="info-k">MIN COLLATERAL</span><span class="info-v">150%</span></div>
+            <div class="info-row"><span class="info-k">LIQUIDATION</span><span class="info-v">120%</span></div>
+            <div class="info-row"><span class="info-k">MIN DEBT</span><span class="info-v">10 MUSD</span></div>
+            <div class="info-row"><span class="info-k">COLLATERAL</span><span class="info-v">BCH only</span></div>
+            <div class="info-row"><span class="info-k">INTEREST</span><span class="info-v">Self-set</span></div>
+            <div class="info-row"><span class="info-k">ORACLE</span><span class="info-v">D3lphi (on-chain)</span></div>
+            <div class="info-row"><span class="info-k">VERSION</span><span class="info-v">V5</span></div>
+          </div>
+          <div class="info-card">
+            <div class="info-title">// HOW LIQUIDATION WORKS</div>
+            <div class="info-text">If your collateral ratio drops below 120%, a liquidator can repay your MUSD debt and receive your BCH. You keep the MUSD but lose your collateral.</div>
+          </div>
+          <div class="info-card">
+            <div class="info-title">// REDEMPTION RISK</div>
+            <div class="info-text">Third parties can redeem loans at face value. Lower interest rates = higher redemption risk. Set rates carefully.</div>
+          </div>
+          <div class="info-card">
+            <div class="info-title">// ORACLE LIVE DATA</div>
+            <div class="info-row"><span class="info-k">BCH/USD</span><span class="info-v" id="info-bch">---</span></div>
+            <div class="info-row"><span class="info-k">SOURCE</span><span class="info-v">D3lphi / Riften Labs</span></div>
+            <div class="info-row"><span class="info-k">MUSD TOKEN</span><span class="info-v" style="font-size:8px;word-break:break-all">b38a33f7...87f366</span></div>
+          </div>
+          <a class="open-moria-btn" href="https://www.moria.money" target="_blank">⤴ OPEN MORIA PROTOCOL</a>
+          <a class="open-moria-btn" href="https://docs.riftenlabs.com/moria/" target="_blank" style="background:transparent;border-color:rgba(0,255,65,.15);color:rgba(0,255,65,.5)">⤴ MORIA DOCUMENTATION</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>(function(){var v=localStorage.getItem('00wallet_vault');if(!v){window.location.href='/wallet.html';return;}try{var s=JSON.parse(localStorage.getItem('00_session_auth')||'{}');if(!s.ts||Date.now()-s.ts>30*60*1000){window.location.href='/wallet.html';}}catch(e){window.location.href='/wallet.html';}})();</script>
+<script>
+(function(){
+  const c=document.getElementById('rain'),ctx=c.getContext('2d');
+  c.width=window.innerWidth;c.height=window.innerHeight;
+  const d=Array.from({length:120},()=>({x:Math.random()*c.width,y:Math.random()*c.height,len:Math.random()*18+6,speed:Math.random()*7+5,op:Math.random()*.35+.08,w:Math.random()*.8+.2}));
+  function draw(){ctx.clearRect(0,0,c.width,c.height);d.forEach(p=>{ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p.x-1,p.y+p.len);ctx.strokeStyle=`rgba(0,255,65,${p.op})`;ctx.lineWidth=p.w;ctx.stroke();p.y+=p.speed;if(p.y>c.height){p.y=-p.len;p.x=Math.random()*c.width;}});requestAnimationFrame(draw);}
+  draw();
+  setInterval(()=>{const n=new Date();const el=document.getElementById('clock');if(el)el.textContent=n.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});},1000);
+})();
+
+(function(){
+  const statuses=['CONNECTING D3LPHI...','LOADING ORACLE PRICE...','COMPUTING VAULT PARAMS...','MORIA READY'];
+  let si=0;const iv=setInterval(()=>{if(si<statuses.length){document.getElementById('loader-status').innerHTML=statuses[si]+'<span class="blink">_</span>';si++;}else clearInterval(iv);},500);
+  setTimeout(()=>{
+    const l=document.getElementById('loading');l.style.transition='opacity .5s';l.style.opacity='0';
+    setTimeout(()=>{l.style.display='none';window._loanBoot();},500);
+  },2500);
+})();
+</script>
+
+<script type="module">
+const INDEXER=localStorage.getItem('00_ep_indexer')||'https://indexer.riften.net';
+const DELPHI_TOKEN='d0d46f5cbd82188acede0d3e49c75700c19cb8331a30101f0bb6a260066ac972';
+
+let _bchUsd=0;
+
+// Moria constants
+const MIN_RATIO=150; // % minimum to open
+const LIQ_RATIO=120; // % liquidation threshold
+const MIN_DEBT=10;   // MUSD
+
+async function fetchBchPrice(){
+  try{
+    const now=Math.floor(Date.now()/1000);
+    const r=await fetch(`${INDEXER}/oracle/delphi/closest?timestamp=${now}&token_id=${DELPHI_TOKEN}`);
+    const d=await r.json();
+    _bchUsd=d.oracle_price/100;
+    document.getElementById('oracle-price').textContent='$'+_bchUsd.toFixed(2)+'/BCH';
+    document.getElementById('oracle-dot').className='oracle-dot on';
+    document.getElementById('info-bch').textContent='$'+_bchUsd.toFixed(2);
+    return _bchUsd;
+  }catch(e){
+    document.getElementById('oracle-label').textContent='ORACLE OFFLINE';
+    return 0;
+  }
+}
+
+window._loanBoot=async function(){
+  await fetchBchPrice();
+  setInterval(fetchBchPrice,60000);
+  window._calcLoan(); // initial calc
+};
+
+window._switchTab=function(tab){
+  ['calc','sim','info'].forEach(t=>{
+    document.getElementById('tab-'+t).classList.toggle('active',t===tab);
+    document.getElementById('pane-'+t).classList.toggle('active',t===tab);
+  });
+};
+
+// ── Borrow Calculator ────────────────────────────────
+window._calcLoan=function(){
+  const collBch=parseFloat(document.getElementById('coll-bch').value)||0;
+  const ratio=parseInt(document.getElementById('ratio-slider').value)||200;
+
+  // Update ratio display
+  document.getElementById('ratio-display').textContent=ratio+'%';
+
+  // Zone label
+  const zoneEl=document.getElementById('ratio-zone');
+  let zoneClass='zone-ok',zoneText='// OK ZONE';
+  if(ratio>=300){zoneClass='zone-safe';zoneText='// VERY SAFE ZONE';}
+  else if(ratio>=200){zoneClass='zone-ok';zoneText='// SAFE ZONE';}
+  else if(ratio>=160){zoneClass='zone-warn';zoneText='// CAUTION ZONE';}
+  else{zoneClass='zone-danger';zoneText='// RISK ZONE — NEAR LIQUIDATION';}
+  zoneEl.className='ratio-zone '+zoneClass;
+  zoneEl.textContent=zoneText;
+
+  if(!collBch||!_bchUsd){
+    // Clear results
+    ['res-musd','res-coll-usd','res-rate','res-liq'].forEach(id=>{
+      document.getElementById(id).textContent='---';
+    });
+    document.getElementById('health-bar').style.width='0%';
+    return;
+  }
+
+  const collUsd=collBch*_bchUsd;
+  // maxMUSD = collateral_USD / (ratio / 100)
+  const maxMUSD=collUsd/(ratio/100);
+  // liquidation price: when BCH price drops enough that ratio = 120%
+  // liq_price = (debt * liq_ratio%) / collBch
+  // But debt = maxMUSD at current ratio
+  const liqPrice=(maxMUSD*(LIQ_RATIO/100))/collBch;
+  // Interest rate: user sets own, suggest typical range
+  const suggestRate='1-10%';
+
+  document.getElementById('res-musd').textContent=maxMUSD.toFixed(2)+' MUSD';
+  document.getElementById('res-musd-sub').textContent='min debt: '+MIN_DEBT+' MUSD';
+  document.getElementById('res-coll-usd').textContent='$'+collUsd.toFixed(2);
+  document.getElementById('res-rate').textContent=suggestRate;
+  document.getElementById('res-liq').textContent='$'+liqPrice.toFixed(2);
+
+  // Health bar: 0% = liq (120%), 100% = 500%
+  const health=Math.min(100,Math.max(0,((ratio-LIQ_RATIO)/(500-LIQ_RATIO))*100));
+  const bar=document.getElementById('health-bar');
+  bar.style.width=health+'%';
+  bar.style.background=ratio>=200?'var(--teal)':ratio>=160?'var(--green)':ratio>=140?'var(--gold)':'var(--red)';
+};
+
+// ── Vault Simulator ──────────────────────────────────
+window._simVault=function(){
+  const debt=parseFloat(document.getElementById('sim-debt').value)||0;
+  const coll=parseFloat(document.getElementById('sim-coll').value)||0;
+  const simResults=document.getElementById('sim-results');
+
+  if(!debt||!coll||!_bchUsd){simResults.style.display='none';return;}
+  simResults.style.display='block';
+
+  const collUsd=coll*_bchUsd;
+  const currentRatio=(collUsd/debt)*100;
+  const liqPrice=(debt*(LIQ_RATIO/100))/coll;
+  const liqDrop=(((_bchUsd-liqPrice)/_bchUsd)*100).toFixed(1);
+
+  document.getElementById('sim-r-debt').textContent=debt.toFixed(2)+' MUSD';
+  document.getElementById('sim-r-coll').textContent='$'+collUsd.toFixed(2);
+
+  const ratioEl=document.getElementById('sim-r-ratio');
+  ratioEl.textContent=currentRatio.toFixed(1)+'%';
+  ratioEl.className='vault-val'+(currentRatio<140?' danger':currentRatio<170?' warn':'');
+
+  document.getElementById('sim-r-liq').textContent='$'+liqPrice.toFixed(2)+' (-'+liqDrop+'%)';
+
+  const statusEl=document.getElementById('sim-r-status');
+  if(currentRatio<LIQ_RATIO){statusEl.textContent='⚠ LIQUIDATABLE';statusEl.className='vault-val danger';}
+  else if(currentRatio<160){statusEl.textContent='⚠ HIGH RISK';statusEl.className='vault-val warn';}
+  else if(currentRatio<200){statusEl.textContent='⚡ MODERATE';statusEl.className='vault-val';}
+  else{statusEl.textContent='✓ HEALTHY';statusEl.className='vault-val teal';}
+
+  const health=Math.min(100,Math.max(0,((currentRatio-LIQ_RATIO)/(500-LIQ_RATIO))*100));
+  const bar=document.getElementById('sim-health-bar');
+  bar.style.width=health+'%';
+  bar.style.background=currentRatio>=200?'var(--teal)':currentRatio>=160?'var(--green)':currentRatio>=140?'var(--gold)':'var(--red)';
+};
+</script>
+<script src="/shell.js?v=263"></script>
+<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{});}</script>
+</body>
+</html>

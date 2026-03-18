@@ -1,0 +1,2304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0AC18E">
+  <title>00 Protocol — Documentation</title>
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── Theme Variables ── */
+    :root, [data-theme="light"] {
+      --dt-bg: #f5f6f8;
+      --dt-surface: #ffffff;
+      --dt-text: #1a1a2e;
+      --dt-text-secondary: #64748b;
+      --dt-accent: #0AC18E;
+      --dt-accent-soft: rgba(10,193,142,.08);
+      --dt-accent-border: rgba(10,193,142,.25);
+      --dt-border: #e2e8f0;
+      --dt-border-subtle: #f1f5f9;
+      --dt-shadow: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+      --dt-shadow-lg: 0 4px 16px rgba(0,0,0,.08);
+      --dt-sidebar-bg: #ffffff;
+      --dt-sidebar-hover: rgba(0,0,0,.03);
+      --dt-sidebar-active: rgba(10,193,142,.06);
+      --dt-sidebar-text: #64748b;
+      --dt-sidebar-text-active: #1a1a2e;
+      --dt-input-bg: #f8fafc;
+      --dt-input-border: #e2e8f0;
+      --dt-code-bg: #f8fafc;
+      --dt-code-border: #e2e8f0;
+      --dt-code-text: #334155;
+      --dt-code-comment: #94a3b8;
+      --dt-code-key: #0AC18E;
+      --dt-code-val: #e97319;
+    }
+    [data-theme="dark"] {
+      --dt-bg: #0c0d12;
+      --dt-surface: #16171f;
+      --dt-text: #e2e8f0;
+      --dt-text-secondary: #94a3b8;
+      --dt-accent: #1DD9A5;
+      --dt-accent-soft: rgba(10,193,142,.1);
+      --dt-accent-border: rgba(29,217,165,.2);
+      --dt-border: #232430;
+      --dt-border-subtle: #1c1d26;
+      --dt-shadow: 0 1px 3px rgba(0,0,0,.2);
+      --dt-shadow-lg: 0 4px 16px rgba(0,0,0,.3);
+      --dt-sidebar-bg: #111218;
+      --dt-sidebar-hover: rgba(255,255,255,.03);
+      --dt-sidebar-active: rgba(10,193,142,.08);
+      --dt-sidebar-text: #94a3b8;
+      --dt-sidebar-text-active: #e2e8f0;
+      --dt-input-bg: #1c1d26;
+      --dt-input-border: #2d2e3a;
+      --dt-code-bg: #1c1d26;
+      --dt-code-border: #2d2e3a;
+      --dt-code-text: #cbd5e1;
+      --dt-code-comment: #475569;
+      --dt-code-key: #1DD9A5;
+      --dt-code-val: #fbbf24;
+    }
+
+    html, body {
+      width: 100%; min-height: 100vh;
+      background: var(--dt-bg); color: var(--dt-text);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Top bar ── */
+    .top-bar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 30;
+      height: 56px; padding: 0 28px;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid var(--dt-border);
+      background: var(--dt-surface); backdrop-filter: blur(12px);
+      font-size: 13px; color: var(--dt-text-secondary);
+    }
+    .top-bar a { color: var(--dt-accent); text-decoration: none; font-weight: 600; transition: .15s; }
+    .top-bar a:hover { opacity: .8; }
+    .top-bar .blink { display: none; }
+    .top-bar-right { display: flex; align-items: center; gap: 16px; }
+
+    /* ── Theme toggle ── */
+    .theme-toggle {
+      width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--dt-border);
+      background: var(--dt-input-bg); cursor: pointer; display: flex;
+      align-items: center; justify-content: center; transition: .15s;
+      color: var(--dt-text-secondary); font-size: 16px;
+    }
+    .theme-toggle:hover { border-color: var(--dt-accent); color: var(--dt-accent); }
+
+    /* ── Layout ── */
+    .layout {
+      display: flex; min-height: 100vh;
+      padding-top: 56px;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 240px; flex-shrink: 0;
+      position: fixed; top: 56px; left: 0; bottom: 0;
+      overflow-y: auto; padding: 24px 0 40px;
+      border-right: 1px solid var(--dt-border);
+      background: var(--dt-sidebar-bg);
+      scrollbar-width: thin; scrollbar-color: rgba(0,0,0,.08) transparent;
+    }
+    .sidebar::-webkit-scrollbar { width: 4px; }
+    .sidebar::-webkit-scrollbar-thumb { background: rgba(0,0,0,.1); border-radius: 4px; }
+    [data-theme="dark"] .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,.08); }
+
+    .nav-section-label {
+      font-size: 10px; font-weight: 700; letter-spacing: .8px;
+      color: var(--dt-text-secondary); opacity: .7;
+      text-transform: uppercase; padding: 18px 24px 6px;
+    }
+    .nav-link {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 24px;
+      font-size: 13.5px; font-weight: 500;
+      color: var(--dt-sidebar-text);
+      text-decoration: none;
+      border-left: 3px solid transparent;
+      transition: background .12s, color .12s;
+    }
+    .nav-link:hover {
+      background: var(--dt-sidebar-hover);
+      color: var(--dt-sidebar-text-active);
+    }
+    .nav-link.active {
+      color: var(--dt-accent); font-weight: 600;
+      border-left-color: var(--dt-accent);
+      background: var(--dt-sidebar-active);
+    }
+    .nav-00 {
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: 10px; font-weight: 800; letter-spacing: -.5px;
+      width: 22px; height: 22px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 6px; border: 1px solid var(--dt-border);
+      background: var(--dt-input-bg); color: var(--dt-text-secondary);
+      transition: .15s;
+    }
+    .nav-link:hover .nav-00 { border-color: var(--dt-accent); color: var(--dt-accent); }
+    .nav-link.active .nav-00 {
+      background: var(--dt-accent-soft); border-color: var(--dt-accent-border);
+      color: var(--dt-accent);
+    }
+    .nav-sep { height: 1px; background: var(--dt-border); margin: 12px 24px; }
+
+    /* ── Content ── */
+    .content {
+      margin-left: 240px; flex: 1;
+      padding: 44px 56px 80px;
+      max-width: 880px;
+    }
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .content { margin-left: 0; padding: 28px 20px 60px; }
+    }
+
+    /* ── Section ── */
+    .doc-section { margin-bottom: 56px; scroll-margin-top: 72px; }
+
+    .section-tag {
+      font-size: 11px; font-weight: 700; letter-spacing: 1px;
+      color: var(--dt-accent); opacity: .6;
+      text-transform: uppercase; margin-bottom: 4px;
+    }
+    .section-title {
+      font-family: 'Inter', sans-serif; font-size: 24px; font-weight: 800;
+      color: var(--dt-text); letter-spacing: -.3px; margin-bottom: 6px;
+    }
+    .section-divider {
+      height: 2px; width: 48px; background: var(--dt-accent);
+      border-radius: 2px; margin-bottom: 24px; opacity: .5;
+    }
+    p {
+      font-size: 14.5px; color: var(--dt-text-secondary);
+      line-height: 1.85; margin-bottom: 16px;
+    }
+    p a { color: var(--dt-accent); text-decoration: none; font-weight: 500; }
+    p a:hover { text-decoration: underline; }
+    strong { color: var(--dt-text); font-weight: 600; }
+    code {
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: .88em; padding: 2px 7px; border-radius: 6px;
+      background: var(--dt-accent-soft); color: var(--dt-accent);
+    }
+
+    /* ── Code block ── */
+    .code-block {
+      background: var(--dt-code-bg);
+      border: 1px solid var(--dt-code-border);
+      border-radius: 12px;
+      padding: 20px 24px;
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: 12.5px;
+      color: var(--dt-code-text);
+      line-height: 1.75;
+      margin: 20px 0;
+      overflow-x: auto;
+      white-space: pre;
+    }
+    .code-block .comment { color: var(--dt-code-comment); }
+    .code-block .key { color: var(--dt-code-key); font-weight: 500; }
+    .code-block .val { color: var(--dt-code-val); }
+
+    /* ── App grid ── */
+    .app-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; margin: 24px 0; }
+    .app-card {
+      border: 1px solid var(--dt-border); padding: 20px 22px;
+      background: var(--dt-surface); text-decoration: none;
+      border-radius: 14px; transition: .2s; display: block;
+      box-shadow: var(--dt-shadow);
+    }
+    .app-card:hover { border-color: var(--dt-accent); box-shadow: var(--dt-shadow-lg); transform: translateY(-2px); }
+    .app-card-name { font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 700; color: var(--dt-text); margin-bottom: 8px; }
+    .app-card-desc { font-size: 12.5px; color: var(--dt-text-secondary); line-height: 1.65; }
+
+    /* ── Badge inline ── */
+    .badge {
+      display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .5px;
+      padding: 3px 9px; border-radius: 6px;
+      background: var(--dt-accent-soft); color: var(--dt-accent);
+      margin: 0 4px; vertical-align: middle; text-transform: uppercase;
+    }
+    .badge.cyan { background: rgba(0,150,255,.08); color: #0096ff; }
+    [data-theme="dark"] .badge.cyan { background: rgba(0,180,255,.1); color: #38bdf8; }
+
+    /* ── Protocol table ── */
+    table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 13px; }
+    th {
+      text-align: left; padding: 10px 16px;
+      font-size: 10px; font-weight: 700; letter-spacing: 1px;
+      color: var(--dt-text-secondary); text-transform: uppercase;
+      border-bottom: 2px solid var(--dt-border);
+    }
+    td {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--dt-border-subtle);
+      color: var(--dt-text-secondary); vertical-align: top;
+    }
+    tr:hover td { background: var(--dt-sidebar-hover); }
+    td:first-child { color: var(--dt-text); font-weight: 500; }
+
+    /* ── Step ── */
+    .steps { list-style: none; margin: 20px 0; }
+    .steps li {
+      display: flex; gap: 18px; padding: 16px 0;
+      border-bottom: 1px solid var(--dt-border-subtle);
+      font-size: 14px; color: var(--dt-text-secondary); line-height: 1.75;
+    }
+    .steps li:last-child { border-bottom: none; }
+    .step-num {
+      font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 800;
+      color: var(--dt-accent); min-width: 28px;
+      width: 28px; height: 28px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--dt-accent-soft); border-radius: 8px;
+      margin-top: 2px;
+    }
+
+    /* ── Callout ── */
+    .callout {
+      border: 1px solid var(--dt-accent-border);
+      border-left: 3px solid var(--dt-accent);
+      background: var(--dt-accent-soft); padding: 16px 20px;
+      border-radius: 0 12px 12px 0;
+      font-size: 13.5px; color: var(--dt-text-secondary);
+      margin: 20px 0; line-height: 1.75;
+    }
+    .callout.cyan {
+      border-color: rgba(0,150,255,.15); border-left-color: #0096ff;
+      background: rgba(0,150,255,.04); color: var(--dt-text-secondary);
+    }
+    [data-theme="dark"] .callout.cyan {
+      border-color: rgba(56,189,248,.12); border-left-color: #38bdf8;
+      background: rgba(56,189,248,.04);
+    }
+
+    /* ── Bottom bar ── */
+    .bottom-bar { display: none; }
+
+    /* ── Scanlines (hidden) ── */
+    .scanlines { display: none; }
+  </style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="top-bar">
+  <span>
+    <a href="index.html" style="display:inline-flex;align-items:center;gap:8px"><span style="font-family:'SF Mono','Fira Code',monospace;font-size:11px;font-weight:800;background:var(--dt-accent);color:#fff;padding:2px 6px;border-radius:5px;letter-spacing:-.5px">00</span> Protocol</a>
+    <span style="color:var(--dt-border);margin:0 12px">/</span>
+    <span style="font-weight:600;color:var(--dt-text)">Documentation</span>
+  </span>
+  <div class="top-bar-right">
+    <span id="doc-clock" style="font-size:12px"></span>
+    <button class="theme-toggle" onclick="toggleDocTheme()" title="Toggle theme" id="doc-theme-btn">🌙</button>
+  </div>
+</div>
+
+<!-- Layout -->
+<div class="layout">
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="nav-section-label" data-di18n="nav-s1">OVERVIEW</div>
+    <a class="nav-link active" href="#overview" onclick="setActive(this)" data-di18n="nav-intro">Introduction</a>
+    <a class="nav-link" href="#architecture" onclick="setActive(this)" data-di18n="nav-arch">Architecture</a>
+    <div class="nav-sep"></div>
+    <div class="nav-section-label" data-di18n="nav-s2">APPLICATIONS</div>
+    <a class="nav-link" href="#apps" onclick="setActive(this)" data-di18n="nav-apps"><span class="nav-00">00</span> All apps</a>
+    <a class="nav-link" href="#wallet" onclick="setActive(this)" data-di18n="nav-wallet"><span class="nav-00">00</span> Wallet</a>
+    <a class="nav-link" href="#chat" onclick="setActive(this)" data-di18n="nav-chat"><span class="nav-00">00</span> Chat</a>
+    <a class="nav-link" href="#pay" onclick="setActive(this)" data-di18n="nav-pay"><span class="nav-00">00</span> Pay</a>
+    <a class="nav-link" href="#swap" onclick="setActive(this)" data-di18n="nav-swap"><span class="nav-00">00</span> Swap</a>
+    <a class="nav-link" href="#dex" onclick="setActive(this)" data-di18n="nav-dex"><span class="nav-00">00</span> DEX</a>
+    <a class="nav-link" href="#loan" onclick="setActive(this)" data-di18n="nav-loan"><span class="nav-00">00</span> Loan</a>
+    <a class="nav-link" href="#onion" onclick="setActive(this)" data-di18n="nav-onion"><span class="nav-00">00</span> Onion</a>
+    <a class="nav-link" href="#fusion" onclick="setActive(this)" data-di18n="nav-fusion"><span class="nav-00">00</span> Joiner</a>
+    <a class="nav-link" href="#id" onclick="setActive(this)" data-di18n="nav-id"><span class="nav-00">00</span> ID</a>
+    <a class="nav-link" href="#mesh" onclick="setActive(this)" data-di18n="nav-mesh"><span class="nav-00">00</span> Mesh</a>
+    <a class="nav-link" href="#vault-app" onclick="setActive(this)" data-di18n="nav-vault-app"><span class="nav-00">00</span> Vault</a>
+    <div class="nav-sep"></div>
+    <div class="nav-section-label" data-di18n="nav-s3">HARDWARE</div>
+    <a class="nav-link" href="#ledger" onclick="setActive(this)" data-di18n="nav-ledger">Ledger Integration</a>
+    <a class="nav-link" href="#bip44" onclick="setActive(this)" data-di18n="nav-bip44">BIP44 Scanning</a>
+    <div class="nav-sep"></div>
+    <div class="nav-section-label" data-di18n="nav-s5">SECURITY</div>
+    <a class="nav-link" href="#security" onclick="setActive(this)" data-di18n="nav-security">Wallet Security</a>
+    <a class="nav-link" href="#key-import" onclick="setActive(this)" data-di18n="nav-key-import">Key Import</a>
+    <a class="nav-link" href="#key-generation" onclick="setActive(this)" data-di18n="nav-key-gen">Key Generation</a>
+    <a class="nav-link" href="#vault" onclick="setActive(this)" data-di18n="nav-vault">Vault Encryption</a>
+    <a class="nav-link" href="#derivation" onclick="setActive(this)" data-di18n="nav-derivation">Key Derivation</a>
+    <a class="nav-link" href="#session" onclick="setActive(this)" data-di18n="nav-session">Session &amp; Unlock</a>
+    <a class="nav-link" href="#stealth" onclick="setActive(this)" data-di18n="nav-stealth">Stealth Addresses</a>
+    <div class="nav-sep"></div>
+    <div class="nav-section-label" data-di18n="nav-s4">PROTOCOLS</div>
+    <a class="nav-link" href="#protocol" onclick="setActive(this)" data-di18n="nav-protocol">CCSH Protocol</a>
+    <a class="nav-link" href="#bch" onclick="setActive(this)" data-di18n="nav-bch">Bitcoin Cash</a>
+    <a class="nav-link" href="#privacy" onclick="setActive(this)" data-di18n="nav-privacy">Privacy</a>
+  </nav>
+
+  <!-- Content -->
+  <main class="content">
+
+    <!-- Overview -->
+    <section class="doc-section" id="overview">
+      <div class="section-tag">// 00 //</div>
+      <div class="section-title">Introduction</div>
+      <div class="section-divider"></div>
+      <p data-di18n="p-overview-1">
+        <strong>00 Protocol</strong> is a decentralized ecosystem built on Bitcoin Cash. Zero central server, zero custody, zero borders. Every app runs directly in the browser, peer-to-peer.
+      </p>
+      <p data-di18n="p-overview-2">
+        All private keys stay in your browser or on your hardware wallet. No data is sent to third parties. BCH transactions are broadcast directly to the network via public relays.
+      </p>
+      <div class="callout" data-di18n="callout-overview">
+        No account. No server. No KYC. Your private key = your identity.
+      </div>
+    </section>
+
+    <!-- Architecture -->
+    <section class="doc-section" id="architecture">
+      <div class="section-tag">// 01 //</div>
+      <div class="section-title">Architecture</div>
+      <div class="section-divider"></div>
+      <p data-di18n="p-arch-1">00 Protocol is a Progressive Web App (PWA) made of static HTML/JS files. No backend, no build step — everything runs client-side and works offline once installed.</p>
+      <div class="code-block"><span class="comment">// Tech stack</span>
+<span class="key">Frontend</span>    : HTML5 + Vanilla JS (zero framework, zero bundler)
+<span class="key">Crypto</span>      : @noble/curves 1.8.1 (secp256k1, schnorr, X25519)
+              @noble/hashes 1.7.1 (SHA256, SHA512, RIPEMD160, HMAC)
+              Web Crypto API (AES-256-GCM, PBKDF2)
+<span class="key">Blockchain</span>  : Fulcrum/Electrum WebSocket (BCH + BTC UTXO indexing)
+<span class="key">Messaging</span>   : Nostr relays (NIP-01/NIP-04) + BCH OP_RETURN (CCSH protocol)
+<span class="key">Identity</span>    : Nostr (schnorr-signed events, NIP-01 profiles)
+<span class="key">Swaps</span>       : Native HTLC atomic swaps (BCH ↔ BTC, peer-to-peer)
+<span class="key">Privacy</span>     : Stealth addresses (ECDH + SHA256 point tweaking)
+              Onion-routed HTLC payments (multi-hop, secp256k1 per-layer)
+<span class="key">Hardware</span>    : Ledger via WebHID (APDU protocol, on-device signing)
+<span class="key">Storage</span>     : localStorage (AES-256-GCM vault, PBKDF2 200k iterations)
+<span class="key">Cache</span>       : Service Worker (cache-first shell, network-first data)</div>
+      <table>
+        <tr><th>Component</th><th>Role</th><th>Source</th></tr>
+        <tr><td>@noble/curves 1.8.1</td><td>secp256k1 ECDSA, schnorr signatures, X25519 ECDH</td><td>esm.sh</td></tr>
+        <tr><td>@noble/hashes 1.7.1</td><td>SHA256, SHA512, RIPEMD160, HMAC, keccak256</td><td>esm.sh</td></tr>
+        <tr><td>Web Crypto API</td><td>AES-256-GCM encryption, PBKDF2 key stretching, CSPRNG</td><td>Built-in browser</td></tr>
+        <tr><td>Fulcrum/Electrum</td><td>BCH + BTC UTXO index, history, TX broadcast</td><td>bch.imaginary.cash, electroncash.de</td></tr>
+        <tr><td>Nostr relays</td><td>Messaging, identity, swap orderbook, onion routing</td><td>relay.damus.io, nos.lol</td></tr>
+        <tr><td>Kraken</td><td>Price oracle (BCH, BTC, ETH, XMR, USDC, USDT)</td><td>api.kraken.com</td></tr>
+        <tr><td>Ledger WebHID</td><td>Hardware wallet signing (BCH app, APDU)</td><td>ledger.js</td></tr>
+        <tr><td>Service Worker</td><td>Offline PWA cache, network-first data fallback</td><td>sw.js</td></tr>
+      </table>
+      <div class="callout" data-di18n="callout-arch">
+        Some features integrate with external protocols: 00 DEX links to <strong>Cauldron</strong> for CashToken swaps, 00 Loan links to <strong>Moria</strong> for collateralized lending, and 00 Pay uses <strong>THORChain</strong> for cross-chain sends. All core wallet, messaging, and atomic swap operations are fully native — no intermediary.
+      </div>
+    </section>
+
+    <!-- Apps -->
+    <section class="doc-section" id="apps">
+      <div class="section-tag">// 02 //</div>
+      <div class="section-title">Applications</div>
+      <div class="section-divider"></div>
+      <div class="app-grid">
+        <a class="app-card" href="wallet.html">
+          <div class="app-card-name">00 Wallet</div>
+          <div class="app-card-desc" data-di18n="app-wallet-desc">Non-custodial multi-chain wallet. BCH, BTC, ETH. Ledger HW, seed import, stealth addresses, coin control. BIP32/44 HD derivation.</div>
+        </a>
+        <a class="app-card" href="chat.html">
+          <div class="app-card-name">00 Chat</div>
+          <div class="app-card-desc" data-di18n="app-chat-desc">Dual-channel E2E encrypted messaging. BCH OP_RETURN (CCSH protocol) + Nostr relay sync. XOR one-time pad + AES-256-GCM.</div>
+        </a>
+        <a class="app-card" href="swap.html">
+          <div class="app-card-name">00 Swap</div>
+          <div class="app-card-desc" data-di18n="app-swap-desc">Native peer-to-peer atomic swaps BCH ↔ BTC. HTLC contracts, Nostr orderbook, no intermediary.</div>
+        </a>
+        <a class="app-card" href="pay.html">
+          <div class="app-card-name">00 Pay</div>
+          <div class="app-card-desc" data-di18n="app-pay-desc">BCH payment terminal. QR invoices, payment watching, Ledger support. Cross-chain send via THORChain (external).</div>
+        </a>
+        <a class="app-card" href="onion.html">
+          <div class="app-card-name">00 Onion</div>
+          <div class="app-card-desc" data-di18n="app-onion-desc">Onion-routed HTLC payments. Multi-hop encrypted routing via Nostr relays. secp256k1 per-layer peeling.</div>
+        </a>
+        <a class="app-card" href="id.html">
+          <div class="app-card-name">00 ID</div>
+          <div class="app-card-desc" data-di18n="app-id-desc">Self-sovereign Nostr identity. Schnorr-signed profiles, deterministic avatars. Your key = your identity.</div>
+        </a>
+        <a class="app-card" href="mesh.html">
+          <div class="app-card-name">00 Mesh</div>
+          <div class="app-card-desc" data-di18n="app-mesh-desc">Nostr relay network monitor. Relay directory, latency checks, connection status.</div>
+        </a>
+        <a class="app-card" href="vault.html">
+          <div class="app-card-name">00 Vault</div>
+          <div class="app-card-desc" data-di18n="app-vault-desc">Stealth multisig vaults (N-of-N). MuSig2 Schnorr — invisible on-chain, all cosigners must sign.</div>
+        </a>
+        <a class="app-card" href="fusion.html">
+          <div class="app-card-name">00 Joiner</div>
+          <div class="app-card-desc" data-di18n="app-fusion-desc">Collaborative CoinJoin with stealth outputs. Zero OP_RETURN — completely invisible on-chain. Onion-encrypted shuffling, variable amounts, peer-to-peer via Nostr.</div>
+        </a>
+        <a class="app-card" href="dex.html">
+          <div class="app-card-name">00 DEX</div>
+          <div class="app-card-desc" data-di18n="app-dex-desc">CashToken exchange interface. Quotes computed locally, swap execution via Cauldron (external link).</div>
+        </a>
+        <a class="app-card" href="loan.html">
+          <div class="app-card-name">00 Loan</div>
+          <div class="app-card-desc" data-di18n="app-loan-desc">Collateral ratio calculator with health visualization. Lending via Moria (external link).</div>
+        </a>
+      </div>
+    </section>
+
+    <!-- Chat -->
+    <section class="doc-section" id="chat">
+      <div class="section-tag">// 02.1 //</div>
+      <div class="section-title">00 Chat</div>
+      <div class="section-divider"></div>
+
+      <p><strong>What it does</strong> — End-to-end encrypted messaging with <strong>information-theoretic security</strong>. Messages are split into two halves using a XOR one-time pad: one half goes on-chain via BCH OP_RETURN, the other half is sent over Nostr relays. Neither channel alone reveals anything — even with unlimited computing power.</p>
+
+      <div class="callout">
+        <strong>Real-life example:</strong> Alice wants to message Bob. She types "Hello Bob". The app encrypts it, then XOR-splits the ciphertext into two random-looking blobs. Blob A is embedded in a BCH transaction to Bob's address. Blob B is published to Nostr relays. Bob's app finds both halves, XOR-merges them, decrypts → "Hello Bob". If the government seizes the blockchain data → they have random noise. If they wiretap Nostr → random noise. You need <strong>both</strong> to read anything.
+      </div>
+
+      <div class="code-block"><span class="comment">// ── HOW IT WORKS ──────────────────────────────────────────────</span>
+<span class="comment">//</span>
+<span class="comment">//  Alice                                                    Bob</span>
+<span class="comment">//    │                                                       │</span>
+<span class="comment">//    ├─ plaintext "Hello Bob"                                │</span>
+<span class="comment">//    ├─ ephemeral X25519 keypair                             │</span>
+<span class="comment">//    ├─ ECDH(eph_priv, bob_pub) → shared secret              │</span>
+<span class="comment">//    ├─ AES-256-GCM(SHA256(shared), plaintext) → ciphertext  │</span>
+<span class="comment">//    ├─ XOR split: [shard, pad] = xorSplit(ciphertext)       │</span>
+<span class="comment">//    │                                                       │</span>
+<span class="comment">//    ├──── BCH OP_RETURN ──── shard (chain half) ──────────► │</span>
+<span class="comment">//    │     546 sats dust TX         on-chain forever         │</span>
+<span class="comment">//    │                                                       │</span>
+<span class="comment">//    ├──── Nostr relay ──────  pad (relay half)  ──────────► │</span>
+<span class="comment">//    │     kind 21059               ephemeral 1h TTL        │</span>
+<span class="comment">//    │                                                       │</span>
+<span class="comment">//    │                              xorMerge(shard, pad)     │</span>
+<span class="comment">//    │                              AES-GCM decrypt          │</span>
+<span class="comment">//    │                              → "Hello Bob" ✓          │</span></div>
+
+      <p><strong>Step 1 — Ephemeral ECDH (forward secrecy)</strong></p>
+      <p>Every single message generates a fresh X25519 keypair. Even if your long-term key is compromised, past messages remain safe.</p>
+      <div class="code-block"><span class="comment">// Real code from chat.html — per-message ECDH</span>
+
+<span class="key">const</span> ephPriv = crypto.getRandomValues(<span class="key">new</span> Uint8Array(<span class="val">32</span>));
+<span class="key">const</span> ephPub  = x25519.getPublicKey(ephPriv);
+<span class="key">const</span> shared  = x25519.getSharedSecret(ephPriv, recipientPub);
+<span class="key">const</span> innerKey = sha256(shared);
+
+<span class="comment">// AES-256-GCM encryption (12-byte nonce, 128-bit auth tag)</span>
+<span class="key">const</span> nonce = crypto.getRandomValues(<span class="key">new</span> Uint8Array(<span class="val">12</span>));
+<span class="key">const</span> ct = <span class="key">await</span> crypto.subtle.encrypt(
+  { name: <span class="val">'AES-GCM'</span>, iv: nonce, tagLength: <span class="val">128</span> }, key, plaintext
+);</div>
+
+      <p><strong>Step 2 — XOR one-time pad split</strong></p>
+      <p>The ciphertext is XOR-split into two shares. Each share alone is pure random noise — Shannon-proven unbreakable.</p>
+      <div class="code-block"><span class="comment">// Real code — XOR split (information-theoretic security)</span>
+
+<span class="key">function</span> xorSplit(data) {
+  <span class="key">const</span> pad = crypto.getRandomValues(<span class="key">new</span> Uint8Array(data.length));
+  <span class="key">const</span> shard = <span class="key">new</span> Uint8Array(data.length);
+  <span class="key">for</span> (<span class="key">let</span> i = <span class="val">0</span>; i &lt; data.length; i++)
+    shard[i] = data[i] ^ pad[i];    <span class="comment">// XOR: shard ⊕ pad = data</span>
+  <span class="key">return</span> [shard, pad];
+}
+
+<span class="key">function</span> xorMerge(shard, pad) {
+  <span class="key">const</span> out = <span class="key">new</span> Uint8Array(shard.length);
+  <span class="key">for</span> (<span class="key">let</span> i = <span class="val">0</span>; i &lt; shard.length; i++)
+    out[i] = shard[i] ^ pad[i];     <span class="comment">// reverse XOR to recover data</span>
+  <span class="key">return</span> out;
+}</div>
+
+      <p><strong>Step 3 — Dual-channel delivery</strong></p>
+      <p>Each half gets its own AES-GCM envelope with a channel-specific key, then delivered via two independent networks.</p>
+      <div class="code-block"><span class="comment">// Real code — dual-channel key derivation</span>
+
+<span class="key">const</span> chainKey = sha256(concat(shared, <span class="val">"ccsh-chain"</span>));  <span class="comment">// BCH on-chain half</span>
+<span class="key">const</span> relayKey = sha256(concat(shared, <span class="val">"ccsh-relay"</span>));  <span class="comment">// Nostr relay half</span>
+
+<span class="comment">// Wrap each half with its own AES-GCM layer</span>
+<span class="key">const</span> chainBlob = aesWrap(shard, chainKey);  <span class="comment">// → BCH OP_RETURN</span>
+<span class="key">const</span> relayBlob = aesWrap(pad,   relayKey);  <span class="comment">// → Nostr kind 21059</span></div>
+
+      <p><strong>Step 4 — BCH transaction (chain half)</strong></p>
+      <div class="code-block"><span class="comment">// CCSH v2 packet format</span>
+<span class="key">MAGIC</span>       : 0x43435348 (<span class="val">"CCSH"</span>)
+<span class="key">VERSION</span>     : 0x02
+<span class="key">MSG_TYPE</span>    : 0x10 = SPLIT_CHAIN | 0x11 = SPLIT_RELAY
+<span class="key">FLAGS</span>       : 0x01 (FLAG_SPLIT)
+<span class="key">MSG_ID</span>      : 16 bytes random
+<span class="key">SENDER_PUB</span>  : 32 bytes X25519
+<span class="key">CHUNK_IDX</span>   : 2 bytes (big-endian)
+<span class="key">CHUNK_TOTAL</span> : 2 bytes
+<span class="key">PAYLOAD</span>     : ephPub(32) || chainBlob
+
+<span class="comment">// Transaction structure</span>
+<span class="key">Output 0</span>    : 546 sats → recipient P2PKH  <span class="comment">(dust, triggers inbox detection)</span>
+<span class="key">Output 1</span>    : OP_RETURN(CCSH packet)       <span class="comment">(0 sats, data carrier)</span>
+<span class="key">Output 2</span>    : change → sender              <span class="comment">(if ≥ 546 sats)</span></div>
+
+      <p><strong>Step 5 — Inbox scanning</strong></p>
+      <p>The recipient polls Fulcrum/Electrum every 10 seconds for new transactions. When a CCSH packet is detected on-chain, it waits for the matching Nostr relay half, XOR-merges, and decrypts.</p>
+      <div class="code-block"><span class="comment">// Real code — inbox scanning (10s polling)</span>
+
+<span class="key">function</span> startScanner() {
+  setInterval(scanInbox, <span class="val">10_000</span>);
+}
+
+<span class="comment">// scanInbox() flow:</span>
+<span class="comment">// 1. Fetch TX history via Fulcrum (bch.imaginary.cash:50004)</span>
+<span class="comment">// 2. Parse OP_RETURN outputs for CCSH magic bytes</span>
+<span class="comment">// 3. Store chain half in _pendingChainParts[msgId]</span>
+<span class="comment">// 4. When relay half arrives via Nostr → _tryDecryptV2()</span>
+<span class="comment">// 5. xorMerge(shard, pad) → AES-GCM decrypt → plaintext</span></div>
+
+      <table>
+        <tr><th>Component</th><th>Technology</th><th>Source file</th></tr>
+        <tr><td>ECDH</td><td>X25519 (@noble/curves 1.8.1)</td><td>chat.html:1506</td></tr>
+        <tr><td>Encryption</td><td>AES-256-GCM (Web Crypto API)</td><td>chat.html:1490</td></tr>
+        <tr><td>XOR Split</td><td>One-time pad (Shannon 1949)</td><td>chat.html:1472</td></tr>
+        <tr><td>On-chain</td><td>BCH OP_RETURN (CCSH v2)</td><td>chat.html:1725</td></tr>
+        <tr><td>Relay</td><td>Nostr kind 21059 (ephemeral DM)</td><td>chat.html:1804</td></tr>
+        <tr><td>Inbox</td><td>Fulcrum WebSocket (10s poll)</td><td>chat.html:2198</td></tr>
+        <tr><td>Identity</td><td>X25519 pubkey + BCH address</td><td>chat.html:2185</td></tr>
+        <tr><td>Contacts</td><td>localStorage (00chat_contacts)</td><td>chat.html:2127</td></tr>
+      </table>
+    </section>
+
+    <!-- Wallet -->
+    <section class="doc-section" id="wallet">
+      <div class="section-tag">// 02.2 //</div>
+      <div class="section-title">00 Wallet</div>
+      <div class="section-divider"></div>
+
+      <p><strong>What it does</strong> — Non-custodial multi-chain wallet supporting BCH, BTC, and ETH. Generate keys, import seeds, connect a Ledger, or use WalletConnect. Full UTXO management, stealth addresses, and live portfolio tracking — all client-side.</p>
+
+      <div class="callout">
+        <strong>Real-life example:</strong> You import your 12-word seed phrase. The app derives your BCH, BTC, and ETH keys from that single seed (BIP32/44). Your keys are encrypted with AES-256-GCM (200k PBKDF2 iterations) and stored locally. You see your balances, send coins, receive to stealth addresses — no server ever sees your keys.
+      </div>
+
+      <div class="code-block"><span class="comment">// ── HOW IT WORKS ──────────────────────────────────────────────</span>
+<span class="comment">//</span>
+<span class="comment">//  User Input                    Wallet Engine</span>
+<span class="comment">//    │                               │</span>
+<span class="comment">//    ├─ 12-word seed ──────────────► BIP39 → 64-byte master seed</span>
+<span class="comment">//    │                               │</span>
+<span class="comment">//    │                          BIP32 Master Key</span>
+<span class="comment">//    │                               │</span>
+<span class="comment">//    │                          44'/145'/0'</span>
+<span class="comment">//    │                    ┌──┬──┬──┬──┬──┐</span>
+<span class="comment">//    │                   0/0 2/0 2/1 3/0 4/0 5/0</span>
+<span class="comment">//    │                    │   │   │   │   │   │</span>
+<span class="comment">//    │                   BCH Scan Spd BTC ETH XMR</span>
+<span class="comment">//    │                               │</span>
+<span class="comment">//    │                          AES-256-GCM vault</span>
+<span class="comment">//    │                          PBKDF2 200k iter</span>
+<span class="comment">//    │                               │</span>
+<span class="comment">//    │                          localStorage</span>
+<span class="comment">//    │                          (00wallet_vault)</span>
+<span class="comment">//    │                               │</span>
+<span class="comment">//    ├─ View balances ◄──── Fulcrum WebSocket (UTXO queries)</span>
+<span class="comment">//    ├─ Send coins ────────► TX build → sign → broadcast</span>
+<span class="comment">//    └─ Receive ◄────────── stealth addr (ECDH + point tweak)</span></div>
+
+      <p><strong>Four access modes:</strong></p>
+      <ul class="steps">
+        <li><span class="step-num">01</span><div><strong>Hardware (Ledger)</strong> — WebHID connection. BIP44 address scan with gap limit 5, max 50 addresses. Private key never leaves the device. Signs via APDU commands.</div></li>
+        <li><span class="step-num">02</span><div><strong>Imported seed</strong> — BIP39 mnemonic (12+ words) or 128-char hex seed. PBKDF2-SHA512 (2,048 iterations, salt "mnemonic") → 64-byte master seed. Full HD derivation for all chains.</div></li>
+        <li><span class="step-num">03</span><div><strong>New key</strong> — 32 bytes from <code>crypto.getRandomValues()</code> (OS entropy: /dev/urandom, CryptGenRandom, SecRandomCopyBytes). Displayed once as 64-char hex for backup.</div></li>
+        <li><span class="step-num">04</span><div><strong>WalletConnect v2</strong> — QR-based pairing. Mobile wallet signs transactions remotely. Session management via @walletconnect/sign-client.</div></li>
+      </ul>
+
+      <p><strong>Transaction flow:</strong></p>
+      <div class="code-block"><span class="comment">// Real code — BCH transaction construction (wallet.html)</span>
+
+<span class="comment">// 1. Fetch UTXOs via Fulcrum</span>
+<span class="key">const</span> utxos = <span class="key">await</span> fvCall(<span class="val">'blockchain.scripthash.listunspent'</span>, [scriptHash]);
+
+<span class="comment">// 2. UTXO selection (greedy, largest first)</span>
+utxos.sort((a,b) => b.value - a.value);
+<span class="key">let</span> total = <span class="val">0n</span>;
+<span class="key">for</span> (<span class="key">const</span> u <span class="key">of</span> utxos) {
+  selected.push(u);
+  total += BigInt(u.value);
+  <span class="key">if</span> (total >= amount + fee) <span class="key">break</span>;
+}
+
+<span class="comment">// 3. Build outputs: [recipient, change]</span>
+<span class="comment">// 4. BIP143 sighash (SIGHASH_ALL | FORKID = 0x41)</span>
+<span class="comment">// 5. secp256k1 ECDSA signature → DER encoding</span>
+<span class="comment">// 6. Broadcast via Fulcrum</span></div>
+
+      <table>
+        <tr><th>Feature</th><th>Technology</th><th>Source</th></tr>
+        <tr><td>Key derivation</td><td>BIP32 (HMAC-SHA512) + BIP44</td><td>wallet.html</td></tr>
+        <tr><td>Vault encryption</td><td>AES-256-GCM, PBKDF2 200k</td><td>wallet.html</td></tr>
+        <tr><td>UTXO indexing</td><td>Fulcrum/Electrum WebSocket</td><td>wallet.html</td></tr>
+        <tr><td>Stealth addresses</td><td>ECDH + SHA256 point tweaking</td><td>wallet.html</td></tr>
+        <tr><td>Prices</td><td>Kraken API (BCH, BTC, ETH, XMR)</td><td>wallet.html</td></tr>
+        <tr><td>Hardware</td><td>WebHID + Ledger APDU</td><td>ledger.js</td></tr>
+      </table>
+    </section>
+
+    <!-- Swap -->
+    <section class="doc-section" id="swap">
+      <div class="section-tag">// 02.3 //</div>
+      <div class="section-title">00 Swap</div>
+      <div class="section-divider"></div>
+
+      <p><strong>What it does</strong> — Peer-to-peer atomic swaps between BCH and BTC. No intermediary, no exchange, no custody. Both parties lock funds in HTLC (Hash Time-Locked Contract) scripts on their respective chains, then claim each other's funds using preimage reveals.</p>
+
+      <div class="callout">
+        <strong>Real-life example:</strong> Alice has BCH, Bob has BTC. Alice publishes an offer on the Nostr orderbook. Bob takes it. Alice locks her BCH in an HTLC for 24h. Bob locks his BTC in an HTLC for 12h. Bob claims Alice's BCH by revealing his preimage. Alice sees the revealed preimage on-chain, XOR-derives the other preimage, and claims Bob's BTC. If anything goes wrong — both can refund after their timelock expires.
+      </div>
+
+      <div class="code-block"><span class="comment">// ── ATOMIC SWAP FLOW ─────────────────────────────────────────</span>
+<span class="comment">//</span>
+<span class="comment">//  Taker (wants BTC)                    Maker (wants BCH)</span>
+<span class="comment">//    │                                        │</span>
+<span class="comment">//    ├─ Generate P_bch (random 32 bytes)      │</span>
+<span class="comment">//    ├─ P_btc = P_bch ⊕ SHA256(ECDH)         │</span>
+<span class="comment">//    ├─ H_bch = SHA256(P_bch)                 │</span>
+<span class="comment">//    ├─ H_btc = SHA256(P_btc)                 │</span>
+<span class="comment">//    │                                        │</span>
+<span class="comment">//    ├──── Nostr 22241 ── {H_bch, H_btc} ──►  │</span>
+<span class="comment">//    │                                        │</span>
+<span class="comment">//    │     ◄── Nostr 22242 ── {htlc_txid} ────┤ Lock BCH (24h)</span>
+<span class="comment">//    │         maker locks BCH with H_bch     │</span>
+<span class="comment">//    │                                        │</span>
+<span class="comment">//    ├─ Lock BTC (12h) with H_btc             │</span>
+<span class="comment">//    ├─ Claim maker's BCH with P_bch ─────────┤</span>
+<span class="comment">//    │                                        │</span>
+<span class="comment">//    │     ◄── sees P_bch on-chain ───────────┤</span>
+<span class="comment">//    │         derives P_btc via XOR          │</span>
+<span class="comment">//    │         claims taker's BTC ✓           │</span>
+<span class="comment">//    │                                        │</span>
+<span class="comment">//    └─ COMPLETE ✓                    COMPLETE ✓</span></div>
+
+      <p><strong>Preimage XOR decoration</strong> — Instead of using the same hash on both chains (which would link the swap), each chain gets a unique preimage derived via ECDH:</p>
+      <div class="code-block"><span class="comment">// Real code from swap.html — decorrelated preimages</span>
+
+<span class="key">function</span> crossChainPreimages(makerPub, takerPriv) {
+  <span class="key">const</span> P_bch = rand(<span class="val">32</span>);  <span class="comment">// random preimage for BCH chain</span>
+
+  <span class="comment">// ECDH shared secret between taker and maker</span>
+  <span class="key">const</span> shared = secp256k1.getSharedSecret(takerPriv, <span class="val">'02'</span> + makerPub);
+  <span class="key">const</span> mask   = sha256(concat(utf8(<span class="val">'swap-decorrelate'</span>), shared.slice(<span class="val">1</span>,<span class="val">33</span>)));
+
+  <span class="comment">// XOR to derive BTC preimage — no hash correlation between chains</span>
+  <span class="key">const</span> P_btc = <span class="key">new</span> Uint8Array(<span class="val">32</span>);
+  <span class="key">for</span> (<span class="key">let</span> i = <span class="val">0</span>; i &lt; <span class="val">32</span>; i++) P_btc[i] = P_bch[i] ^ mask[i];
+
+  <span class="key">return</span> { P_bch, P_btc, H_bch: sha256(P_bch), H_btc: sha256(P_btc) };
+}</div>
+
+      <p><strong>HTLC script</strong> — Each HTLC is a standard Bitcoin conditional script with two paths:</p>
+      <div class="code-block"><span class="comment">// Real code — HTLC script construction (swap.html:997)</span>
+
+<span class="key">function</span> htlcScript(paymentHash32, recipientPub33, senderPub33, locktime) {
+  <span class="comment">//  ┌── Claim path (preimage reveal) ──┐</span>
+  <span class="comment">//  │ OP_IF                             │</span>
+  <span class="comment">//  │   OP_SHA256 &lt;hash&gt; OP_EQUALVERIFY │</span>
+  <span class="comment">//  │   &lt;recipientPub&gt; OP_CHECKSIG      │</span>
+  <span class="comment">//  ├── Refund path (timeout) ──────────┤</span>
+  <span class="comment">//  │ OP_ELSE                           │</span>
+  <span class="comment">//  │   &lt;locktime&gt; OP_CLTV OP_DROP     │</span>
+  <span class="comment">//  │   &lt;senderPub&gt; OP_CHECKSIG        │</span>
+  <span class="comment">//  │ OP_ENDIF                          │</span>
+  <span class="comment">//  └───────────────────────────────────┘</span>
+}</div>
+
+      <p><strong>State machine:</strong></p>
+      <div class="code-block"><span class="comment">// Swap states with Nostr event kinds</span>
+
+<span class="key">OFFERED</span>       kind 22240   Maker publishes offer to orderbook
+<span class="key">TAKEN</span>         kind 22241   Taker accepts, sends H_bch + H_btc
+<span class="key">MAKER_LOCKED</span>  kind 22242   Maker locks funds in HTLC (24h timeout)
+<span class="key">TAKER_LOCKED</span>  (on-chain)   Taker locks funds in HTLC (12h timeout)
+<span class="key">COMPLETE</span>      kind 22243   Both sides claimed ✓
+<span class="key">REFUNDED</span>      (on-chain)   Timeout expired, funds recovered
+
+<span class="comment">// Timeouts</span>
+<span class="key">Maker</span>  : 144 blocks (~24 hours)   <span class="comment">← longer, because maker locks first</span>
+<span class="key">Taker</span>  :  72 blocks (~12 hours)   <span class="comment">← shorter, claim window before maker</span></div>
+
+      <table>
+        <tr><th>Component</th><th>Technology</th><th>Source</th></tr>
+        <tr><td>Orderbook</td><td>Nostr relays (kind 22240)</td><td>swap.html:1897</td></tr>
+        <tr><td>HTLC scripts</td><td>OP_SHA256 + OP_CLTV (P2SH)</td><td>swap.html:997</td></tr>
+        <tr><td>Preimage XOR</td><td>ECDH + SHA256 decoration</td><td>swap.html:1177</td></tr>
+        <tr><td>BCH chain</td><td>Fulcrum WebSocket</td><td>swap.html:1397</td></tr>
+        <tr><td>BTC chain</td><td>Electrum WebSocket</td><td>swap.html:1397</td></tr>
+        <tr><td>Monitoring</td><td>15s poll loop</td><td>swap.html:2526</td></tr>
+        <tr><td>NIP-04</td><td>AES-CBC encrypted DMs</td><td>swap.html:1339</td></tr>
+      </table>
+    </section>
+
+    <!-- Onion -->
+    <section class="doc-section" id="onion">
+      <div class="section-tag">// 02.4 //</div>
+      <div class="section-title">00 Onion</div>
+      <div class="section-divider"></div>
+
+      <p><strong>What it does</strong> — Onion-routed HTLC payments across the BCH network. Like Lightning Network but for Bitcoin Cash. Multi-hop encrypted routing where each relay node only knows the previous and next hop — never the full path or the sender/recipient.</p>
+
+      <div class="callout">
+        <strong>Real-life example:</strong> Alice wants to pay Carol, but there's no direct channel. Alice routes through Bob. She wraps the payment instructions in 3 layers of encryption (one per hop). Bob can only peel his layer — he learns "forward X sats to Carol" but not that Alice is the sender. Carol peels the final layer, finds the preimage, and claims the payment. Each hop has its own unique HTLC — decorrelated hashes prevent linking.
+      </div>
+
+      <div class="code-block"><span class="comment">// ── ONION ROUTING ────────────────────────────────────────────</span>
+<span class="comment">//</span>
+<span class="comment">//  Alice                  Bob (relay)              Carol</span>
+<span class="comment">//    │                       │                       │</span>
+<span class="comment">//    ├─ Build onion packet   │                       │</span>
+<span class="comment">//    │  Layer 3: [Bob's hop]  ──encrypted──►          │</span>
+<span class="comment">//    │    └ Layer 2: [Carol's hop]                    │</span>
+<span class="comment">//    │        └ Layer 1: [payment preimage]           │</span>
+<span class="comment">//    │                       │                       │</span>
+<span class="comment">//    ├─ Lock HTLC ─── H₁ ──► Bob                    │</span>
+<span class="comment">//    │                       ├─ Peel layer 3         │</span>
+<span class="comment">//    │                       ├─ Lock HTLC ── H₂ ──► Carol</span>
+<span class="comment">//    │                       │                       ├─ Peel final</span>
+<span class="comment">//    │                       │                       ├─ Claim H₂</span>
+<span class="comment">//    │                       ├─ Claim H₁ (fee ✓)    │</span>
+<span class="comment">//    │                       │                       │</span>
+<span class="comment">//    │  H₁ ≠ H₂ (decorrelated — no hash linking)</span></div>
+
+      <p><strong>Per-layer encryption</strong> — Each onion layer uses ephemeral secp256k1 ECDH + AES-256-GCM:</p>
+      <div class="code-block"><span class="comment">// Real code from onion.html:1169 — onion layer encryption</span>
+
+<span class="key">async function</span> onionLayer(payload, peelerPub) {
+  <span class="key">const</span> eph     = rand(<span class="val">32</span>);                            <span class="comment">// ephemeral private key</span>
+  <span class="key">const</span> ephPub  = secp256k1.getPublicKey(eph, true);    <span class="comment">// compressed 33 bytes</span>
+  <span class="key">const</span> shared  = secp256k1.getSharedSecret(eph, peelerPub);
+  <span class="key">const</span> aesKey  = sha256(shared.slice(<span class="val">1</span>, <span class="val">33</span>));           <span class="comment">// x-coordinate only</span>
+  <span class="key">const</span> iv      = rand(<span class="val">12</span>);
+  <span class="key">const</span> ct      = <span class="key">await</span> aesGcmEncrypt(aesKey, iv, payload);
+  <span class="key">return</span> concat(ephPub, iv, ct);  <span class="comment">// [33 + 12 + variable]</span>
+}</div>
+
+      <p><strong>Hash decorrelation</strong> — Each hop gets a unique preimage derived from a master secret, preventing cross-hop linking:</p>
+      <div class="code-block"><span class="comment">// Real code — per-hop hash decorrelation (onion.html:1138)</span>
+
+<span class="key">function</span> deriveHopPreimage(masterSecret, hopIndex) {
+  <span class="key">return</span> sha256(concat(masterSecret, utf8(<span class="val">'hop-'</span> + hopIndex)));
+}
+<span class="key">function</span> deriveHopHash(masterSecret, hopIndex) {
+  <span class="key">return</span> sha256(deriveHopPreimage(masterSecret, hopIndex));
+}
+
+<span class="comment">// Each hop sees a DIFFERENT hash — no correlation possible</span>
+<span class="comment">// Bob sees H₁ = SHA256(SHA256(master || "hop-0"))</span>
+<span class="comment">// Carol sees H₂ = SHA256(SHA256(master || "hop-1"))</span></div>
+
+      <p><strong>Payload structure</strong> — Fixed 512-byte padded payload per hop, containing routing instructions:</p>
+      <div class="code-block"><span class="comment">// Onion payload per hop (512 bytes, 0x01-padded)</span>
+
+<span class="key">Final hop</span>  : { amt, fee:0, cltv, hash, preimage, next:<span class="val">"final"</span>,
+               stealth_spend, stealth_eph, sender_pub }
+
+<span class="key">Relay hop</span> : { amt, fee, cltv, hash, preimage, next:<span class="val">"&lt;next_pub&gt;"</span>,
+               next_hash, sender_pub, htlc_recipient_pub }
+
+<span class="key">HTLC</span>      : Same OP_IF/OP_ELSE script as 00 Swap
+             Claim: &lt;sig&gt; &lt;preimage&gt; OP_1 &lt;redeemScript&gt;
+             Refund: &lt;sig&gt; OP_0 &lt;redeemScript&gt;
+
+<span class="key">Constants</span> : ONION_PAYLOAD_SIZE = <span class="val">512</span> bytes
+             DEFAULT_CLTV_DELTA = <span class="val">6</span> blocks per hop
+             RELAY_TTL = <span class="val">300</span> seconds (5 min)</div>
+
+      <table>
+        <tr><th>Component</th><th>Technology</th><th>Source</th></tr>
+        <tr><td>Onion encryption</td><td>secp256k1 ECDH + AES-256-GCM</td><td>onion.html:1169</td></tr>
+        <tr><td>Hash decorrelation</td><td>SHA256(master ‖ hop-index)</td><td>onion.html:1138</td></tr>
+        <tr><td>HTLC contracts</td><td>OP_SHA256 + OP_CLTV (P2SH)</td><td>onion.html:1007</td></tr>
+        <tr><td>Stealth addresses</td><td>ECDH + SHA256 point tweak</td><td>onion.html:1148</td></tr>
+        <tr><td>Relay coordination</td><td>Nostr relays (WebSocket)</td><td>onion.html:766</td></tr>
+        <tr><td>On-chain verification</td><td>Fulcrum WebSocket</td><td>onion.html:1766</td></tr>
+      </table>
+    </section>
+
+    <!-- Pay -->
+    <section class="doc-section" id="pay">
+      <div class="section-tag">// 02.5 //</div>
+      <div class="section-title">00 Pay</div>
+      <div class="section-divider"></div>
+
+      <p><strong>What it does</strong> — Payment terminal with two modes: <strong>Receive</strong> (BCH invoice with QR code + real-time payment watching) and <strong>Send</strong> (cross-chain swaps via THORChain — BCH → BTC, ETH, USDT, and more).</p>
+
+      <div class="callout">
+        <strong>Real-life example:</strong> A coffee shop displays a QR code generated by 00 Pay. Customer scans it, sends 0.01 BCH. The terminal watches for the incoming transaction via Fulcrum and shows "Payment received ✓" in real-time. For the SEND tab — a user enters a BTC address, the app routes BCH through THORChain's cross-chain vault and the recipient gets BTC.
+      </div>
+
+      <div class="code-block"><span class="comment">// ── RECEIVE MODE ─────────────────────────────────────────────</span>
+<span class="comment">//</span>
+<span class="comment">//  Merchant                                Customer</span>
+<span class="comment">//    │                                        │</span>
+<span class="comment">//    ├─ Enter amount (BCH or USD)             │</span>
+<span class="comment">//    ├─ Generate QR (bitcoincash: URI)        │</span>
+<span class="comment">//    ├─ Display QR ──────────────────────────► Scan</span>
+<span class="comment">//    │                                        ├─ Send BCH TX</span>
+<span class="comment">//    ├─ Fulcrum polls (10s) ◄─────────────────┤</span>
+<span class="comment">//    ├─ "Payment received ✓"                  │</span>
+<span class="comment">//</span>
+<span class="comment">// ── SEND MODE (THORChain) ────────────────────────────────────</span>
+<span class="comment">//</span>
+<span class="comment">//  User                  THORChain vault         Recipient</span>
+<span class="comment">//    │                       │                       │</span>
+<span class="comment">//    ├─ Pick asset (BTC/ETH) │                       │</span>
+<span class="comment">//    ├─ Get rate from Midgard│                       │</span>
+<span class="comment">//    ├─ Send BCH + memo ────► Vault                  │</span>
+<span class="comment">//    │                       ├─ Cross-chain swap ──► │</span>
+<span class="comment">//    │                       │   BTC/ETH/USDT        │</span></div>
+
+      <div class="callout cyan">
+        <span class="badge cyan">LEDGER</span> Receive mode supports Ledger — the public key is read from the device via WebHID. Signing is on-device. Note: Ledger's BCH app rejects OP_RETURN, so THORChain sends require a software wallet.
+      </div>
+
+      <table>
+        <tr><th>Feature</th><th>Technology</th><th>Source</th></tr>
+        <tr><td>Invoice QR</td><td>qrcode@1.5.4 (bitcoincash: URI)</td><td>pay.html</td></tr>
+        <tr><td>Payment watching</td><td>Fulcrum WebSocket polling</td><td>pay.html</td></tr>
+        <tr><td>Price oracle</td><td>D3lphi on-chain oracle</td><td>pay.html</td></tr>
+        <tr><td>Cross-chain</td><td>THORChain (Midgard API)</td><td>pay.html</td></tr>
+        <tr><td>Assets</td><td>BCH, BTC, ETH, USDC, USDT</td><td>pay.html</td></tr>
+      </table>
+    </section>
+
+    <!-- DEX -->
+    <section class="doc-section" id="dex">
+      <div class="section-tag">// 02.6 //</div>
+      <div class="section-title">00 DEX</div>
+      <div class="section-divider"></div>
+
+      <p><strong>What it does</strong> — Frontend interface for the <strong>Cauldron AMM</strong> (Automated Market Maker) on Bitcoin Cash. Browse CashToken pairs, view pool TVL and APY, get swap quotes — then redirect to Cauldron for execution.</p>
+
+      <div class="callout">
+        <strong>Real-life example:</strong> You want to swap BCH for a CashToken. 00 DEX fetches the token list and pool data from the Cauldron indexer, computes the quote locally (0.3% LP fee + slippage), shows you the rate — then opens <code>app.cauldron.quest</code> to execute the swap.
+      </div>
+
+      <div class="code-block"><span class="comment">// ── DEX FLOW ─────────────────────────────────────────────────</span>
+<span class="comment">//</span>
+<span class="comment">//  User (browser)          Riften indexer         Cauldron AMM</span>
+<span class="comment">//    │                         │                       │</span>
+<span class="comment">//    ├─ Fetch token list ────► /cauldron/tokens/list   │</span>
+<span class="comment">//    ├─ Fetch TVL ───────────► /cauldron/valuelocked   │</span>
+<span class="comment">//    ├─ Compute quote locally  │                       │</span>
+<span class="comment">//    │  (0.3% LP fee)          │                       │</span>
+<span class="comment">//    ├─ Click "Swap" ────────────────────────────────► Execute</span>
+<span class="comment">//    │  (redirect to app.cauldron.quest)                │</span></div>
+
+      <table>
+        <tr><th>Source</th><th>Pairs</th><th>Endpoint</th></tr>
+        <tr><td>Cauldron AMM</td><td>BCH ↔ CashTokens</td><td>indexer.riften.net</td></tr>
+      </table>
+
+      <div class="callout cyan">
+        <span class="badge cyan">EXTERNAL</span> 00 DEX computes quotes locally, but swap execution redirects to <code>app.cauldron.quest</code> (external). Cross-chain swaps (BCH ↔ BTC, ETH) are handled in <strong>00 Pay</strong> via THORChain.
+      </div>
+    </section>
+
+    <!-- Loan -->
+    <section class="doc-section" id="loan">
+      <div class="section-tag">// 02.7 //</div>
+      <div class="section-title">00 Loan</div>
+      <div class="section-divider"></div>
+
+      <p><strong>What it does</strong> — Borrowing calculator for the <strong>Moria Protocol</strong>. Lock BCH as collateral, borrow MUSD stablecoin. The app computes max borrowable amount, liquidation price, and health ratio — then redirects to Moria for execution.</p>
+
+      <div class="callout">
+        <strong>Real-life example:</strong> You have 1 BCH worth $400. You lock it as collateral at 150% ratio → borrow up to 266 MUSD. If BCH price drops below $320 (120% collateral), your vault gets liquidated. The health bar goes from green (safe) to red (danger) as your ratio approaches liquidation.
+      </div>
+
+      <div class="code-block"><span class="comment">// ── LOAN CALCULATOR ──────────────────────────────────────────</span>
+<span class="comment">//</span>
+<span class="comment">//  Collateral math:</span>
+<span class="comment">//    maxMUSD = (collateral_BCH × price_USD) / (ratio / 100)</span>
+<span class="comment">//    liquidation_price = (debt × 1.20) / collateral_BCH</span>
+<span class="comment">//    health = ((ratio - 120) / (500 - 120)) × 100</span>
+<span class="comment">//</span>
+<span class="comment">//  Oracle: D3lphi on-chain (BCH/USD)</span>
+<span class="comment">//    Endpoint: /oracle/delphi/closest?timestamp=X&amp;token_id=...</span>
+<span class="comment">//    Price refresh: every 60 seconds</span>
+<span class="comment">//</span>
+<span class="comment">//  Protocol: Moria (immutable lending contract)</span>
+<span class="comment">//    Min collateral: 150%</span>
+<span class="comment">//    Liquidation:    120%</span>
+<span class="comment">//    Min debt:       10 MUSD</span>
+<span class="comment">//    Interest:       1-10% (self-set)</span></div>
+
+      <div class="callout cyan">
+        <span class="badge cyan">EXTERNAL</span> 00 Loan computes collateral ratios and liquidation risk locally. Actual lending execution redirects to the <strong>Moria Protocol</strong> (external).
+      </div>
+    </section>
+
+    <!-- ID -->
+    <section class="doc-section" id="id">
+      <div class="section-tag">// 02.8 //</div>
+      <div class="section-title">00 ID</div>
+      <div class="section-divider"></div>
+
+      <p><strong>What it does</strong> — Self-sovereign identity system built on Nostr. Create a cryptographic identity from your seed, publish your profile to relays, generate deterministic avatars from your public key. Your key = your identity — no server, no account, no email.</p>
+
+      <div class="callout">
+        <strong>Real-life example:</strong> You import your seed → the app derives a Nostr keypair (secp256k1 schnorr). It generates a unique pixel avatar from your public key hash. You set a display name, and it's published as a NIP-01 signed event to 4+ Nostr relays. Anyone can verify your identity with your public key.
+      </div>
+
+      <div class="code-block"><span class="comment">// ── IDENTITY DERIVATION ──────────────────────────────────────</span>
+<span class="comment">//</span>
+<span class="comment">//  Seed (64 bytes)</span>
+<span class="comment">//    │</span>
+<span class="comment">//    ├─ X25519 priv = seed[0:32]    → messaging ECDH</span>
+<span class="comment">//    ├─ X25519 pub  = X25519.getPublicKey(priv)</span>
+<span class="comment">//    │</span>
+<span class="comment">//    ├─ Nostr priv  = SHA256(x25519_priv || "ccsh-nostr")</span>
+<span class="comment">//    ├─ Nostr pub   = secp256k1(nostr_priv).x  (x-only, 32 bytes)</span>
+<span class="comment">//    │</span>
+<span class="comment">//    ├─ BCH priv    = BIP44 m/44'/145'/0'/0/0</span>
+<span class="comment">//    ├─ BCH address = CashAddr(hash160(pubkey))</span>
+<span class="comment">//    │</span>
+<span class="comment">//    └─ Avatar      = drawAvatar(pubkey_hex, canvas)</span>
+<span class="comment">//                     Deterministic pixel grid from pubkey hash</span></div>
+
+      <table>
+        <tr><th>Feature</th><th>Technology</th><th>Source</th></tr>
+        <tr><td>Nostr identity</td><td>Schnorr signatures (NIP-01)</td><td>id.html</td></tr>
+        <tr><td>Profile publishing</td><td>Nostr relays (4+ default)</td><td>id.html:765</td></tr>
+        <tr><td>Avatar generation</td><td>Deterministic pixel grid</td><td>id.html:731</td></tr>
+        <tr><td>QR sharing</td><td>qrcode@1.5.4</td><td>id.html</td></tr>
+        <tr><td>Key storage</td><td>AES-256-GCM vault</td><td>id.html:727</td></tr>
+      </table>
+    </section>
+
+    <!-- Mesh -->
+    <section class="doc-section" id="mesh">
+      <div class="section-tag">// 02.9 //</div>
+      <div class="section-title">00 Mesh</div>
+      <div class="section-divider"></div>
+
+      <p><strong>What it does</strong> — Nostr relay mesh network for real-time messaging. Encrypted DMs (NIP-04), global feed, relay status monitoring. The mesh layer that connects all 00 Protocol apps together.</p>
+
+      <div class="callout">
+        <strong>Real-life example:</strong> You open Mesh and see 4 relay connections (green dots). You browse the global feed — posts from all connected users. You open DMs — encrypted 1-on-1 messages synced across all relays. If one relay goes down, messages still flow through the others. The relay tab shows latency and connection status for each node.
+      </div>
+
+      <div class="code-block"><span class="comment">// ── MESH ARCHITECTURE ────────────────────────────────────────</span>
+<span class="comment">//</span>
+<span class="comment">//  Your browser</span>
+<span class="comment">//    │</span>
+<span class="comment">//    ├──── WebSocket ────► relay.damus.io       ●</span>
+<span class="comment">//    ├──── WebSocket ────► nos.lol               ●</span>
+<span class="comment">//    ├──── WebSocket ────► relay.nostr.band       ●</span>
+<span class="comment">//    └──── WebSocket ────► relay.snort.social      ●</span>
+<span class="comment">//</span>
+<span class="comment">//  Tabs:</span>
+<span class="comment">//    Feed   → Global NIP-01 notes (kind 1)</span>
+<span class="comment">//    DMs    → NIP-04 encrypted direct messages</span>
+<span class="comment">//    Global → Public timeline from all relays</span>
+<span class="comment">//    Relays → Connection status, latency, add/remove</span></div>
+
+      <table>
+        <tr><th>Feature</th><th>Technology</th><th>Source</th></tr>
+        <tr><td>Messaging</td><td>Nostr NIP-04 encrypted DMs</td><td>mesh.html:506</td></tr>
+        <tr><td>Feed</td><td>Nostr NIP-01 notes</td><td>mesh.html:530</td></tr>
+        <tr><td>Relays</td><td>WebSocket (configurable list)</td><td>mesh.html</td></tr>
+        <tr><td>Status</td><td>Real-time connection tracking</td><td>mesh.html:474</td></tr>
+      </table>
+    </section>
+
+    <!-- Vault App -->
+    <section class="doc-section" id="vault-app">
+      <div class="section-tag">// 02.10 //</div>
+      <div class="section-title">00 Vault</div>
+      <div class="section-divider"></div>
+
+      <p><strong>What it does</strong> — <strong>Invisible multisig</strong> vaults for Bitcoin Cash. Multiple cosigners control a shared wallet, but on-chain the vault address looks <strong>exactly like a regular single-signature P2PKH address</strong>. No script, no multisig indicator — invisible to blockchain analysis. This is the power of MuSig2: key aggregation produces a single 33-byte public key that hides the N-of-N structure.</p>
+
+      <div class="callout">
+        <strong>Real-life example:</strong> Alice, Bob and Carol create a vault. Their 3 public keys are aggregated into <strong>one single public key</strong> via MuSig2. The vault address is a standard <code>bitcoincash:q…</code> — blockchain explorers see a normal address. To spend, all 3 exchange nonces via encrypted Nostr DMs, compute partial signatures, aggregate into one 64-byte Schnorr signature — and the on-chain TX looks <strong>identical to any single-user payment</strong>. Nobody can tell it was a multisig.
+      </div>
+
+      <div class="code-block"><span class="comment">// ── WHY IT'S INVISIBLE ───────────────────────────────────────</span>
+<span class="comment">//</span>
+<span class="comment">//  Traditional multisig (P2SH):         00 Protocol vault (MuSig2):</span>
+<span class="comment">//</span>
+<span class="comment">//  Address: bitcoincash:p…               Address: bitcoincash:q…</span>
+<span class="comment">//  Script:  OP_2 &lt;A&gt; &lt;B&gt; &lt;C&gt; OP_3       Script:  (none — standard P2PKH)</span>
+<span class="comment">//           OP_CHECKMULTISIG</span>
+<span class="comment">//  On-chain: OBVIOUS multisig ✗          On-chain: looks like normal wallet ✓</span>
+<span class="comment">//  Sigs:    2 separate DER sigs          Sig: 1 Schnorr sig (64 bytes)</span>
+<span class="comment">//  Size:    ~400 bytes                   Size: ~100 bytes (same as P2PKH)</span>
+<span class="comment">//</span>
+<span class="comment">//  The aggregated pubkey IS the address. No one can tell.</span></div>
+
+      <p><strong>Step 1 — Key aggregation (MuSig2)</strong></p>
+      <p>All cosigner pubkeys are combined into a single aggregated public key. The vault address is simply <code>HASH160(aggPub)</code> — a standard P2PKH address.</p>
+      <div class="code-block"><span class="comment">// Real code from vault.html:716 — MuSig2 key aggregation</span>
+
+<span class="key">function</span> musigKeyAgg(compressedPubs) {
+  <span class="comment">// Sort pubkeys lexicographically</span>
+  <span class="key">const</span> sorted = [...compressedPubs].sort((a,b) => b2h(a) &lt; b2h(b) ? -<span class="val">1</span> : <span class="val">1</span>);
+
+  <span class="comment">// L = SHA256(P₁ || P₂ || ... || Pₙ)</span>
+  <span class="key">const</span> L = sha256(concat(...sorted));
+
+  <span class="comment">// For each pubkey: coefficient aᵢ = SHA256(L || Pᵢ)</span>
+  <span class="key">let</span> aggPoint = <span class="val">null</span>;
+  <span class="key">for</span> (<span class="key">const</span> P <span class="key">of</span> sorted) {
+    <span class="key">const</span> ai = modN(BigInt(<span class="val">'0x'</span> + b2h(sha256(concat(L, P)))));
+    <span class="key">const</span> Pi = secp256k1.ProjectivePoint.fromHex(P);
+    <span class="key">const</span> term = Pi.multiply(ai);        <span class="comment">// aᵢ × Pᵢ</span>
+    aggPoint = aggPoint ? aggPoint.add(term) : term;
+  }
+  <span class="key">return</span> { aggPub: aggPoint.toRawBytes(true) }; <span class="comment">// 33-byte compressed</span>
+}
+
+<span class="comment">// Vault address = standard P2PKH — INVISIBLE</span>
+<span class="key">function</span> _computeVaultAddress(cosignerPubHexes) {
+  <span class="key">const</span> ka = musigKeyAgg(pubs);
+  <span class="key">const</span> hash20 = ripemd160(sha256(ka.aggPub)); <span class="comment">// same as any P2PKH</span>
+  <span class="key">return</span> pubHashToCashAddr(hash20);            <span class="comment">// bitcoincash:q…</span>
+}</div>
+
+      <p><strong>Step 2 — Nonce exchange (via Nostr)</strong></p>
+      <p>Before signing, each cosigner generates two random nonce points and broadcasts them encrypted via Nostr NIP-04 DMs.</p>
+      <div class="code-block"><span class="comment">// Real code — MuSig2 nonce generation (vault.html:741)</span>
+
+<span class="key">function</span> musigNonceGen() {
+  <span class="key">const</span> k1 = rand(<span class="val">32</span>), k2 = rand(<span class="val">32</span>);         <span class="comment">// secret nonces</span>
+  <span class="key">const</span> R1 = G.multiply(k1Big).toRawBytes(true); <span class="comment">// R₁ = k₁·G</span>
+  <span class="key">const</span> R2 = G.multiply(k2Big).toRawBytes(true); <span class="comment">// R₂ = k₂·G</span>
+  <span class="key">return</span> {
+    secnonce: { k1, k2 },                        <span class="comment">// kept secret</span>
+    pubnonce: concat(R1, R2)                      <span class="comment">// 66 bytes → sent via Nostr</span>
+  };
+}</div>
+
+      <p><strong>Step 3 — Partial signatures &amp; aggregation</strong></p>
+      <p>Each cosigner computes a partial signature. When all partials arrive, they're summed into a single 64-byte Schnorr signature that verifies against the aggregated pubkey.</p>
+      <div class="code-block"><span class="comment">// Real code — partial signing (vault.html:782)</span>
+
+<span class="comment">// Each cosigner computes: sᵢ = (k₁ + b·k₂ + e·aᵢ·xᵢ) mod N</span>
+<span class="key">function</span> musigPartialSign(secnonce, myPriv, myCoeff, session) {
+  <span class="key">const</span> { b, e, negateR } = session;
+  <span class="key">let</span> k1 = modN(BigInt(secnonce.k1));
+  <span class="key">let</span> k2 = modN(BigInt(secnonce.k2));
+  <span class="key">if</span> (negateR) { k1 = modN(N - k1); k2 = modN(N - k2); }
+  <span class="key">const</span> si = modN(k1 + b * k2 + e * a * x);     <span class="comment">// partial sig</span>
+  <span class="key">return</span> si;
+}
+
+<span class="comment">// Aggregation: s = Σ sᵢ — final Schnorr signature (vault.html:795)</span>
+<span class="key">function</span> musigSigAgg(partialSigs, session) {
+  <span class="key">let</span> s = <span class="val">0n</span>;
+  <span class="key">for</span> (<span class="key">const</span> ps <span class="key">of</span> partialSigs) s = modN(s + ps);
+  <span class="key">return</span> concat(session.Rx, s);   <span class="comment">// 64 bytes: R.x(32) || s(32)</span>
+}
+
+<span class="comment">// Final scriptSig — looks identical to single-sig P2PKH:</span>
+<span class="comment">//   &lt;65: schnorrSig(64) + 0x41&gt; &lt;33: aggregated_pubkey&gt;</span>
+<span class="comment">// A blockchain explorer literally cannot distinguish this from</span>
+<span class="comment">// a regular wallet sending a normal payment.</span></div>
+
+      <div class="callout cyan">
+        <span class="badge cyan">INVISIBLE</span> On-chain, the vault TX has <strong>one signature, one pubkey, standard P2PKH</strong>. No script hash, no multisig opcodes, no extra data. The N-of-N structure is mathematically hidden inside the aggregated key. This is the same technique being developed for Bitcoin's Taproot MuSig2.
+      </div>
+
+      <table>
+        <tr><th>Component</th><th>Technology</th><th>Source</th></tr>
+        <tr><td>Key aggregation</td><td>MuSig2 (a_i·P_i sum)</td><td>vault.html:716</td></tr>
+        <tr><td>Nonce protocol</td><td>2-round: gen → agg → sign</td><td>vault.html:741</td></tr>
+        <tr><td>Partial signing</td><td>s_i = k1+b·k2+e·a_i·x_i</td><td>vault.html:782</td></tr>
+        <tr><td>Sig aggregation</td><td>s = Σ s_i (Schnorr 64 bytes)</td><td>vault.html:795</td></tr>
+        <tr><td>Address</td><td>P2PKH(HASH160(aggPub))</td><td>vault.html:958</td></tr>
+        <tr><td>Cosigner comms</td><td>Nostr NIP-04 encrypted DMs</td><td>vault.html</td></tr>
+        <tr><td>Verification</td><td>s·G = R + e·P (BCH Schnorr)</td><td>vault.html:802</td></tr>
+      </table>
+    </section>
+
+    <!-- Joiner (formerly Fusion) -->
+    <section class="doc-section" id="fusion">
+      <div class="section-tag">// 02.11 //</div>
+      <div class="section-title">00 Joiner</div>
+      <div class="section-divider"></div>
+
+      <p><strong>What it does</strong> — Collaborative CoinJoin with <strong>stealth outputs</strong>. Multiple peers pool their UTXOs into a single transaction with shuffled outputs. Your coins go in with a traceable history — they come out to <strong>freshly derived stealth addresses</strong> that nobody can link back to you. Variable amounts (not fixed like traditional CoinJoin), onion-encrypted output shuffling, and peer coordination via Nostr relays.</p>
+
+      <div class="callout cyan">
+        <span class="badge cyan">ZERO TRACE</span> Unlike every other CoinJoin / CashFusion implementation, <strong>00 Joiner produces no OP_RETURN outputs</strong>. Traditional mixers embed protocol markers (OP_RETURN tags, version bytes, coordination data) that make mixed transactions trivially identifiable on-chain. 00 Joiner transactions are <strong>indistinguishable from regular multi-party transactions</strong> — no metadata, no fingerprint, no trace. Chain analysis tools cannot flag them as CoinJoin.
+      </div>
+
+      <div class="callout">
+        <strong>Real-life example:</strong> 5 users join a pool. Each contributes 1-5 UTXOs and receives 2-4 outputs at fresh stealth addresses. The outputs are onion-encrypted — each peer peels one layer and shuffles before passing to the next. The final TX has 15+ inputs and 15+ outputs with no possible input→output mapping. Your BCH arrives at one-time stealth addresses derived via ECDH — even if someone knows your scan key, they can't link the outputs to each other.
+      </div>
+
+      <div class="code-block"><span class="comment">// ── HOW 00 JOINER WORKS ──────────────────────────────────────</span>
+<span class="comment">//</span>
+<span class="comment">//  Phase 1: POOL WAIT     Peers discover each other via Nostr (kind 22222)</span>
+<span class="comment">//  Phase 2: INPUT COMMIT  Each peer selects 1-5 UTXOs (random shuffle)</span>
+<span class="comment">//  Phase 3: BLIND OUTPUT  Outputs onion-encrypted, passed peer-to-peer</span>
+<span class="comment">//                         Each peer peels one layer + Fisher-Yates shuffle</span>
+<span class="comment">//  Phase 4: TX ASSEMBLY   Last peeler decodes all outputs, builds TX</span>
+<span class="comment">//  Phase 5: VERIFY &amp; SIGN Each peer verifies their outputs exist, signs</span>
+<span class="comment">//  Phase 6: BROADCAST     Combined TX broadcast to BCH network</span>
+<span class="comment">//</span>
+<span class="comment">//  KEY: all outputs go to STEALTH ADDRESSES</span>
+<span class="comment">//  → even the recipient can't link two of their own outputs</span>
+<span class="comment">//  → blockchain analysis sees N random addresses, no pattern</span></div>
+
+      <p><strong>Stealth outputs — the secret weapon</strong></p>
+      <p>Every output is sent to a freshly derived one-time stealth address. Each output gets its own ephemeral ECDH key, so even two outputs belonging to the same user are cryptographically unlinkable.</p>
+      <div class="code-block"><span class="comment">// Real code from fusion.html:729 — self-stealth per output</span>
+
+<span class="key">function</span> _deriveSelfStealth() {
+  <span class="key">const</span> ephPriv = rand(<span class="val">32</span>);                       <span class="comment">// fresh ephemeral key</span>
+  <span class="key">const</span> ephPub  = secp256k1.getPublicKey(ephPriv, true);
+
+  <span class="comment">// ECDH with my own scan key</span>
+  <span class="key">const</span> shared  = secp256k1.getSharedSecret(ephPriv, _stealthScanPub);
+  <span class="key">const</span> sharedX = shared.slice(<span class="val">1</span>, <span class="val">33</span>);
+
+  <span class="comment">// Unique tweak per output (random nonce)</span>
+  <span class="key">const</span> nonce = rand(<span class="val">36</span>);
+  <span class="key">const</span> c = sha256(concat(sha256(sharedX), nonce));
+  <span class="key">const</span> cBig = BigInt(<span class="val">'0x'</span> + b2h(c)) % N_SECP;
+
+  <span class="comment">// One-time pubkey: P = B_spend + c·G</span>
+  <span class="key">const</span> spendPoint  = secp256k1.ProjectivePoint.fromHex(_stealthSpendPub);
+  <span class="key">const</span> tweakPoint  = secp256k1.ProjectivePoint.BASE.multiply(cBig);
+  <span class="key">const</span> stealthPub  = spendPoint.add(tweakPoint).toRawBytes(true);
+
+  <span class="comment">// Spending key: priv = b_spend + c (only I can derive this)</span>
+  <span class="key">const</span> priv = (bBig + cBig) % N_SECP;
+
+  <span class="key">const</span> addr = pubHashToCashAddr(ripemd160(sha256(stealthPub)));
+  <span class="key">return</span> { addr, priv, pub: stealthPub };
+}
+
+<span class="comment">// Keys derived from seed: m/44'/145'/0'/2/0 (scan) + m/44'/145'/0'/2/1 (spend)</span>
+<span class="comment">// Each output gets unique ephemeral key → unique stealth address</span>
+<span class="comment">// Stealth UTXOs saved to localStorage for wallet spending:</span>
+localStorage.setItem(<span class="val">'00stealth_utxos'</span>, JSON.stringify([
+  { addr, priv, pub, from: <span class="val">'fusion'</span>, ts }
+]));</div>
+
+      <p><strong>Onion-encrypted output shuffling</strong></p>
+      <p>Outputs are wrapped in multi-layer onion encryption. Each peer peels one layer and performs a cryptographic shuffle (Fisher-Yates with <code>crypto.getRandomValues</code>) before passing to the next peer. Nobody — not even the assembler — can map inputs to outputs.</p>
+      <div class="code-block"><span class="comment">// Real code — onion layer per peer (fusion.html:857)</span>
+
+<span class="key">async function</span> onionLayer(data, peelerPubHex) {
+  <span class="key">const</span> eph    = rand(<span class="val">32</span>);
+  <span class="key">const</span> ephPub = secp256k1.getPublicKey(eph, true);
+  <span class="key">const</span> shared = secp256k1.getSharedSecret(eph, h2b(<span class="val">'02'</span>+peelerPubHex));
+  <span class="key">const</span> aesKey = sha256(shared.slice(<span class="val">1</span>,<span class="val">33</span>));
+  <span class="key">const</span> iv     = rand(<span class="val">12</span>);
+  <span class="key">const</span> ct     = <span class="key">await</span> aesGcmEncrypt(aesKey, iv, data);
+  <span class="key">return</span> concat(ephPub, iv, ct);   <span class="comment">// [33 + 12 + encrypted]</span>
+}
+
+<span class="comment">// Output payload: "addr|value_sats" (80-byte padded, 0x01 delimiter)</span>
+<span class="comment">// Wrapped from last-to-first peeler — each peer peels one layer</span>
+
+<span class="comment">// Fisher-Yates shuffle after peeling (fusion.html:1723)</span>
+<span class="key">for</span> (<span class="key">let</span> i = peeled.length - <span class="val">1</span>; i > <span class="val">0</span>; i--) {
+  <span class="key">const</span> j = crypto.getRandomValues(<span class="key">new</span> Uint32Array(<span class="val">1</span>))[<span class="val">0</span>] % (i + <span class="val">1</span>);
+  [peeled[i], peeled[j]] = [peeled[j], peeled[i]];  <span class="comment">// CSPRNG shuffle</span>
+}</div>
+
+      <p><strong>Verification before signing</strong></p>
+      <p>Each peer independently verifies the assembled TX before signing: (1) all my outputs exist, (2) no inflation (total_out ≤ total_in), (3) fees reasonable (&lt; 5 sat/byte). If anything fails → abort + blame.</p>
+      <div class="code-block"><span class="comment">// Real code — verification checks (fusion.html:1892)</span>
+
+<span class="comment">// 1. My outputs are in the TX</span>
+<span class="key">for</span> (<span class="key">const</span> out <span class="key">of</span> m.myOutputs) {
+  <span class="key">const</span> found = m.allOutputs.some(o =>
+    o.value === out.value && b2h(o.script) === outScript
+  );
+  <span class="key">if</span> (!found) { <span class="comment">/* ABORT — blame assembler */</span> }
+}
+
+<span class="comment">// 2. No inflation</span>
+<span class="key">if</span> (totalOut > totalIn) { <span class="comment">/* ABORT */</span> }
+
+<span class="comment">// 3. Fees sanity</span>
+<span class="key">if</span> (fees > estTxBytes * <span class="val">5</span>) { <span class="comment">/* ABORT — fees too high */</span> }</div>
+
+      <div class="callout cyan">
+        <span class="badge cyan">STEALTH + SHUFFLE</span> The combination of <strong>stealth outputs</strong> (ECDH one-time addresses) + <strong>onion-encrypted shuffling</strong> (Fisher-Yates with CSPRNG) + <strong>variable amounts</strong> makes input→output mapping computationally infeasible. Even the peers in the join can't determine which output belongs to which participant.
+      </div>
+
+      <table>
+        <tr><th>Component</th><th>Technology</th><th>Source</th></tr>
+        <tr><td>Stealth outputs</td><td>ECDH + SHA256 point tweak (per output)</td><td>fusion.html:729</td></tr>
+        <tr><td>Onion wrapping</td><td>secp256k1 ECDH + AES-256-GCM</td><td>fusion.html:857</td></tr>
+        <tr><td>Output shuffle</td><td>Fisher-Yates (crypto.getRandomValues)</td><td>fusion.html:1723</td></tr>
+        <tr><td>Peer discovery</td><td>Nostr kind 22222 (pool) / 22223 (join)</td><td>fusion.html:1418</td></tr>
+        <tr><td>Protocol msgs</td><td>Nostr kind 22224 (NIP-04 encrypted)</td><td>fusion.html:1307</td></tr>
+        <tr><td>TX signing</td><td>secp256k1 ECDSA (per-UTXO key)</td><td>fusion.html:1929</td></tr>
+        <tr><td>Blame</td><td>Timeout-based (60s per phase)</td><td>fusion.html:2062</td></tr>
+        <tr><td>Stealth storage</td><td>localStorage (00stealth_utxos)</td><td>fusion.html:753</td></tr>
+      </table>
+    </section>
+
+    <!-- Ledger -->
+    <section class="doc-section" id="ledger">
+      <div class="section-tag">// 03 //</div>
+      <div class="section-title">Ledger Integration</div>
+      <div class="section-divider"></div>
+      <p data-di18n="p-ledger-1">00 Protocol natively supports Ledger Nano S, Nano X, Nano S+, Stax, Flex and Apex P via <strong>WebHID</strong> (Chrome/Edge only).</p>
+      <div class="callout cyan" data-di18n="callout-ledger">
+        <span class="badge cyan">PREREQUISITE</span> Open the <strong>Bitcoin Cash</strong> app on the Ledger before connecting.
+      </div>
+      <p data-di18n="p-ledger-2">Communication uses the Ledger <strong>APDU</strong> protocol encapsulated in 64-byte HID packets:</p>
+      <div class="code-block"><span class="comment">// APDU instructions used (INS)</span>
+<span class="key">0x40</span>  GET_WALLET_PUBLIC_KEY   <span class="comment">→ pubKey + CashAddr + chainCode</span>
+<span class="key">0x44</span>  HASH_TX_INPUT_START     <span class="comment">→ stream inputs (BIP143 mode)</span>
+<span class="key">0x4a</span>  HASH_TX_INPUT_FINALIZE  <span class="comment">→ stream outputs</span>
+<span class="key">0x48</span>  HASH_SIGN               <span class="comment">→ sign + return DER signature</span></div>
+      <p data-di18n="p-ledger-3">The <strong>ledger.js</strong> file exposes a public API:</p>
+      <div class="code-block">Ledger.connectLedger()              <span class="comment">→ device WebHID</span>
+Ledger.getLedgerPubKey(dev, path)   <span class="comment">→ { pubKey, addrRaw, chainCode }</span>
+Ledger.signLedgerTx(dev, utxos, outputs, scripts, paths)  <span class="comment">→ [DER+0x41]</span>
+Ledger.buildLedgerTx(utxos, sigs, pubKeys, outputs)       <span class="comment">→ hex tx</span></div>
+    </section>
+
+    <!-- BIP44 -->
+    <section class="doc-section" id="bip44">
+      <div class="section-tag">// 03.1 //</div>
+      <div class="section-title">BIP44 Address Scanning</div>
+      <div class="section-divider"></div>
+      <p data-di18n="p-bip44-1">A Ledger BCH wallet can have funds spread across dozens of addresses (path <code>m/44'/145'/0'/0/k</code>). 00 Protocol automatically scans all used addresses.</p>
+      <div class="code-block"><span class="comment">// Scan algorithm</span>
+<span class="val">1.</span> Retrieve xpub at m/44'/145'/0' (account level)
+<span class="val">2.</span> Derive child keys locally via BIP32 (no Ledger contact needed)
+   child_k = BIP32_normal_child(xpub, chainCode, k)
+<span class="val">3.</span> Scan external (change=0) k=0..49  +  change (change=1) k=0..49
+<span class="val">4.</span> Gap limit = 5 (stop after 5 consecutive empty addresses)
+<span class="val">5.</span> Aggregate all UTXOs from found addresses</div>
+      <p data-di18n="p-bip44-2">Each UTXO is tagged with its derivation path and public key. During a transaction, each input is signed with the correct Ledger path.</p>
+      <div class="callout" data-di18n="callout-bip44">
+        In practice, a wallet with 42+ used addresses (real case: ~87 BCH) is fully supported — the scan takes a few seconds.
+      </div>
+    </section>
+
+    <!-- Protocol -->
+    <section class="doc-section" id="protocol">
+      <div class="section-tag">// 04 //</div>
+      <div class="section-title">CCSH Protocol</div>
+      <div class="section-divider"></div>
+
+      <p><strong>CCSH (Cash Chat Secure Hub)</strong> is the 00 Protocol messaging protocol. Version 2 uses <strong>dual-channel split-knowledge encryption</strong>: each message is encrypted, XOR-split into two shares, then delivered via two independent networks — <strong>BCH OP_RETURN</strong> (on-chain, permanent) and <strong>Nostr relays</strong> (off-chain, ephemeral 1h TTL). Neither channel alone reveals anything.</p>
+
+      <div class="callout">
+        <strong>Information-theoretic security</strong> — The XOR one-time pad is provably unbreakable (Shannon 1949). Even with unlimited computing power, a single share is indistinguishable from random noise. You need <strong>both</strong> the chain half and the relay half to recover a message.
+      </div>
+
+      <p><strong>v1 → v2 evolution:</strong></p>
+      <table>
+        <tr><th></th><th>CCSH v1</th><th>CCSH v2 (current)</th></tr>
+        <tr><td><strong>Transport</strong></td><td>Single channel (BCH OP_RETURN only)</td><td>Dual channel (BCH + Nostr)</td></tr>
+        <tr><td><strong>Encryption</strong></td><td>X25519 ECDH → AES-256-GCM</td><td>X25519 ECDH → AES-256-GCM → XOR split → 2× AES-GCM wrap</td></tr>
+        <tr><td><strong>Security</strong></td><td>Computational (AES)</td><td>Information-theoretic (OTP) + computational (AES)</td></tr>
+        <tr><td><strong>Relay dependency</strong></td><td>None</td><td>Nostr relays (ephemeral half)</td></tr>
+        <tr><td><strong>Version byte</strong></td><td>0x01</td><td>0x02</td></tr>
+        <tr><td><strong>Msg types</strong></td><td>0x01 DM, 0x02 ADDR_CHANGE</td><td>0x10 SPLIT_CHAIN, 0x11 SPLIT_RELAY</td></tr>
+        <tr><td><strong>Flag</strong></td><td>0x00</td><td>0x01 (FLAG_SPLIT)</td></tr>
+      </table>
+
+      <p><strong>Protocol stack (v2):</strong></p>
+      <table>
+        <tr><th>Layer</th><th>Technology</th><th>Role</th></tr>
+        <tr><td>Transport A</td><td>BCH OP_RETURN (220 bytes max)</td><td>Chain half — 546 sats dust TX to recipient</td></tr>
+        <tr><td>Transport B</td><td>Nostr kind 21059 (ephemeral DM)</td><td>Relay half — 1h TTL, broadcast to 4 relays</td></tr>
+        <tr><td>Split</td><td>XOR one-time pad (Shannon 1949)</td><td>Information-theoretic security</td></tr>
+        <tr><td>Wrap A</td><td>AES-256-GCM (chain key)</td><td>Encrypt chain share: SHA256(shared ‖ "ccsh-chain")</td></tr>
+        <tr><td>Wrap B</td><td>AES-256-GCM (relay key)</td><td>Encrypt relay share: SHA256(shared ‖ "ccsh-relay")</td></tr>
+        <tr><td>Inner encryption</td><td>AES-256-GCM (12-byte IV, 128-bit tag)</td><td>Message confidentiality before XOR split</td></tr>
+        <tr><td>ECDH</td><td>X25519 (ephemeral per message)</td><td>Forward secrecy — fresh keypair per message</td></tr>
+        <tr><td>KDF</td><td>SHA-256(shared_secret)</td><td>Inner AES key from ECDH</td></tr>
+        <tr><td>Indexing</td><td>Fulcrum/Electrum WebSocket</td><td>Inbox scanning every 10s (chain half)</td></tr>
+        <tr><td>Identity</td><td>X25519 pubkey + BCH address</td><td>Contact card, no server account</td></tr>
+      </table>
+
+      <div class="code-block"><span class="comment">// ── CCSH v2 ENCRYPTION PIPELINE ──────────────────────────────</span>
+<span class="comment">//</span>
+<span class="comment">//  plaintext "Hello"</span>
+<span class="comment">//       │</span>
+<span class="comment">//  ① Ephemeral X25519 ECDH → shared secret</span>
+<span class="comment">//       │</span>
+<span class="comment">//  ② innerKey = SHA256(shared)</span>
+<span class="comment">//  ② AES-256-GCM(innerKey, plaintext) → ciphertext</span>
+<span class="comment">//       │</span>
+<span class="comment">//  ③ XOR split: [shard, pad] = xorSplit(ciphertext)</span>
+<span class="comment">//       │                    │</span>
+<span class="comment">//  ④ chainKey =              ④ relayKey =</span>
+<span class="comment">//    SHA256(shared ‖             SHA256(shared ‖</span>
+<span class="comment">//    "ccsh-chain")                "ccsh-relay")</span>
+<span class="comment">//       │                    │</span>
+<span class="comment">//  ⑤ AES-GCM(chainKey,      ⑤ AES-GCM(relayKey,</span>
+<span class="comment">//    shard) → chainBlob        pad) → relayBlob</span>
+<span class="comment">//       │                    │</span>
+<span class="comment">//  ⑥ BCH OP_RETURN          ⑥ Nostr kind 21059</span>
+<span class="comment">//    (on-chain forever)       (ephemeral, 1h TTL)</span></div>
+
+      <p><strong>v2 packet format:</strong></p>
+      <div class="code-block"><span class="comment">// CCSH v2 packet (61-byte header + payload)</span>
+
+<span class="key">MAGIC</span>       : 0x43435348 (<span class="val">"CCSH"</span>)            <span class="comment">4 bytes</span>
+<span class="key">VERSION</span>     : 0x02                           <span class="comment">1 byte</span>
+<span class="key">MSG_TYPE</span>    : 0x10 = SPLIT_CHAIN              <span class="comment">1 byte — chain half</span>
+              0x11 = SPLIT_RELAY              <span class="comment">         relay half</span>
+              0x02 = ADDR_CHANGE              <span class="comment">         identity rotation</span>
+<span class="key">FLAGS</span>       : 0x01 (FLAG_SPLIT)               <span class="comment">1 byte</span>
+<span class="key">MSG_ID</span>      : 16 bytes random                 <span class="comment">links both halves together</span>
+<span class="key">SENDER_PUB</span>  : 32 bytes X25519 public key      <span class="comment">identifies sender</span>
+<span class="key">CHUNK_IDX</span>   : 2 bytes big-endian              <span class="comment">multi-chunk support</span>
+<span class="key">CHUNK_TOTAL</span> : 2 bytes big-endian
+<span class="key">CHUNK_LEN</span>   : 2 bytes big-endian              <span class="comment">payload length</span>
+
+<span class="comment">// Chain half payload (BCH OP_RETURN):</span>
+<span class="key">PAYLOAD</span>     : ephPub(32) || chainBlob(nonce(12) + AES-GCM(shard))
+
+<span class="comment">// Relay half payload (Nostr event content):</span>
+<span class="key">PAYLOAD</span>     : relayBlob(nonce(12) + AES-GCM(pad))</div>
+
+      <p><strong>Reassembly flow (recipient):</strong></p>
+      <div class="code-block"><span class="comment">// Real code — message reassembly (chat.html)</span>
+
+<span class="comment">// 1. Fulcrum detects new TX with CCSH magic in OP_RETURN</span>
+<span class="comment">//    → stores chain half in _pendingChainParts[msgId]</span>
+
+<span class="comment">// 2. Nostr relay delivers kind 21059 event</span>
+<span class="comment">//    → stores relay half in _pendingRelayParts[msgId]</span>
+
+<span class="comment">// 3. When BOTH halves arrive → _tryDecryptV2(msgId)</span>
+<span class="key">function</span> _tryDecryptV2(msgIdHex) {
+  <span class="key">const</span> chain = _pendingChainParts[msgIdHex];  <span class="comment">// from BCH TX</span>
+  <span class="key">const</span> relay = _pendingRelayParts[msgIdHex];  <span class="comment">// from Nostr</span>
+
+  <span class="comment">// Extract ephPub from chain data (first 32 bytes)</span>
+  <span class="key">const</span> ephPub   = chainData.slice(<span class="val">0</span>, <span class="val">32</span>);
+  <span class="key">const</span> chainBlob = chainData.slice(<span class="val">32</span>);
+
+  <span class="comment">// ECDH with my private key + ephemeral pubkey</span>
+  <span class="key">const</span> shared = x25519.getSharedSecret(myPriv, ephPub);
+
+  <span class="comment">// Unwrap both channels</span>
+  <span class="key">const</span> shard = aesUnwrap(chainBlob, sha256(concat(shared, <span class="val">"ccsh-chain"</span>)));
+  <span class="key">const</span> pad   = aesUnwrap(relayBlob, sha256(concat(shared, <span class="val">"ccsh-relay"</span>)));
+
+  <span class="comment">// XOR merge → recover inner ciphertext</span>
+  <span class="key">const</span> inner = xorMerge(shard, pad);
+
+  <span class="comment">// Decrypt inner AES-GCM → plaintext</span>
+  <span class="key">const</span> plaintext = aesDecrypt(sha256(shared), inner);
+}</div>
+
+      <p><strong>BCH transaction structure:</strong></p>
+      <div class="code-block"><span class="comment">// TX carrying the chain half</span>
+
+<span class="key">Output 0</span>  : <span class="val">546</span> sats → recipient P2PKH      <span class="comment">dust (triggers inbox detection)</span>
+<span class="key">Output 1</span>  : <span class="val">0</span> sats   → OP_RETURN(CCSH packet) <span class="comment">data carrier (0x10 SPLIT_CHAIN)</span>
+<span class="key">Output 2</span>  : change  → sender                <span class="comment">if ≥ 546 sats</span>
+
+<span class="comment">// Fee: ~1.5 sat/byte (≈ 300 sats typical)</span>
+<span class="comment">// Signing: secp256k1 ECDSA, SIGHASH_ALL | FORKID (0x41)</span></div>
+
+      <p><strong>Nostr event structure:</strong></p>
+      <div class="code-block"><span class="comment">// Nostr event carrying the relay half</span>
+
+<span class="key">kind</span>       : <span class="val">21059</span>                      <span class="comment">ephemeral encrypted DM</span>
+<span class="key">content</span>    : hex-encoded relay packets  <span class="comment">[2-byte len | packet data]…</span>
+<span class="key">tags</span>       : [
+               [<span class="val">"p"</span>, recipient_x25519_pub],   <span class="comment">for inbox subscription</span>
+               [<span class="val">"ccsh"</span>, msg_id_hex],           <span class="comment">links to chain half</span>
+               [<span class="val">"expiration"</span>, now + <span class="val">3600</span>]     <span class="comment">1h TTL (ephemeral)</span>
+             ]
+<span class="key">sig</span>        : Schnorr signature            <span class="comment">NIP-01 signed event</span>
+
+<span class="comment">// Relays: relay.damus.io, nos.lol, relay.nostr.band, relay.snort.social</span>
+<span class="comment">// Subscription: REQ ["ccsh-inbox", {kinds:[21059], #p:[my_pub], since: -3600}]</span></div>
+
+      <div class="callout cyan">
+        <span class="badge cyan">FORWARD SECRECY</span> Every message uses a fresh ephemeral X25519 keypair. Even if your long-term private key is compromised in the future, all past messages remain unreadable — the ephemeral keys were never stored.
+      </div>
+    </section>
+
+    <!-- BCH -->
+    <section class="doc-section" id="bch">
+      <div class="section-tag">// 05 //</div>
+      <div class="section-title">Bitcoin Cash</div>
+      <div class="section-divider"></div>
+      <p data-di18n="p-bch-1">00 Protocol uses <strong>Bitcoin Cash (BCH)</strong> as the native currency for payments, fees, and on-chain identity.</p>
+      <div class="code-block"><span class="comment">// BCH parameters</span>
+<span class="key">Network</span>       : mainnet
+<span class="key">Coin type</span>     : 145  (BIP44: m/44'/145'/0'/0/k)
+<span class="key">Addresses</span>     : CashAddr (bitcoincash:q…)
+<span class="key">Sighash</span>       : SIGHASH_ALL | FORKID  (0x41)
+<span class="key">Script</span>        : P2PKH standard
+<span class="key">UTXO provider</span> : Fulcrum (Electrum protocol over WebSocket)</div>
+      <p data-di18n="p-bch-2">Transaction fees are estimated at <strong>2 sat/byte</strong> (minimum 300 sats). Size estimation: 148 bytes/input + 34 bytes/output + 10 bytes overhead. Transaction construction follows the <strong>BIP143</strong> format (segwit-like sighash for BCH REPLAY protection).</p>
+    </section>
+
+    <!-- Privacy -->
+    <section class="doc-section" id="privacy">
+      <div class="section-tag">// 06 //</div>
+      <div class="section-title" data-di18n="t-privacy">Privacy</div>
+      <div class="section-divider"></div>
+      <p data-di18n="p-privacy-1">00 Protocol is designed to minimize metadata and maximize privacy:</p>
+      <ul class="steps">
+        <li><span class="step-num">✓</span><div data-di18n="priv-step1"><strong>No account</strong> — no email, no password, no server-side stored profile.</div></li>
+        <li><span class="step-num">✓</span><div data-di18n="priv-step2"><strong>No tracker</strong> — no analytics, no third-party cookies, no proprietary CDN (except Google Fonts).</div></li>
+        <li><span class="step-num">✓</span><div data-di18n="priv-step3"><strong>Local keys</strong> — private keys never leave the browser (or the Ledger).</div></li>
+        <li><span class="step-num">✓</span><div data-di18n="priv-step4"><strong>Open source</strong> — all code is directly auditable from DevTools.</div></li>
+        <li><span class="step-num">✓</span><div data-di18n="priv-step5"><strong>Offline-first</strong> — installable as a PWA, functional without connection for local operations.</div></li>
+      </ul>
+      <div class="callout" data-di18n="callout-privacy">
+        For maximum privacy on BCH transactions, use <strong>CashFusion</strong> before sending funds via 00 Wallet.
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- SECURITY DOCUMENTATION                                            -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+
+    <!-- Security Overview -->
+    <section class="doc-section" id="security">
+      <div class="section-tag">// 07 //</div>
+      <div class="section-title" data-di18n="t-security">Wallet Security</div>
+      <div class="section-divider"></div>
+      <p data-di18n="p-sec-1"><strong>00 Protocol</strong> is a non-custodial wallet. Your private keys are generated, encrypted, and stored entirely inside your browser. No server ever sees your keys, your password, or your seed phrase.</p>
+      <p data-di18n="p-sec-2">The security model relies on <strong>four layers</strong>:</p>
+      <ul class="steps">
+        <li><span class="step-num">01</span><div data-di18n="sec-layer1"><strong>Cryptographic randomness</strong> — Keys are generated using the browser's native CSPRNG (<code>crypto.getRandomValues</code>), sourced from the OS entropy pool.</div></li>
+        <li><span class="step-num">02</span><div data-di18n="sec-layer2"><strong>Industry-standard derivation</strong> — BIP39 seed → BIP32 master key → BIP44 derivation paths. Same standards used by Ledger, Trezor, and every major wallet.</div></li>
+        <li><span class="step-num">03</span><div data-di18n="sec-layer3"><strong>Military-grade vault encryption</strong> — Your keys are encrypted at rest with AES-256-GCM, using a key derived from your password via PBKDF2-SHA256 with 200,000 iterations.</div></li>
+        <li><span class="step-num">04</span><div data-di18n="sec-layer4"><strong>Audited cryptographic libraries</strong> — All crypto operations use <code>@noble/curves</code> and <code>@noble/hashes</code> by Paul Miller — audited, zero-dependency, pure JavaScript implementations.</div></li>
+      </ul>
+      <div class="callout" data-di18n="callout-sec">
+        Every line of code is auditable. Open DevTools → Sources → wallet.html. No build step, no minification, no hidden backend.
+      </div>
+      <div class="code-block"><span class="comment">// Cryptographic stack (real imports from wallet.html)</span>
+<span class="key">import</span> { secp256k1, schnorr } <span class="key">from</span> <span class="val">'@noble/curves@1.8.1/secp256k1'</span>
+<span class="key">import</span> { hmac }               <span class="key">from</span> <span class="val">'@noble/hashes@1.7.1/hmac'</span>
+<span class="key">import</span> { sha256 }             <span class="key">from</span> <span class="val">'@noble/hashes@1.7.1/sha256'</span>
+<span class="key">import</span> { sha512 }             <span class="key">from</span> <span class="val">'@noble/hashes@1.7.1/sha512'</span>
+<span class="key">import</span> { ripemd160 }          <span class="key">from</span> <span class="val">'@noble/hashes@1.7.1/ripemd160'</span>
+
+<span class="comment">// + Web Crypto API (built into every modern browser)</span>
+<span class="key">crypto.subtle</span>.importKey()    <span class="comment">→ PBKDF2 key derivation</span>
+<span class="key">crypto.subtle</span>.encrypt()      <span class="comment">→ AES-256-GCM encryption</span>
+<span class="key">crypto</span>.getRandomValues()      <span class="comment">→ CSPRNG (OS entropy pool)</span></div>
+    </section>
+
+    <!-- Key Import -->
+    <section class="doc-section" id="key-import">
+      <div class="section-tag">// 07.1 //</div>
+      <div class="section-title" data-di18n="t-key-import">Key Import</div>
+      <div class="section-divider"></div>
+      <p data-di18n="p-import-1">When you import a wallet, you provide either a <strong>BIP39 mnemonic</strong> (12 or 24 words) or a <strong>raw 128-character hex seed</strong>. Here is exactly what happens, step by step:</p>
+
+      <ul class="steps">
+        <li><span class="step-num">01</span><div data-di18n="import-step1"><strong>Input validation</strong> — The app checks that a seed is provided, the password is 8+ characters, and both password fields match.</div></li>
+        <li><span class="step-num">02</span><div data-di18n="import-step2"><strong>Seed detection</strong> — If the input is a 128-char hex string, it's used directly as the 64-byte seed. Otherwise, it's treated as a BIP39 mnemonic phrase.</div></li>
+        <li><span class="step-num">03</span><div data-di18n="import-step3"><strong>BIP39 seed derivation</strong> — The mnemonic is normalized (lowercase, single-spaced), then passed through <strong>PBKDF2-SHA512</strong> with salt "mnemonic" and 2,048 iterations to produce a 64-byte master seed. This is the BIP39 standard used by Ledger, Trezor, and all HD wallets.</div></li>
+        <li><span class="step-num">04</span><div data-di18n="import-step4"><strong>Key derivation</strong> — The 64-byte seed is passed through BIP32 + BIP44 to derive your BCH private key (see <a href="#derivation">Key Derivation</a>).</div></li>
+        <li><span class="step-num">05</span><div data-di18n="import-step5"><strong>Vault encryption</strong> — The derived keys are encrypted with your password using AES-256-GCM and stored in <code>localStorage</code> (see <a href="#vault">Vault Encryption</a>).</div></li>
+        <li><span class="step-num">06</span><div data-di18n="import-step6"><strong>Session creation</strong> — A 30-minute session token is created so you don't need to re-enter your password on every page navigation.</div></li>
+      </ul>
+
+      <div class="code-block"><span class="comment">// Real code from wallet.html — seed detection + BIP39</span>
+
+<span class="key">if</span> (/^[0-9a-f]{128}$/i.test(seed))
+  seed64 = h2b(seed);          <span class="comment">// raw hex → direct 64-byte seed</span>
+<span class="key">else</span>
+  seed64 = <span class="key">await</span> mnemonicToSeed(seed);  <span class="comment">// BIP39 mnemonic → seed</span>
+
+<span class="comment">// BIP39: mnemonic → 64-byte seed (PBKDF2-SHA512)</span>
+<span class="key">async function</span> mnemonicToSeed(words) {
+  <span class="key">const</span> normalized = words.trim().toLowerCase().replace(/\s+/g,' ');
+  <span class="key">const</span> key = <span class="key">await</span> crypto.subtle.importKey(
+    <span class="val">'raw'</span>, utf8(normalized), <span class="val">'PBKDF2'</span>, false, [<span class="val">'deriveBits'</span>]
+  );
+  <span class="key">const</span> bits = <span class="key">await</span> crypto.subtle.deriveBits({
+    name: <span class="val">'PBKDF2'</span>,
+    hash: <span class="val">'SHA-512'</span>,
+    salt: utf8(<span class="val">'mnemonic'</span>),
+    iterations: <span class="val">2048</span>
+  }, key, <span class="val">512</span>);
+  <span class="key">return new</span> Uint8Array(bits);
+}</div>
+
+      <div class="callout cyan" data-di18n="callout-import">
+        <span class="badge cyan">BIP39</span> This is the exact same algorithm used by Ledger, Trezor, Electrum, and every major hardware/software wallet. Your seed phrase is fully compatible — import it anywhere.
+      </div>
+    </section>
+
+    <!-- Key Generation -->
+    <section class="doc-section" id="key-generation">
+      <div class="section-tag">// 07.2 //</div>
+      <div class="section-title" data-di18n="t-key-gen">Key Generation</div>
+      <div class="section-divider"></div>
+      <p data-di18n="p-gen-1">When you click <strong>"Generate new key"</strong>, the app creates a brand new private key using the browser's built-in cryptographically secure random number generator.</p>
+
+      <ul class="steps">
+        <li><span class="step-num">01</span><div data-di18n="gen-step1"><strong>Random generation</strong> — 32 bytes (256 bits) are drawn from <code>crypto.getRandomValues()</code>, which is backed by the operating system's entropy pool (/dev/urandom on Linux, CryptGenRandom on Windows, SecRandomCopyBytes on macOS).</div></li>
+        <li><span class="step-num">02</span><div data-di18n="gen-step2"><strong>Hex display</strong> — The 32 random bytes are converted to a 64-character hex string and displayed in the seed input field. <strong>This is your only chance to copy it.</strong></div></li>
+        <li><span class="step-num">03</span><div data-di18n="gen-step3"><strong>Same import flow</strong> — When you click "Import", the hex seed follows the exact same derivation and encryption path as any imported seed (see <a href="#key-import">Key Import</a>).</div></li>
+      </ul>
+
+      <div class="code-block"><span class="comment">// Real code from wallet.html — key generation</span>
+
+<span class="comment">// The CSPRNG primitive used everywhere</span>
+<span class="key">const</span> rand = n => crypto.getRandomValues(<span class="key">new</span> Uint8Array(n));
+
+<span class="comment">// Generate button handler</span>
+<span class="key">function</span> walletGenKey() {
+  <span class="key">const</span> priv = rand(<span class="val">32</span>);     <span class="comment">// 256 bits of pure entropy</span>
+  document.getElementById(<span class="val">'import-seed'</span>).value = b2h(priv);
+}</div>
+
+      <div class="callout" data-di18n="callout-gen">
+        256 bits of entropy = 2²⁵⁶ possible keys ≈ 1.16 × 10⁷⁷. There are roughly 10⁸⁰ atoms in the observable universe. The probability of someone generating the same key is essentially zero — even with every computer on Earth trying for billions of years.
+      </div>
+    </section>
+
+    <!-- Vault Encryption -->
+    <section class="doc-section" id="vault">
+      <div class="section-tag">// 07.3 //</div>
+      <div class="section-title" data-di18n="t-vault">Vault Encryption</div>
+      <div class="section-divider"></div>
+      <p data-di18n="p-vault-1">Your private keys are <strong>never stored in plaintext</strong>. They are encrypted with <strong>AES-256-GCM</strong> before being saved to <code>localStorage</code>. Even if someone copies your browser data, they cannot access your keys without your password.</p>
+
+      <ul class="steps">
+        <li><span class="step-num">01</span><div data-di18n="vault-step1"><strong>Salt generation</strong> — 16 random bytes are generated for PBKDF2 salt (unique per encryption).</div></li>
+        <li><span class="step-num">02</span><div data-di18n="vault-step2"><strong>IV generation</strong> — 12 random bytes are generated for AES-GCM initialization vector (unique per encryption).</div></li>
+        <li><span class="step-num">03</span><div data-di18n="vault-step3"><strong>Key stretching</strong> — Your password is passed through <strong>PBKDF2-SHA256 with 200,000 iterations</strong> to derive a 256-bit AES key. This makes brute-force attacks extremely expensive — each password guess requires 200,000 hash operations.</div></li>
+        <li><span class="step-num">04</span><div data-di18n="vault-step4"><strong>Encryption</strong> — Your keys (seed, private key, account-level keys) are serialized to JSON, then encrypted with <strong>AES-256-GCM</strong>. GCM mode provides both confidentiality and authentication — any tampering is detected.</div></li>
+        <li><span class="step-num">05</span><div data-di18n="vault-step5"><strong>Storage</strong> — The encrypted blob is stored as <code>00wallet_vault</code> in localStorage. It contains: version, hex-encoded salt, hex-encoded IV, and hex-encoded ciphertext. <strong>No plaintext key material is ever written to disk.</strong></div></li>
+      </ul>
+
+      <div class="code-block"><span class="comment">// Real code from wallet.html — vault encryption</span>
+
+<span class="key">async function</span> _pbkdf2Key(pass, salt) {
+  <span class="key">const</span> km = <span class="key">await</span> crypto.subtle.importKey(
+    <span class="val">'raw'</span>, utf8(pass), <span class="val">'PBKDF2'</span>, false, [<span class="val">'deriveKey'</span>]
+  );
+  <span class="key">return</span> crypto.subtle.deriveKey({
+    name: <span class="val">'PBKDF2'</span>,
+    hash: <span class="val">'SHA-256'</span>,
+    salt,
+    iterations: <span class="val">200000</span>         <span class="comment">// 200k rounds — brute-force resistant</span>
+  }, km, { name:<span class="val">'AES-GCM'</span>, length:<span class="val">256</span> }, false, [<span class="val">'encrypt'</span>,<span class="val">'decrypt'</span>]);
+}
+
+<span class="key">async function</span> encryptVault(data, pass) {
+  <span class="key">const</span> salt = rand(<span class="val">16</span>);      <span class="comment">// unique salt per encryption</span>
+  <span class="key">const</span> iv   = rand(<span class="val">12</span>);      <span class="comment">// unique IV per encryption</span>
+  <span class="key">const</span> key  = <span class="key">await</span> _pbkdf2Key(pass, salt);
+  <span class="key">const</span> ct   = <span class="key">await</span> crypto.subtle.encrypt(
+    { name:<span class="val">'AES-GCM'</span>, iv }, key, utf8(JSON.stringify(data))
+  );
+  <span class="key">return</span> JSON.stringify({
+    v: <span class="val">1</span>,
+    salt: b2h(salt),        <span class="comment">// stored alongside ciphertext</span>
+    iv:   b2h(iv),
+    data: b2h(<span class="key">new</span> Uint8Array(ct))
+  });
+}
+
+<span class="comment">// Stored as: localStorage['00wallet_vault'] = encrypted JSON</span></div>
+
+      <div class="callout cyan" data-di18n="callout-vault">
+        <span class="badge cyan">AES-256-GCM</span> The same cipher used by governments, banks, and military systems worldwide. With 200,000 PBKDF2 iterations, even a password of "12345678" would take years to brute-force on specialized hardware.
+      </div>
+
+      <div class="code-block"><span class="comment">// Real code — vault decryption (unlock)</span>
+
+<span class="key">async function</span> decryptVault(enc, pass) {
+  <span class="key">const</span> { salt, iv, data } = JSON.parse(enc);
+  <span class="key">const</span> key = <span class="key">await</span> _pbkdf2Key(pass, h2b(salt));
+  <span class="key">const</span> pt  = <span class="key">await</span> crypto.subtle.decrypt(
+    { name:<span class="val">'AES-GCM'</span>, iv:h2b(iv) }, key, h2b(data)
+  );
+  <span class="key">return</span> JSON.parse(<span class="key">new</span> TextDecoder().decode(pt));
+}
+
+<span class="comment">// Wrong password → AES-GCM auth tag fails → exception thrown</span>
+<span class="comment">// No partial decryption, no data leak — just "wrong password"</span></div>
+    </section>
+
+    <!-- Key Derivation -->
+    <section class="doc-section" id="derivation">
+      <div class="section-tag">// 07.4 //</div>
+      <div class="section-title" data-di18n="t-derivation">Key Derivation</div>
+      <div class="section-divider"></div>
+      <p data-di18n="p-deriv-1">From a single 64-byte seed, the app derives all your blockchain keys using the <strong>BIP32/BIP44</strong> standard — the same hierarchical deterministic (HD) derivation used by every major wallet in the crypto industry.</p>
+
+      <div class="code-block"><span class="comment">// Derivation tree from a single seed</span>
+
+          Seed (64 bytes)
+              │
+      HMAC-SHA512("Bitcoin seed")
+              │
+         Master Key
+          ┌───┴────────────────────────────────────┐
+         44'                                   (purpose)
+          │
+         145'                                  (BCH coin type)
+          │
+          0'                                   (account)
+     ┌────┼──────┬──────┐
+     0    2      3      4                      (chains)
+     │    │      │      │
+     0  0   1   0      0                       (index)
+     │  │   │   │      │
+    BCH Scan Spend BTC  ETH                    (keys)</div>
+
+      <ul class="steps">
+        <li><span class="step-num">01</span><div data-di18n="deriv-step1"><strong>Master key</strong> — The 64-byte seed is hashed with <code>HMAC-SHA512(key="Bitcoin seed", data=seed)</code>. Left 32 bytes = master private key, right 32 bytes = master chain code.</div></li>
+        <li><span class="step-num">02</span><div data-di18n="deriv-step2"><strong>BIP44 path</strong> — Hardened child derivation at <code>m/44'/145'/0'</code> (purpose 44 = BIP44, coin 145 = BCH, account 0). This creates the account-level node from which all addresses are derived.</div></li>
+        <li><span class="step-num">03</span><div data-di18n="deriv-step3"><strong>BCH key</strong> — Chain 0 (external), index 0: <code>m/44'/145'/0'/0/0</code> → your main BCH address.</div></li>
+        <li><span class="step-num">04</span><div data-di18n="deriv-step4"><strong>Stealth keys</strong> — Chain 2, index 0+1: scan key + spend key for stealth addresses (see <a href="#stealth">Stealth Addresses</a>).</div></li>
+        <li><span class="step-num">05</span><div data-di18n="deriv-step5"><strong>BTC key</strong> — Chain 3, index 0: derived for cross-chain swaps via THORChain.</div></li>
+        <li><span class="step-num">06</span><div data-di18n="deriv-step6"><strong>ETH key</strong> — Chain 4, index 0: derived for cross-chain operations.</div></li>
+      </ul>
+
+      <div class="code-block"><span class="comment">// Real code from wallet.html — BIP32 derivation</span>
+
+<span class="key">function</span> bip32Master(seed) {
+  <span class="key">const</span> I = hmac(sha512, utf8(<span class="val">'Bitcoin seed'</span>), seed);
+  <span class="key">return</span> { priv: I.slice(<span class="val">0</span>,<span class="val">32</span>), chain: I.slice(<span class="val">32</span>) };
+}
+
+<span class="key">function</span> deriveAccountNode(seed64) {
+  <span class="comment">// m/44'/145'/0' — account-level node</span>
+  <span class="key">let</span> n = bip32Master(seed64);
+  n = _bip32Child(n.priv, n.chain, <span class="val">0x8000002c</span>, true);  <span class="comment">// 44'</span>
+  n = _bip32Child(n.priv, n.chain, <span class="val">0x80000091</span>, true);  <span class="comment">// 145' (BCH)</span>
+  n = _bip32Child(n.priv, n.chain, <span class="val">0x80000000</span>, true);  <span class="comment">// 0'  (account)</span>
+  <span class="key">return</span> n;
+}
+
+<span class="key">function</span> deriveBchPriv(seed64) {
+  <span class="comment">// m/44'/145'/0'/0/0</span>
+  <span class="key">const</span> acct = deriveAccountNode(seed64);
+  <span class="key">let</span> n = _bip32Child(acct.priv, acct.chain, <span class="val">0</span>, false);  <span class="comment">// external</span>
+  n = _bip32Child(n.priv, n.chain, <span class="val">0</span>, false);            <span class="comment">// index 0</span>
+  <span class="key">return</span> { priv: n.priv, acctPriv: acct.priv, acctChain: acct.chain };
+}</div>
+
+      <div class="callout" data-di18n="callout-deriv">
+        One seed, all your keys. BCH, BTC, ETH, and stealth addresses are all mathematically derived from the same master seed. Back up one seed phrase → recover everything.
+      </div>
+    </section>
+
+    <!-- Session & Unlock -->
+    <section class="doc-section" id="session">
+      <div class="section-tag">// 07.5 //</div>
+      <div class="section-title" data-di18n="t-session">Session &amp; Unlock</div>
+      <div class="section-divider"></div>
+      <p data-di18n="p-session-1">When you unlock your wallet (or import a new one), a <strong>session token</strong> is created so you don't have to re-enter your password every time you navigate between pages.</p>
+
+      <ul class="steps">
+        <li><span class="step-num">01</span><div data-di18n="session-step1"><strong>Token creation</strong> — After successful decryption, the app stores a session token in <code>localStorage</code> with key <code>00_session_auth</code>. It contains the base64-encoded password and a timestamp.</div></li>
+        <li><span class="step-num">02</span><div data-di18n="session-step2"><strong>30-minute TTL</strong> — The session expires after 30 minutes of inactivity. Each page load checks the timestamp: if more than 30 minutes have passed, you must unlock again.</div></li>
+        <li><span class="step-num">03</span><div data-di18n="session-step3"><strong>Auto-refresh</strong> — When a page loads and the session is still valid, it refreshes the TTL so you stay logged in while actively using the app.</div></li>
+        <li><span class="step-num">04</span><div data-di18n="session-step4"><strong>Cross-page sharing</strong> — The session works across all 00 Protocol pages (Wallet, Pay, Chat, DEX) via localStorage, which is shared across the same origin.</div></li>
+      </ul>
+
+      <div class="code-block"><span class="comment">// Real code — session creation after unlock</span>
+
+localStorage.setItem(<span class="val">'00_session_auth'</span>, JSON.stringify({
+  p:  btoa(pass),        <span class="comment">// base64-encoded password</span>
+  ts: Date.now()         <span class="comment">// creation timestamp</span>
+}));
+
+<span class="comment">// Real code — session validation on page load</span>
+
+<span class="key">const</span> sess = JSON.parse(localStorage.getItem(<span class="val">'00_session_auth'</span>) || <span class="val">'{}'</span>);
+<span class="key">if</span> (sess.p && sess.ts && Date.now() - sess.ts < <span class="val">30 * 60 * 1000</span>) {
+  <span class="key">const</span> pass = atob(sess.p);
+  <span class="key">const</span> profile = <span class="key">await</span> decryptVault(vault, pass);
+  <span class="comment">// Refresh TTL</span>
+  localStorage.setItem(<span class="val">'00_session_auth'</span>, JSON.stringify({
+    p: sess.p, ts: Date.now()
+  }));
+}</div>
+
+      <div class="callout" data-di18n="callout-session">
+        Close the browser tab → session destroyed. Wait 30 minutes → session expired. The session only exists in your browser's memory. No server, no cookie, no remote tracking.
+      </div>
+    </section>
+
+    <!-- Stealth Addresses -->
+    <section class="doc-section" id="stealth">
+      <div class="section-tag">// 07.6 //</div>
+      <div class="section-title" data-di18n="t-stealth">Stealth Addresses</div>
+      <div class="section-divider"></div>
+      <p data-di18n="p-stealth-1"><strong>Stealth addresses</strong> provide maximum privacy for receiving payments. Each payment creates a <strong>unique one-time address</strong> that only the recipient can detect and spend from. Even if someone knows your public stealth key, they cannot link incoming payments to each other.</p>
+
+      <ul class="steps">
+        <li><span class="step-num">01</span><div data-di18n="stealth-step1"><strong>Key pair</strong> — Two keys are derived from your seed: a <strong>scan key</strong> (<code>m/44'/145'/0'/2/0</code>) and a <strong>spend key</strong> (<code>m/44'/145'/0'/2/1</code>). The scan public key is shared; the spend private key never leaves your device.</div></li>
+        <li><span class="step-num">02</span><div data-di18n="stealth-step2"><strong>ECDH shared secret</strong> — The sender computes a shared secret using their private key and the recipient's scan public key: <code>shared = ECDH(sender_priv, recipient_scan_pub)</code>.</div></li>
+        <li><span class="step-num">03</span><div data-di18n="stealth-step3"><strong>Tweak derivation</strong> — A tweak scalar is computed: <code>c = SHA256(SHA256(shared_x) || outpoint)</code>. This is unique for every transaction.</div></li>
+        <li><span class="step-num">04</span><div data-di18n="stealth-step4"><strong>One-time address</strong> — The stealth public key is computed by point addition on the elliptic curve: <code>P = B_spend + c*G</code>. This creates a completely new address that only the owner of the spend key can derive the private key for.</div></li>
+        <li><span class="step-num">05</span><div data-di18n="stealth-step5"><strong>Spending</strong> — The recipient derives the spending key: <code>priv = b_spend + c</code> (scalar addition mod n). Only the recipient, who knows <code>b_spend</code>, can compute this.</div></li>
+      </ul>
+
+      <div class="code-block"><span class="comment">// Real code from wallet.html — stealth address derivation</span>
+
+<span class="key">function</span> stealthDerive(senderPriv, senderPub, recipScanPub, recipSpendPub, outpointBytes) {
+  <span class="comment">// ECDH shared secret</span>
+  <span class="key">const</span> sharedPoint = senderPriv
+    ? secp256k1.getSharedSecret(senderPriv, recipScanPub)   <span class="comment">// sender</span>
+    : secp256k1.getSharedSecret(_stealthScanPriv, senderPub); <span class="comment">// receiver</span>
+  <span class="key">const</span> sharedX = sharedPoint.slice(<span class="val">1</span>, <span class="val">33</span>);
+
+  <span class="comment">// Unique tweak per transaction</span>
+  <span class="key">const</span> c = sha256(concat(sha256(sharedX), outpointBytes));
+  <span class="key">const</span> cBig = BigInt(<span class="val">'0x'</span> + b2h(c)) % N_SECP;
+
+  <span class="comment">// P = B_spend + c*G (elliptic curve point addition)</span>
+  <span class="key">const</span> spendPoint  = secp256k1.ProjectivePoint.fromHex(recipSpendPub);
+  <span class="key">const</span> tweakPoint  = secp256k1.ProjectivePoint.BASE.multiply(cBig);
+  <span class="key">const</span> stealthPoint = spendPoint.add(tweakPoint);
+
+  <span class="key">return</span> { addr: stealthAddr, pub: stealthPub, cBig };
+}
+
+<span class="comment">// Spending key: priv = b_spend + c (mod n)</span>
+<span class="key">function</span> stealthSpendingKey(spendPriv, cBig) {
+  <span class="key">const</span> bBig = BigInt(<span class="val">'0x'</span> + b2h(spendPriv));
+  <span class="key">const</span> pBig = (bBig + cBig) % N_SECP;
+  <span class="key">return</span> h2b(pBig.toString(<span class="val">16</span>).padStart(<span class="val">64</span>, <span class="val">'0'</span>));
+}</div>
+
+      <div class="callout cyan" data-di18n="callout-stealth">
+        <span class="badge cyan">PRIVACY</span> Stealth addresses break on-chain link analysis. A blockchain observer sees a random one-time address — they cannot link it to the recipient's main wallet or to any other stealth payment.
+      </div>
+    </section>
+
+  </main>
+</div>
+
+
+<script>
+// ── Theme ──
+function _getDocTheme() {
+  const stored = localStorage.getItem('00_doc_theme');
+  if (stored) return stored;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+function _applyDocTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  const btn = document.getElementById('doc-theme-btn');
+  if (btn) btn.textContent = t === 'dark' ? '☀️' : '🌙';
+}
+function toggleDocTheme() {
+  const next = _getDocTheme() === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('00_doc_theme', next);
+  _applyDocTheme(next);
+}
+_applyDocTheme(_getDocTheme());
+
+// ── Clock ──
+function updateClock() {
+  const el = document.getElementById('doc-clock');
+  if (el) el.textContent = new Date().toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+setInterval(updateClock, 1000); updateClock();
+
+// ── Active nav on scroll ──
+function setActive(el) {
+  document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+  el.classList.add('active');
+}
+
+const sections = document.querySelectorAll('.doc-section');
+const navLinks = document.querySelectorAll('.nav-link');
+window.addEventListener('scroll', () => {
+  let current = '';
+  sections.forEach(s => { if (window.scrollY >= s.offsetTop - 80) current = s.id; });
+  navLinks.forEach(l => {
+    l.classList.toggle('active', l.getAttribute('href') === '#' + current);
+  });
+}, { passive: true });
+</script>
+<script src="/shell.js?v=263"></script>
+<script>
+// ── Docs i18n ─────────────────────────────────────────────────────────────────
+const DOC_T = {
+  EN: {
+    'nav-s1':'OVERVIEW','nav-s2':'APPLICATIONS','nav-s3':'HARDWARE','nav-s4':'PROTOCOLS',
+    'nav-intro':'Introduction','nav-arch':'Architecture','nav-apps':'All apps',
+    'nav-chat':'00 Chat','nav-wallet':'00 Wallet','nav-swap':'00 Swap','nav-onion':'00 Onion','nav-pay':'00 Pay','nav-dex':'00 DEX','nav-loan':'00 Loan','nav-id':'00 ID','nav-mesh':'00 Mesh','nav-vault-app':'00 Vault','nav-fusion':'00 Joiner',
+    'nav-ledger':'Ledger Integration','nav-bip44':'BIP44 Scanning',
+    'nav-protocol':'CCSH Protocol','nav-bch':'Bitcoin Cash','nav-privacy':'Privacy',
+    't-privacy':'Privacy',
+    'p-overview-1':'<strong>00 Protocol</strong> is a decentralized ecosystem built on Bitcoin Cash. Zero central server, zero custody, zero borders. Every app runs directly in the browser, peer-to-peer.',
+    'p-overview-2':'All private keys stay in your browser or on your hardware wallet. No data is sent to third parties. BCH transactions are broadcast directly to the network via public relays.',
+    'callout-overview':'No account. No server. No KYC. Your private key = your identity.',
+    'p-arch-1':'00 Protocol is a Progressive Web App (PWA) made of static HTML/JS files. No backend, no build step — everything runs client-side and works offline once installed.',
+    'callout-arch':'Some features integrate with external protocols: 00 DEX links to <strong>Cauldron</strong> for CashToken swaps, 00 Loan links to <strong>Moria</strong> for collateralized lending, and 00 Pay uses <strong>THORChain</strong> for cross-chain sends. All core wallet, messaging, and atomic swap operations are fully native — no intermediary.',
+    'app-wallet-desc':'Non-custodial multi-chain wallet. BCH, BTC, ETH. Ledger HW, seed import, stealth addresses, coin control. BIP32/44 HD derivation.',
+    'app-chat-desc':'Dual-channel E2E encrypted messaging. BCH OP_RETURN (CCSH protocol) + Nostr relay sync. XOR one-time pad + AES-256-GCM.',
+    'app-swap-desc':'Native peer-to-peer atomic swaps BCH ↔ BTC. HTLC contracts, Nostr orderbook, no intermediary.',
+    'app-pay-desc':'BCH payment terminal. QR invoices, payment watching, Ledger support. Cross-chain send via THORChain (external).',
+    'app-onion-desc':'Onion-routed HTLC payments. Multi-hop encrypted routing via Nostr relays. secp256k1 per-layer peeling.',
+    'app-id-desc':'Self-sovereign Nostr identity. Schnorr-signed profiles, deterministic avatars. Your key = your identity.',
+    'app-mesh-desc':'Nostr relay network monitor. Relay directory, latency checks, connection status.',
+    'app-vault-desc':'Stealth multisig vaults (N-of-N). MuSig2 Schnorr — invisible on-chain, all cosigners must sign.',
+    'app-fusion-desc':'Collaborative CoinJoin with stealth outputs. Zero OP_RETURN — completely invisible on-chain. Onion-encrypted shuffling, variable amounts, peer-to-peer via Nostr.',
+    'app-dex-desc':'CashToken exchange interface. Quotes computed locally, swap execution via Cauldron (external link).',
+    'app-loan-desc':'Collateral ratio calculator with health visualization. Lending via Moria (external link).',
+    'p-chat-1':'Chat uses the <strong>CCSH (Cash Chat Secure Hub)</strong> protocol with <strong>dual-channel encryption</strong>. Messages are split using a <strong>XOR one-time pad</strong>: half goes on-chain via <strong>BCH OP_RETURN</strong> (max 220 bytes, sent as a dust transaction to the recipient), half is synced via <strong>Nostr relays</strong>. Neither channel alone reveals anything — information-theoretically secure (Shannon 1949).',
+    'p-chat-2':'Each message generates a <strong>fresh ephemeral X25519 keypair</strong> for forward secrecy. The ephemeral private key and recipient\'s public key derive a shared secret via <strong>ECDH</strong>. The AES key is <strong>SHA-256(shared_secret)</strong>, then the plaintext is encrypted with <strong>AES-256-GCM</strong> (12-byte random IV, 128-bit auth tag). Inbox scanning uses <strong>Fulcrum/Electrum</strong> WebSocket every 10 seconds.',
+    'p-wallet-1':'Non-custodial multi-chain wallet (BCH, BTC, ETH) with four access modes:',
+    'wallet-step1':'<strong>Hardware (Ledger)</strong> — WebHID connection. Full BIP44 address scan (gap limit 20, max 50). Private key never leaves the device.',
+    'wallet-step2':'<strong>Imported seed</strong> — BIP39 mnemonic (12+ words) or 128-char hex seed. Full HD derivation: BCH, BTC, ETH, stealth keys from a single seed.',
+    'wallet-step3':'<strong>New key</strong> — 256-bit key via <code>crypto.getRandomValues()</code> (CSPRNG). Displayed once for backup.',
+    'wallet-step4':'<strong>WalletConnect</strong> — Mobile wallet signing via WalletConnect protocol.',
+    'p-wallet-2':'Features: <strong>coin control</strong> (manual UTXO selection), <strong>stealth addresses</strong> (ECDH + SHA256 point tweaking for private payments), <strong>multi-chain portfolio</strong> with live Kraken prices. All UTXOs retrieved via <strong>Fulcrum/Electrum</strong> WebSocket. Transaction construction and broadcasting done entirely client-side.',
+    'p-pay-1':'Payment terminal with two modes: <strong>Receive</strong> (native QR invoice generation + payment watching via Fulcrum) and <strong>Send</strong> (cross-chain via THORChain — redirects to the THORChain protocol for BCH → BTC, ETH, USDT…). Supports <strong>CashAddr</strong>, <strong>QR codes</strong>, and <strong>Ledger</strong> hardware signing.',
+    'callout-pay':'<span class=\"badge cyan\">LEDGER</span> On 00 Pay, the public key is read directly from the device. Signing is done on-device — the private key never transits. Note: Ledger\\'s BCH app rejects OP_RETURN outputs, so cross-chain THORChain swaps require a software wallet.',
+    'callout-pay-thor':'<span class=\"badge cyan\">THORCHAIN</span> The SEND tab lets you swap BCH to any THORChain-supported asset (BTC, ETH, USDT…) via memo-based routing to the THORChain vault. Rates from Midgard API. Software wallet only.',
+    'p-dex-1':'Interface for the <strong>Cauldron AMM</strong> (BCH ↔ CashTokens). Token lists and pool data are fetched from the Cauldron indexer; quotes (slippage, 0.3% LP fee) are computed client-side. <strong>Swap execution redirects to <code>app.cauldron.quest</code></strong> (external). Cross-chain swaps (BCH ↔ BTC, ETH…) are handled separately in <strong>00 Pay</strong> via THORChain.',
+    'p-ledger-1':'00 Protocol natively supports Ledger Nano S, Nano X, Nano S+, Stax, Flex and Apex P via <strong>WebHID</strong> (Chrome/Edge only).',
+    'callout-ledger':'<span class="badge cyan">PREREQUISITE</span> Open the <strong>Bitcoin Cash</strong> app on the Ledger before connecting.',
+    'p-ledger-2':'Communication uses the Ledger <strong>APDU</strong> protocol encapsulated in 64-byte HID packets:',
+    'p-ledger-3':'The <strong>ledger.js</strong> file exposes a public API:',
+    'p-bip44-1':"A Ledger BCH wallet can have funds spread across dozens of addresses (path <code>m/44'/145'/0'/0/k</code>). 00 Protocol automatically scans all used addresses.",
+    'p-bip44-2':'Each UTXO is tagged with its derivation path and public key. During a transaction, each input is signed with the correct Ledger path.',
+    'callout-bip44':'In practice, a wallet with 42+ used addresses (real case: ~87 BCH) is fully supported — the scan takes a few seconds.',
+    'p-protocol-1':'<strong>CCSH (Cash Chat Secure Hub)</strong> is the 00 Protocol messaging protocol. Messages are encrypted end-to-end and embedded in <strong>BCH OP_RETURN</strong> transactions (max 220 bytes), sent directly to the recipient\'s BCH address. Inbox scanning uses <strong>Fulcrum/Electrum</strong> WebSocket indexers. 00 Mesh uses <strong>Nostr relays</strong> as a separate real-time transport.',
+    'p-bch-1':'00 Protocol uses <strong>Bitcoin Cash (BCH)</strong> as the native currency for payments, fees, and on-chain identity.',
+    'p-bch-2':'Transaction fees are estimated at <strong>2 sat/byte</strong> (minimum 300 sats). Size estimation: 148 bytes/input + 34 bytes/output + 10 bytes overhead. Transaction construction follows the <strong>BIP143</strong> format (segwit-like sighash for BCH REPLAY protection).',
+    'p-privacy-1':'00 Protocol is designed to minimize metadata and maximize privacy:',
+    'priv-step1':'<strong>No account</strong> — no email, no password, no server-side stored profile.',
+    'priv-step2':'<strong>No tracker</strong> — no analytics, no third-party cookies, no proprietary CDN (except Google Fonts).',
+    'priv-step3':'<strong>Local keys</strong> — private keys never leave the browser (or the Ledger).',
+    'priv-step4':'<strong>Open source</strong> — all code is directly auditable from DevTools.',
+    'priv-step5':'<strong>Offline-first</strong> — installable as a PWA, functional without connection for local operations.',
+    'callout-privacy':'For maximum privacy on BCH transactions, use <strong>CashFusion</strong> before sending funds via 00 Wallet.',
+    'nav-s5':'SECURITY',
+    'nav-security':'Wallet Security','nav-key-import':'Key Import','nav-key-gen':'Key Generation',
+    'nav-vault':'Vault Encryption','nav-derivation':'Key Derivation','nav-session':'Session & Unlock','nav-stealth':'Stealth Addresses',
+    't-security':'Wallet Security',
+    'p-sec-1':'<strong>00 Protocol</strong> is a non-custodial wallet. Your private keys are generated, encrypted, and stored entirely inside your browser. No server ever sees your keys, your password, or your seed phrase.',
+    'p-sec-2':'The security model relies on <strong>four layers</strong>:',
+    'sec-layer1':'<strong>Cryptographic randomness</strong> — Keys are generated using the browser\'s native CSPRNG (<code>crypto.getRandomValues</code>), sourced from the OS entropy pool.',
+    'sec-layer2':'<strong>Industry-standard derivation</strong> — BIP39 seed → BIP32 master key → BIP44 derivation paths. Same standards used by Ledger, Trezor, and every major wallet.',
+    'sec-layer3':'<strong>Military-grade vault encryption</strong> — Your keys are encrypted at rest with AES-256-GCM, using a key derived from your password via PBKDF2-SHA256 with 200,000 iterations.',
+    'sec-layer4':'<strong>Audited cryptographic libraries</strong> — All crypto operations use <code>@noble/curves</code> and <code>@noble/hashes</code> by Paul Miller — audited, zero-dependency, pure JavaScript implementations.',
+    'callout-sec':'Every line of code is auditable. Open DevTools → Sources → wallet.html. No build step, no minification, no hidden backend.',
+    't-key-import':'Key Import',
+    'p-import-1':'When you import a wallet, you provide either a <strong>BIP39 mnemonic</strong> (12 or 24 words) or a <strong>raw 128-character hex seed</strong>. Here is exactly what happens, step by step:',
+    'import-step1':'<strong>Input validation</strong> — The app checks that a seed is provided, the password is 8+ characters, and both password fields match.',
+    'import-step2':'<strong>Seed detection</strong> — If the input is a 128-char hex string, it\'s used directly as the 64-byte seed. Otherwise, it\'s treated as a BIP39 mnemonic phrase.',
+    'import-step3':'<strong>BIP39 seed derivation</strong> — The mnemonic is normalized (lowercase, single-spaced), then passed through <strong>PBKDF2-SHA512</strong> with salt "mnemonic" and 2,048 iterations to produce a 64-byte master seed. This is the BIP39 standard used by Ledger, Trezor, and all HD wallets.',
+    'import-step4':'<strong>Key derivation</strong> — The 64-byte seed is passed through BIP32 + BIP44 to derive your BCH private key (see <a href="#derivation">Key Derivation</a>).',
+    'import-step5':'<strong>Vault encryption</strong> — The derived keys are encrypted with your password using AES-256-GCM and stored in <code>localStorage</code> (see <a href="#vault">Vault Encryption</a>).',
+    'import-step6':'<strong>Session creation</strong> — A 30-minute session token is created so you don\'t need to re-enter your password on every page navigation.',
+    'callout-import':'<span class="badge cyan">BIP39</span> This is the exact same algorithm used by Ledger, Trezor, Electrum, and every major hardware/software wallet. Your seed phrase is fully compatible — import it anywhere.',
+    't-key-gen':'Key Generation',
+    'p-gen-1':'When you click <strong>"Generate new key"</strong>, the app creates a brand new private key using the browser\'s built-in cryptographically secure random number generator.',
+    'gen-step1':'<strong>Random generation</strong> — 32 bytes (256 bits) are drawn from <code>crypto.getRandomValues()</code>, which is backed by the operating system\'s entropy pool (/dev/urandom on Linux, CryptGenRandom on Windows, SecRandomCopyBytes on macOS).',
+    'gen-step2':'<strong>Hex display</strong> — The 32 random bytes are converted to a 64-character hex string and displayed in the seed input field. <strong>This is your only chance to copy it.</strong>',
+    'gen-step3':'<strong>Same import flow</strong> — When you click "Import", the hex seed follows the exact same derivation and encryption path as any imported seed (see <a href="#key-import">Key Import</a>).',
+    'callout-gen':'256 bits of entropy = 2²⁵⁶ possible keys ≈ 1.16 × 10⁷⁷. There are roughly 10⁸⁰ atoms in the observable universe. The probability of someone generating the same key is essentially zero — even with every computer on Earth trying for billions of years.',
+    't-vault':'Vault Encryption',
+    'p-vault-1':'Your private keys are <strong>never stored in plaintext</strong>. They are encrypted with <strong>AES-256-GCM</strong> before being saved to <code>localStorage</code>. Even if someone copies your browser data, they cannot access your keys without your password.',
+    'vault-step1':'<strong>Salt generation</strong> — 16 random bytes are generated for PBKDF2 salt (unique per encryption).',
+    'vault-step2':'<strong>IV generation</strong> — 12 random bytes are generated for AES-GCM initialization vector (unique per encryption).',
+    'vault-step3':'<strong>Key stretching</strong> — Your password is passed through <strong>PBKDF2-SHA256 with 200,000 iterations</strong> to derive a 256-bit AES key. This makes brute-force attacks extremely expensive — each password guess requires 200,000 hash operations.',
+    'vault-step4':'<strong>Encryption</strong> — Your keys (seed, private key, account-level keys) are serialized to JSON, then encrypted with <strong>AES-256-GCM</strong>. GCM mode provides both confidentiality and authentication — any tampering is detected.',
+    'vault-step5':'<strong>Storage</strong> — The encrypted blob is stored as <code>00wallet_vault</code> in localStorage. It contains: version, hex-encoded salt, hex-encoded IV, and hex-encoded ciphertext. <strong>No plaintext key material is ever written to disk.</strong>',
+    'callout-vault':'<span class="badge cyan">AES-256-GCM</span> The same cipher used by governments, banks, and military systems worldwide. With 200,000 PBKDF2 iterations, even a password of "12345678" would take years to brute-force on specialized hardware.',
+    't-derivation':'Key Derivation',
+    'p-deriv-1':'From a single 64-byte seed, the app derives all your blockchain keys using the <strong>BIP32/BIP44</strong> standard — the same hierarchical deterministic (HD) derivation used by every major wallet in the crypto industry.',
+    'deriv-step1':'<strong>Master key</strong> — The 64-byte seed is hashed with <code>HMAC-SHA512(key="Bitcoin seed", data=seed)</code>. Left 32 bytes = master private key, right 32 bytes = master chain code.',
+    'deriv-step2':'<strong>BIP44 path</strong> — Hardened child derivation at <code>m/44\'/145\'/0\'</code> (purpose 44 = BIP44, coin 145 = BCH, account 0). This creates the account-level node from which all addresses are derived.',
+    'deriv-step3':'<strong>BCH key</strong> — Chain 0 (external), index 0: <code>m/44\'/145\'/0\'/0/0</code> → your main BCH address.',
+    'deriv-step4':'<strong>Stealth keys</strong> — Chain 2, index 0+1: scan key + spend key for stealth addresses (see <a href="#stealth">Stealth Addresses</a>).',
+    'deriv-step5':'<strong>BTC key</strong> — Chain 3, index 0: derived for cross-chain swaps via THORChain.',
+    'deriv-step6':'<strong>ETH key</strong> — Chain 4, index 0: derived for cross-chain operations.',
+    'callout-deriv':'One seed, all your keys. BCH, BTC, ETH, and stealth addresses are all mathematically derived from the same master seed. Back up one seed phrase → recover everything.',
+    't-session':'Session & Unlock',
+    'p-session-1':'When you unlock your wallet (or import a new one), a <strong>session token</strong> is created so you don\'t have to re-enter your password every time you navigate between pages.',
+    'session-step1':'<strong>Token creation</strong> — After successful decryption, the app stores a session token in <code>localStorage</code> with key <code>00_session_auth</code>. It contains the base64-encoded password and a timestamp.',
+    'session-step2':'<strong>30-minute TTL</strong> — The session expires after 30 minutes of inactivity. Each page load checks the timestamp: if more than 30 minutes have passed, you must unlock again.',
+    'session-step3':'<strong>Auto-refresh</strong> — When a page loads and the session is still valid, it refreshes the TTL so you stay logged in while actively using the app.',
+    'session-step4':'<strong>Cross-page sharing</strong> — The session works across all 00 Protocol pages (Wallet, Pay, Chat, DEX) via localStorage, which is shared across the same origin.',
+    'callout-session':'Close the browser tab → session destroyed. Wait 30 minutes → session expired. The session only exists in your browser\'s memory. No server, no cookie, no remote tracking.',
+    't-stealth':'Stealth Addresses',
+    'p-stealth-1':'<strong>Stealth addresses</strong> provide maximum privacy for receiving payments. Each payment creates a <strong>unique one-time address</strong> that only the recipient can detect and spend from. Even if someone knows your public stealth key, they cannot link incoming payments to each other.',
+    'stealth-step1':'<strong>Key pair</strong> — Two keys are derived from your seed: a <strong>scan key</strong> (<code>m/44\'/145\'/0\'/2/0</code>) and a <strong>spend key</strong> (<code>m/44\'/145\'/0\'/2/1</code>). The scan public key is shared; the spend private key never leaves your device.',
+    'stealth-step2':'<strong>ECDH shared secret</strong> — The sender computes a shared secret using their private key and the recipient\'s scan public key: <code>shared = ECDH(sender_priv, recipient_scan_pub)</code>.',
+    'stealth-step3':'<strong>Tweak derivation</strong> — A tweak scalar is computed: <code>c = SHA256(SHA256(shared_x) || outpoint)</code>. This is unique for every transaction.',
+    'stealth-step4':'<strong>One-time address</strong> — The stealth public key is computed by point addition on the elliptic curve: <code>P = B_spend + c*G</code>. This creates a completely new address that only the owner of the spend key can derive the private key for.',
+    'stealth-step5':'<strong>Spending</strong> — The recipient derives the spending key: <code>priv = b_spend + c</code> (scalar addition mod n). Only the recipient, who knows <code>b_spend</code>, can compute this.',
+    'callout-stealth':'<span class="badge cyan">PRIVACY</span> Stealth addresses break on-chain link analysis. A blockchain observer sees a random one-time address — they cannot link it to the recipient\'s main wallet or to any other stealth payment.',
+  },
+  FR: {
+    'nav-s1':"VUE D'ENSEMBLE",'nav-s2':'APPLICATIONS','nav-s3':'MATÉRIEL','nav-s4':'PROTOCOLES',
+    'nav-intro':'Introduction','nav-arch':'Architecture','nav-apps':'Toutes les apps',
+    'nav-chat':'00 Chat','nav-wallet':'00 Wallet','nav-swap':'00 Swap','nav-onion':'00 Onion','nav-pay':'00 Pay','nav-dex':'00 DEX','nav-loan':'00 Loan','nav-id':'00 ID','nav-mesh':'00 Mesh','nav-vault-app':'00 Vault','nav-fusion':'00 Joiner',
+    'nav-ledger':'Ledger Integration','nav-bip44':'BIP44 Scanning',
+    'nav-protocol':'CCSH Protocol','nav-bch':'Bitcoin Cash','nav-privacy':'Vie privée',
+    't-privacy':'VIE PRIVÉE',
+    'p-overview-1':"<strong>00 Protocol</strong> est un écosystème décentralisé construit sur Bitcoin Cash. Zéro serveur central, zéro custody, zéro frontières. Chaque application fonctionne directement dans le navigateur, en peer-to-peer.",
+    'p-overview-2':"Toutes les clés privées restent dans votre navigateur ou sur votre hardware wallet. Aucune donnée n'est envoyée à un tiers. Les transactions BCH sont diffusées directement sur le réseau via des relais publics.",
+    'callout-overview':'Aucun compte. Aucun serveur. Aucun KYC. Votre clé privée = votre identité.',
+    'p-arch-1':"00 Protocol est une Progressive Web App (PWA) composée de fichiers HTML/JS statiques. Pas de backend, pas de build — tout tourne côté client et fonctionne hors ligne une fois installé.",
+    'callout-arch':"Certaines fonctions s'intègrent à des protocoles externes : 00 DEX redirige vers <strong>Cauldron</strong> pour les swaps CashToken, 00 Loan vers <strong>Moria</strong> pour le lending, et 00 Pay utilise <strong>THORChain</strong> pour les envois cross-chain. Toutes les opérations core (wallet, messagerie, swaps atomiques) sont entièrement natives — aucun intermédiaire.",
+    'app-wallet-desc':"Wallet multi-chain non-custodial. BCH, BTC, ETH. Ledger HW, import seed, adresses stealth, coin control. Dérivation HD BIP32/44.",
+    'app-chat-desc':"Messagerie chiffrée E2E double canal. BCH OP_RETURN (protocole CCSH) + sync Nostr. XOR one-time pad + AES-256-GCM.",
+    'app-swap-desc':"Swaps atomiques peer-to-peer natifs BCH ↔ BTC. Contrats HTLC, orderbook Nostr, aucun intermédiaire.",
+    'app-pay-desc':"Terminal de paiement BCH. Factures QR, surveillance de paiement, support Ledger. Envoi cross-chain via THORChain (externe).",
+    'app-onion-desc':"Paiements HTLC routés en oignon. Routage chiffré multi-hop via relais Nostr. Déchiffrement secp256k1 par couche.",
+    'app-id-desc':"Identité Nostr auto-souveraine. Profils signés Schnorr, avatars déterministes. Votre clé = votre identité.",
+    'app-mesh-desc':"Moniteur de réseau Nostr. Répertoire de relais, vérification de latence, état de connexion.",
+    'app-vault-desc':"Coffres multisig avec signatures m-sur-n. MuSig2 (schnorr), gestion des cosignataires.",
+    'app-fusion-desc':"CoinJoin collaboratif avec sorties stealth. Zéro OP_RETURN — totalement invisible on-chain. Shuffling chiffré en onion, montants variables, pair-à-pair via Nostr.",
+    'app-dex-desc':"Interface d'échange CashToken. Devis calculés localement, exécution via Cauldron (lien externe).",
+    'app-loan-desc':"Calculateur de ratio de collatéral avec visualisation santé. Prêts via Moria (lien externe).",
+    'p-chat-1':"Chat utilise le protocole <strong>CCSH (Cash Chat Secure Hub)</strong> avec <strong>chiffrement double canal</strong>. Les messages sont découpés via un <strong>XOR one-time pad</strong> : la moitié on-chain via <strong>BCH OP_RETURN</strong> (max 220 bytes), l'autre moitié synchronisée via <strong>relais Nostr</strong>. Aucun canal seul ne révèle quoi que ce soit — sécurité informationnelle théorique (Shannon 1949).",
+    'p-chat-2':"Chaque message génère une <strong>paire de clés X25519 éphémère</strong> pour la confidentialité persistante. La clé privée éphémère et la clé publique du destinataire dérivent un secret partagé via <strong>ECDH</strong>. La clé AES est <strong>SHA-256(shared_secret)</strong>, puis le texte est chiffré avec <strong>AES-256-GCM</strong> (IV aléatoire de 12 bytes, tag de 128 bits). Le scan de la boîte de réception utilise <strong>Fulcrum/Electrum</strong> en WebSocket toutes les 10 secondes.",
+    'p-wallet-1':"Wallet multi-chain non-custodial (BCH, BTC, ETH) avec quatre modes d'accès :",
+    'wallet-step1':"<strong>Hardware (Ledger)</strong> — Connexion via WebHID. Scan BIP44 complet (gap limit 20, max 50). La clé privée ne quitte jamais le device.",
+    'wallet-step2':"<strong>Seed importé</strong> — Mnémonique BIP39 (12+ mots) ou seed hex 128 caractères. Dérivation HD complète : BCH, BTC, ETH, clés stealth depuis un seul seed.",
+    'wallet-step3':"<strong>Nouvelle clé</strong> — 256 bits via <code>crypto.getRandomValues()</code> (CSPRNG). Affichée une fois pour sauvegarde.",
+    'wallet-step4':"<strong>WalletConnect</strong> — Signature via wallet mobile via le protocole WalletConnect.",
+    'p-wallet-2':"Fonctionnalités : <strong>coin control</strong> (sélection manuelle des UTXOs), <strong>adresses stealth</strong> (ECDH + SHA256 point tweaking pour paiements privés), <strong>portfolio multi-chain</strong> avec prix live Kraken. UTXOs récupérés via <strong>Fulcrum/Electrum</strong> WebSocket. Construction et diffusion des transactions entièrement côté client.",
+    'p-pay-1':"Terminal de paiement avec deux modes : <strong>Recevoir</strong> (génération native de factures QR + surveillance via Fulcrum) et <strong>Envoyer</strong> (cross-chain via THORChain — redirige vers le protocole THORChain pour BCH → BTC, ETH, USDT…). Supporte <strong>CashAddr</strong>, <strong>QR codes</strong> et signature <strong>Ledger</strong>.",
+    'callout-pay':"<span class=\"badge cyan\">LEDGER</span> Sur 00 Pay, la clé publique est lue directement depuis le device. La signature se fait on-device. Note : l'app BCH du Ledger rejette les outputs OP_RETURN, les swaps THORChain cross-chain nécessitent un wallet logiciel.",
+    'callout-pay-thor':"<span class=\"badge cyan\">THORCHAIN</span> L'onglet SEND permet d'échanger des BCH vers n'importe quel asset THORChain (BTC, ETH, USDT…) via routage memo vers le vault THORChain. Taux via API Midgard. Wallet logiciel uniquement.",
+    'p-dex-1':"Interface pour le <strong>Cauldron AMM</strong> (BCH ↔ CashTokens). Les listes de tokens et données de pools sont récupérées depuis l'indexeur Cauldron ; les devis (slippage, 0.3% LP fee) sont calculés côté client. <strong>L'exécution des swaps redirige vers <code>app.cauldron.quest</code></strong> (externe). Les swaps cross-chain (BCH ↔ BTC, ETH…) sont gérés séparément dans <strong>00 Pay</strong> via THORChain.",
+    'p-ledger-1':"00 Protocol supporte nativement les Ledger Nano S, Nano X, Nano S+, Stax, Flex et Apex P via <strong>WebHID</strong> (Chrome/Edge uniquement).",
+    'callout-ledger':"<span class=\"badge cyan\">PRÉREQUIS</span> Ouvrir l'application <strong>Bitcoin Cash</strong> sur le Ledger avant de connecter.",
+    'p-ledger-2':"La communication utilise le protocole <strong>APDU</strong> de Ledger encapsulé dans des paquets HID de 64 bytes :",
+    'p-ledger-3':"Le fichier <strong>ledger.js</strong> expose une API publique :",
+    'p-bip44-1':"Un wallet Ledger BCH peut avoir des fonds répartis sur des dizaines d'adresses (chemin <code>m/44'/145'/0'/0/k</code>). 00 Protocol scanne automatiquement toutes les adresses utilisées.",
+    'p-bip44-2':"Chaque UTXO est taggé avec son chemin de dérivation et sa clé publique. Lors d'une transaction, chaque input est signé avec le bon chemin Ledger.",
+    'callout-bip44':"En pratique, un wallet avec 42+ adresses utilisées (cas réel : ~87 BCH) est entièrement supporté — le scan prend quelques secondes.",
+    'p-protocol-1':"<strong>CCSH (Cash Chat Secure Hub)</strong> est le protocole de messagerie de 00 Protocol. Les messages sont chiffrés de bout en bout et embarqués dans des transactions <strong>BCH OP_RETURN</strong> (max 220 bytes), envoyés directement à l'adresse BCH du destinataire. Le scan utilise les indexeurs <strong>Fulcrum/Electrum</strong> en WebSocket. 00 Mesh utilise les <strong>relais Nostr</strong> comme transport temps réel séparé.",
+    'p-bch-1':"00 Protocol utilise <strong>Bitcoin Cash (BCH)</strong> comme monnaie native pour les paiements, les frais, et l'identité on-chain.",
+    'p-bch-2':"Les frais sont estimés à <strong>2 sat/byte</strong> (minimum 300 sats). Estimation : 148 bytes/input + 34 bytes/output + 10 bytes overhead. La construction des transactions respecte le format <strong>BIP143</strong> (segwit-like sighash pour BCH REPLAY protection).",
+    'p-privacy-1':"00 Protocol est conçu pour minimiser les métadonnées et maximiser la vie privée :",
+    'priv-step1':"<strong>Aucun compte</strong> — pas d'email, pas de mot de passe, pas de profil stocké côté serveur.",
+    'priv-step2':"<strong>Aucun tracker</strong> — pas d'analytics, pas de cookies tiers, pas de CDN propriétaire (sauf Google Fonts).",
+    'priv-step3':"<strong>Clés locales</strong> — les clés privées ne quittent jamais le navigateur (ou le Ledger).",
+    'priv-step4':"<strong>Open source</strong> — tout le code est auditable directement depuis les DevTools.",
+    'priv-step5':"<strong>Offline-first</strong> — installable comme PWA, fonctionnel sans connexion pour les opérations locales.",
+    'callout-privacy':"Pour une vie privée maximale sur les transactions BCH, utilisez <strong>CashFusion</strong> avant d'envoyer des fonds via 00 Wallet.",
+    'nav-s5':'SÉCURITÉ',
+    'nav-security':'Sécurité Wallet','nav-key-import':'Import de clés','nav-key-gen':'Génération de clés',
+    'nav-vault':'Chiffrement du coffre','nav-derivation':'Dérivation de clés','nav-session':'Session & Unlock','nav-stealth':'Adresses furtives',
+    't-security':'SÉCURITÉ DU WALLET',
+    'p-sec-1':"<strong>00 Protocol</strong> est un wallet non-custodial. Vos clés privées sont générées, chiffrées et stockées entièrement dans votre navigateur. Aucun serveur ne voit jamais vos clés, votre mot de passe ou votre phrase mnémonique.",
+    'p-sec-2':'Le modèle de sécurité repose sur <strong>quatre couches</strong> :',
+    'sec-layer1':"<strong>Aléa cryptographique</strong> — Les clés sont générées via le CSPRNG natif du navigateur (<code>crypto.getRandomValues</code>), alimenté par le pool d'entropie du système.",
+    'sec-layer2':'<strong>Dérivation standard</strong> — Seed BIP39 → clé maître BIP32 → chemins BIP44. Les mêmes standards utilisés par Ledger, Trezor et tous les grands wallets.',
+    'sec-layer3':'<strong>Chiffrement militaire du coffre</strong> — Vos clés sont chiffrées au repos avec AES-256-GCM, via une clé dérivée de votre mot de passe par PBKDF2-SHA256 avec 200 000 itérations.',
+    'sec-layer4':'<strong>Bibliothèques cryptographiques auditées</strong> — Toutes les opérations crypto utilisent <code>@noble/curves</code> et <code>@noble/hashes</code> de Paul Miller — auditées, sans dépendance, implémentations JavaScript pures.',
+    'callout-sec':"Chaque ligne de code est auditable. Ouvrez DevTools → Sources → wallet.html. Pas de build, pas de minification, pas de backend caché.",
+    't-key-import':'IMPORT DE CLÉS',
+    'p-import-1':"Quand vous importez un wallet, vous fournissez soit un <strong>mnémonique BIP39</strong> (12 ou 24 mots) soit un <strong>seed hex brut de 128 caractères</strong>. Voici exactement ce qui se passe, étape par étape :",
+    'import-step1':'<strong>Validation</strong> — L\'app vérifie qu\'un seed est fourni, que le mot de passe fait 8+ caractères et que les deux champs correspondent.',
+    'import-step2':'<strong>Détection du seed</strong> — Si l\'entrée est une chaîne hex de 128 caractères, elle est utilisée directement comme seed 64 bytes. Sinon, elle est traitée comme phrase mnémonique BIP39.',
+    'import-step3':'<strong>Dérivation BIP39</strong> — Le mnémonique est normalisé (minuscules, espaces simples), puis passé dans <strong>PBKDF2-SHA512</strong> avec le sel "mnemonic" et 2 048 itérations pour produire un seed maître de 64 bytes. C\'est le standard BIP39 utilisé par Ledger, Trezor et tous les wallets HD.',
+    'import-step4':'<strong>Dérivation des clés</strong> — Le seed de 64 bytes passe par BIP32 + BIP44 pour dériver votre clé privée BCH (voir <a href="#derivation">Dérivation</a>).',
+    'import-step5':'<strong>Chiffrement du coffre</strong> — Les clés dérivées sont chiffrées avec votre mot de passe via AES-256-GCM et stockées dans <code>localStorage</code> (voir <a href="#vault">Coffre</a>).',
+    'import-step6':'<strong>Création de session</strong> — Un jeton de session de 30 minutes est créé pour ne pas avoir à ressaisir votre mot de passe à chaque navigation.',
+    'callout-import':'<span class="badge cyan">BIP39</span> C\'est exactement le même algorithme utilisé par Ledger, Trezor, Electrum et tous les wallets majeurs. Votre phrase mnémonique est totalement compatible — importez-la n\'importe où.',
+    't-key-gen':'GÉNÉRATION DE CLÉS',
+    'p-gen-1':"Quand vous cliquez <strong>\"Générer une nouvelle clé\"</strong>, l'app crée une nouvelle clé privée via le générateur aléatoire cryptographique du navigateur.",
+    'gen-step1':'<strong>Génération aléatoire</strong> — 32 bytes (256 bits) sont tirés de <code>crypto.getRandomValues()</code>, alimenté par le pool d\'entropie du système (/dev/urandom sur Linux, CryptGenRandom sur Windows, SecRandomCopyBytes sur macOS).',
+    'gen-step2':'<strong>Affichage hex</strong> — Les 32 bytes sont convertis en chaîne hex de 64 caractères et affichés dans le champ seed. <strong>C\'est votre seule chance de la copier.</strong>',
+    'gen-step3':'<strong>Même flux d\'import</strong> — Quand vous cliquez "Import", le seed hex suit exactement le même chemin de dérivation et chiffrement (voir <a href="#key-import">Import de clés</a>).',
+    'callout-gen':'256 bits d\'entropie = 2²⁵⁶ clés possibles ≈ 1,16 × 10⁷⁷. Il y a environ 10⁸⁰ atomes dans l\'univers observable. La probabilité que quelqu\'un génère la même clé est essentiellement nulle — même avec tous les ordinateurs de la Terre pendant des milliards d\'années.',
+    't-vault':'CHIFFREMENT DU COFFRE',
+    'p-vault-1':"Vos clés privées ne sont <strong>jamais stockées en clair</strong>. Elles sont chiffrées avec <strong>AES-256-GCM</strong> avant d'être sauvegardées dans <code>localStorage</code>. Même si quelqu'un copie vos données navigateur, il ne peut pas accéder à vos clés sans votre mot de passe.",
+    'vault-step1':'<strong>Génération du sel</strong> — 16 bytes aléatoires sont générés pour le sel PBKDF2 (unique par chiffrement).',
+    'vault-step2':'<strong>Génération de l\'IV</strong> — 12 bytes aléatoires sont générés pour le vecteur d\'initialisation AES-GCM (unique par chiffrement).',
+    'vault-step3':'<strong>Étirement de clé</strong> — Votre mot de passe passe par <strong>PBKDF2-SHA256 avec 200 000 itérations</strong> pour dériver une clé AES de 256 bits. Cela rend le brute-force extrêmement coûteux — chaque essai de mot de passe nécessite 200 000 opérations de hash.',
+    'vault-step4':'<strong>Chiffrement</strong> — Vos clés sont sérialisées en JSON puis chiffrées avec <strong>AES-256-GCM</strong>. Le mode GCM assure à la fois la confidentialité et l\'authentification — toute altération est détectée.',
+    'vault-step5':'<strong>Stockage</strong> — Le blob chiffré est stocké dans <code>00wallet_vault</code> dans localStorage. Il contient : version, sel hex, IV hex et ciphertext hex. <strong>Aucune clé en clair n\'est jamais écrite sur disque.</strong>',
+    'callout-vault':'<span class="badge cyan">AES-256-GCM</span> Le même chiffre utilisé par les gouvernements, les banques et les systèmes militaires. Avec 200 000 itérations PBKDF2, même un mot de passe "12345678" prendrait des années à brute-forcer sur du matériel spécialisé.',
+    't-derivation':'DÉRIVATION DE CLÉS',
+    'p-deriv-1':"À partir d'un unique seed de 64 bytes, l'app dérive toutes vos clés blockchain via le standard <strong>BIP32/BIP44</strong> — la même dérivation hiérarchique déterministe (HD) utilisée par tous les grands wallets.",
+    'deriv-step1':'<strong>Clé maître</strong> — Le seed de 64 bytes est hashé avec <code>HMAC-SHA512(clé="Bitcoin seed", data=seed)</code>. 32 bytes gauche = clé privée maître, 32 bytes droite = code chaîne maître.',
+    'deriv-step2':'<strong>Chemin BIP44</strong> — Dérivation enfant durcie à <code>m/44\'/145\'/0\'</code> (purpose 44 = BIP44, coin 145 = BCH, account 0). Cela crée le nœud de compte d\'où toutes les adresses sont dérivées.',
+    'deriv-step3':'<strong>Clé BCH</strong> — Chaîne 0 (externe), index 0 : <code>m/44\'/145\'/0\'/0/0</code> → votre adresse BCH principale.',
+    'deriv-step4':'<strong>Clés stealth</strong> — Chaîne 2, index 0+1 : clé de scan + clé de dépense pour les adresses furtives (voir <a href="#stealth">Adresses furtives</a>).',
+    'deriv-step5':'<strong>Clé BTC</strong> — Chaîne 3, index 0 : dérivée pour les swaps cross-chain via THORChain.',
+    'deriv-step6':'<strong>Clé ETH</strong> — Chaîne 4, index 0 : dérivée pour les opérations cross-chain.',
+    'callout-deriv':'Un seed, toutes vos clés. BCH, BTC, ETH et adresses stealth sont toutes mathématiquement dérivées du même seed maître. Sauvegardez un seul seed → récupérez tout.',
+    't-session':'SESSION & DÉVERROUILLAGE',
+    'p-session-1':"Quand vous déverrouillez votre wallet (ou en importez un nouveau), un <strong>jeton de session</strong> est créé pour ne pas avoir à re-entrer votre mot de passe à chaque navigation entre pages.",
+    'session-step1':'<strong>Création du jeton</strong> — Après déchiffrement réussi, l\'app stocke un jeton de session dans <code>localStorage</code> avec la clé <code>00_session_auth</code>. Il contient le mot de passe encodé en base64 et un timestamp.',
+    'session-step2':'<strong>TTL de 30 minutes</strong> — La session expire après 30 minutes d\'inactivité. Chaque chargement de page vérifie le timestamp : si plus de 30 minutes se sont écoulées, vous devez déverrouiller à nouveau.',
+    'session-step3':'<strong>Rafraîchissement auto</strong> — Quand une page se charge et que la session est encore valide, le TTL est rafraîchi pour rester connecté tant que vous utilisez activement l\'app.',
+    'session-step4':'<strong>Partage cross-page</strong> — La session fonctionne sur toutes les pages 00 Protocol (Wallet, Pay, Chat, DEX) via localStorage, partagé sur la même origine.',
+    'callout-session':'Fermez l\'onglet → session détruite. Attendez 30 minutes → session expirée. La session n\'existe que dans la mémoire de votre navigateur. Pas de serveur, pas de cookie, pas de tracking distant.',
+    't-stealth':'ADRESSES FURTIVES',
+    'p-stealth-1':"Les <strong>adresses furtives</strong> offrent une confidentialité maximale pour recevoir des paiements. Chaque paiement crée une <strong>adresse unique à usage unique</strong> que seul le destinataire peut détecter et dépenser. Même si quelqu'un connaît votre clé publique stealth, il ne peut pas relier les paiements entrants entre eux.",
+    'stealth-step1':'<strong>Paire de clés</strong> — Deux clés sont dérivées de votre seed : une <strong>clé de scan</strong> (<code>m/44\'/145\'/0\'/2/0</code>) et une <strong>clé de dépense</strong> (<code>m/44\'/145\'/0\'/2/1</code>). La clé publique de scan est partagée ; la clé privée de dépense ne quitte jamais votre appareil.',
+    'stealth-step2':'<strong>Secret partagé ECDH</strong> — L\'expéditeur calcule un secret partagé avec sa clé privée et la clé publique de scan du destinataire : <code>shared = ECDH(sender_priv, recipient_scan_pub)</code>.',
+    'stealth-step3':'<strong>Dérivation du tweak</strong> — Un scalaire tweak est calculé : <code>c = SHA256(SHA256(shared_x) || outpoint)</code>. Il est unique pour chaque transaction.',
+    'stealth-step4':'<strong>Adresse unique</strong> — La clé publique stealth est calculée par addition de points sur la courbe elliptique : <code>P = B_spend + c*G</code>. Cela crée une adresse complètement nouvelle dont seul le propriétaire de la clé de dépense peut dériver la clé privée.',
+    'stealth-step5':'<strong>Dépense</strong> — Le destinataire dérive la clé de dépense : <code>priv = b_spend + c</code> (addition scalaire mod n). Seul le destinataire, qui connaît <code>b_spend</code>, peut calculer cela.',
+    'callout-stealth':'<span class="badge cyan">VIE PRIVÉE</span> Les adresses furtives brisent l\'analyse de liens on-chain. Un observateur de la blockchain voit une adresse aléatoire à usage unique — il ne peut pas la relier au wallet principal du destinataire ni à aucun autre paiement stealth.',
+  },
+  ES: {
+    'nav-s1':'RESUMEN','nav-s2':'APLICACIONES','nav-s3':'HARDWARE','nav-s4':'PROTOCOLOS',
+    'nav-intro':'Introducción','nav-arch':'Arquitectura','nav-apps':'Todas las apps',
+    'nav-chat':'00 Chat','nav-wallet':'00 Wallet','nav-swap':'00 Swap','nav-onion':'00 Onion','nav-pay':'00 Pay','nav-dex':'00 DEX','nav-loan':'00 Loan','nav-id':'00 ID','nav-mesh':'00 Mesh','nav-vault-app':'00 Vault','nav-fusion':'00 Joiner',
+    'nav-ledger':'Integración Ledger','nav-bip44':'BIP44 Escaneo',
+    'nav-protocol':'Protocolo CCSH','nav-bch':'Bitcoin Cash','nav-privacy':'Privacidad',
+    't-privacy':'PRIVACIDAD',
+    'p-overview-1':'<strong>00 Protocol</strong> es un ecosistema descentralizado construido sobre Bitcoin Cash. Cero servidor central, cero custodia, cero fronteras. Cada aplicación funciona directamente en el navegador, de forma peer-to-peer.',
+    'p-overview-2':'Todas las claves privadas permanecen en tu navegador o en tu hardware wallet. Ningún dato se envía a terceros. Las transacciones BCH se transmiten directamente a la red a través de relés públicos.',
+    'callout-overview':'Sin cuenta. Sin servidor. Sin KYC. Tu clave privada = tu identidad.',
+    'p-arch-1':'00 Protocol es una Progressive Web App (PWA) de archivos HTML/JS estáticos. Sin backend, sin compilación — todo ejecuta en el cliente y funciona offline una vez instalado.',
+    'callout-arch':'Algunas funciones se integran con protocolos externos: 00 DEX redirige a <strong>Cauldron</strong> para swaps CashToken, 00 Loan a <strong>Moria</strong> para préstamos, y 00 Pay usa <strong>THORChain</strong> para envíos cross-chain. Todas las operaciones core (wallet, mensajería, swaps atómicos) son completamente nativas — sin intermediario.',
+    'app-wallet-desc':'Cartera multi-chain no custodial. BCH, BTC, ETH. Ledger HW, import seed, direcciones stealth, coin control. Derivación HD BIP32/44.',
+    'app-chat-desc':'Mensajería cifrada E2E de doble canal. BCH OP_RETURN (protocolo CCSH) + sync Nostr. XOR one-time pad + AES-256-GCM.',
+    'app-swap-desc':'Swaps atómicos peer-to-peer nativos BCH ↔ BTC. Contratos HTLC, orderbook Nostr, sin intermediario.',
+    'app-pay-desc':'Terminal de pago BCH. Facturas QR, vigilancia de pago, soporte Ledger. Envío cross-chain vía THORChain (externo).',
+    'app-onion-desc':'Pagos HTLC con enrutamiento cebolla. Enrutamiento cifrado multi-hop vía relés Nostr. Descifrado secp256k1 por capa.',
+    'app-id-desc':'Identidad Nostr auto-soberana. Perfiles firmados con Schnorr, avatares deterministas. Tu clave = tu identidad.',
+    'app-mesh-desc':'Monitor de red Nostr. Directorio de relés, verificación de latencia, estado de conexión.',
+    'app-vault-desc':'Bóvedas multisig con firmas m-de-n. MuSig2 (schnorr), gestión de cosignatarios.',
+    'app-fusion-desc':'CoinJoin colaborativo con salidas stealth. Cero OP_RETURN — completamente invisible on-chain. Shuffling cifrado en onion, montos variables, peer-to-peer via Nostr.',
+    'app-dex-desc':'Interfaz de intercambio CashToken. Cotizaciones calculadas localmente, ejecución vía Cauldron (enlace externo).',
+    'app-loan-desc':'Calculadora de ratio de colateral con visualización de salud. Préstamos vía Moria (enlace externo).',
+    'p-chat-1':'Chat usa el protocolo <strong>CCSH (Cash Chat Secure Hub)</strong> con <strong>cifrado de doble canal</strong>. Los mensajes se dividen con un <strong>XOR one-time pad</strong>: la mitad on-chain vía <strong>BCH OP_RETURN</strong> (máx 220 bytes), la otra mitad sincronizada vía <strong>relés Nostr</strong>. Ningún canal solo revela nada — seguridad teórica de la información (Shannon 1949).',
+    'p-chat-2':'Cada mensaje genera un <strong>par de claves X25519 efímeras</strong> para confidencialidad persistente. La clave privada efímera y la clave pública del destinatario derivan un secreto compartido vía <strong>ECDH</strong>. La clave AES es <strong>SHA-256(shared_secret)</strong>, luego el texto se cifra con <strong>AES-256-GCM</strong> (IV aleatorio de 12 bytes, tag de 128 bits). El escaneo usa <strong>Fulcrum/Electrum</strong> WebSocket cada 10 segundos.',
+    'p-wallet-1':'Cartera multi-chain no custodial (BCH, BTC, ETH) con cuatro modos de acceso:',
+    'wallet-step1':'<strong>Hardware (Ledger)</strong> — Conexión WebHID. Escaneo BIP44 completo (gap limit 20, máx 50). La clave privada nunca sale del dispositivo.',
+    'wallet-step2':'<strong>Seed importado</strong> — Mnemónico BIP39 (12+ palabras) o seed hex 128 caracteres. Derivación HD completa: BCH, BTC, ETH, claves stealth desde un solo seed.',
+    'wallet-step3':'<strong>Nueva clave</strong> — 256 bits vía <code>crypto.getRandomValues()</code> (CSPRNG). Mostrada una vez para respaldo.',
+    'wallet-step4':'<strong>WalletConnect</strong> — Firma vía wallet móvil con protocolo WalletConnect.',
+    'p-wallet-2':'Funcionalidades: <strong>coin control</strong> (selección manual de UTXOs), <strong>direcciones stealth</strong> (ECDH + SHA256 point tweaking para pagos privados), <strong>portfolio multi-chain</strong> con precios live Kraken. UTXOs vía <strong>Fulcrum/Electrum</strong> WebSocket. Construcción y difusión de transacciones completamente del lado del cliente.',
+    'p-pay-1':'Terminal de pago con dos modos: <strong>Recibir</strong> (generación nativa de facturas QR + vigilancia vía Fulcrum) y <strong>Enviar</strong> (cross-chain vía THORChain — redirige al protocolo THORChain para BCH → BTC, ETH, USDT…). Soporta <strong>CashAddr</strong>, <strong>QR codes</strong> y firma <strong>Ledger</strong>.',
+    'callout-pay':'<span class=\"badge cyan\">LEDGER</span> En 00 Pay, la clave pública se lee directamente del dispositivo. La firma es on-device. Nota: la app BCH del Ledger rechaza outputs OP_RETURN, los swaps THORChain cross-chain requieren wallet software.',
+    'callout-pay-thor':'<span class=\"badge cyan\">THORCHAIN</span> La pestaña SEND permite intercambiar BCH por cualquier activo THORChain (BTC, ETH, USDT…) vía enrutamiento memo al vault THORChain. Tasas vía API Midgard. Solo wallet software.',
+    'p-dex-1':'Interfaz para el <strong>Cauldron AMM</strong> (BCH ↔ CashTokens). Listas de tokens y datos de pools desde el indexador Cauldron; cotizaciones (slippage, 0.3% LP fee) calculadas del lado del cliente. <strong>La ejecución de swaps redirige a <code>app.cauldron.quest</code></strong> (externo). Los swaps cross-chain (BCH ↔ BTC, ETH…) se gestionan en <strong>00 Pay</strong> vía THORChain.',
+    'p-ledger-1':'00 Protocol soporta nativamente Ledger Nano S, Nano X, Nano S+, Stax, Flex y Apex P vía <strong>WebHID</strong> (solo Chrome/Edge).',
+    'callout-ledger':'<span class="badge cyan">PREREQUISITO</span> Abrir la aplicación <strong>Bitcoin Cash</strong> en el Ledger antes de conectar.',
+    'p-ledger-2':'La comunicación usa el protocolo <strong>APDU</strong> de Ledger encapsulado en paquetes HID de 64 bytes:',
+    'p-ledger-3':'El archivo <strong>ledger.js</strong> expone una API pública:',
+    'p-bip44-1':"Una cartera Ledger BCH puede tener fondos repartidos en decenas de direcciones (ruta <code>m/44'/145'/0'/0/k</code>). 00 Protocol escanea automáticamente todas las usadas.",
+    'p-bip44-2':'Cada UTXO está etiquetado con su ruta de derivación y clave pública. Durante una transacción, cada input se firma con la ruta Ledger correcta.',
+    'callout-bip44':'En la práctica, una cartera con 42+ direcciones usadas (caso real: ~87 BCH) está totalmente soportada — el escaneo toma unos segundos.',
+    'p-protocol-1':'<strong>CCSH (Cash Chat Secure Hub)</strong> es el protocolo de mensajería de 00 Protocol. Los mensajes se cifran de extremo a extremo y se embeben en transacciones <strong>BCH OP_RETURN</strong> (máx 220 bytes), enviados directamente a la dirección BCH del destinatario. El escaneo usa indexadores <strong>Fulcrum/Electrum</strong> WebSocket. 00 Mesh usa <strong>relés Nostr</strong> como transporte separado en tiempo real.',
+    'p-bch-1':'00 Protocol usa <strong>Bitcoin Cash (BCH)</strong> como moneda nativa para pagos, comisiones e identidad on-chain.',
+    'p-bch-2':'Las comisiones se estiman a <strong>2 sat/byte</strong> (mínimo 300 sats). Estimación: 148 bytes/input + 34 bytes/output + 10 bytes overhead. La construcción de transacciones sigue el formato <strong>BIP143</strong> (sighash tipo segwit para protección BCH REPLAY).',
+    'p-privacy-1':'00 Protocol está diseñado para minimizar metadatos y maximizar la privacidad:',
+    'priv-step1':'<strong>Sin cuenta</strong> — sin email, sin contraseña, sin perfil en servidor.',
+    'priv-step2':'<strong>Sin rastreadores</strong> — sin analítica, sin cookies de terceros, sin CDN propietario (excepto Google Fonts).',
+    'priv-step3':'<strong>Claves locales</strong> — las claves privadas nunca salen del navegador (o del Ledger).',
+    'priv-step4':'<strong>Código abierto</strong> — todo el código es auditable directamente desde DevTools.',
+    'priv-step5':'<strong>Offline-first</strong> — instalable como PWA, funcional sin conexión para operaciones locales.',
+    'callout-privacy':'Para máxima privacidad en transacciones BCH, use <strong>CashFusion</strong> antes de enviar fondos via 00 Wallet.',
+    'nav-s5':'SEGURIDAD',
+    'nav-security':'Seguridad Wallet','nav-key-import':'Importar claves','nav-key-gen':'Generación de claves',
+    'nav-vault':'Cifrado del cofre','nav-derivation':'Derivación de claves','nav-session':'Sesión & Desbloqueo','nav-stealth':'Direcciones sigilosas',
+    't-security':'SEGURIDAD DEL WALLET',
+    'p-sec-1':'<strong>00 Protocol</strong> es un wallet no custodial. Tus claves privadas se generan, cifran y almacenan completamente en tu navegador. Ningún servidor ve jamás tus claves, tu contraseña o tu frase semilla.',
+    'p-sec-2':'El modelo de seguridad se basa en <strong>cuatro capas</strong>:',
+    'sec-layer1':'<strong>Aleatoriedad criptográfica</strong> — Las claves se generan usando el CSPRNG nativo del navegador (<code>crypto.getRandomValues</code>), alimentado por el pool de entropía del SO.',
+    'sec-layer2':'<strong>Derivación estándar</strong> — Seed BIP39 → clave maestra BIP32 → rutas BIP44. Los mismos estándares usados por Ledger, Trezor y todos los wallets principales.',
+    'sec-layer3':'<strong>Cifrado militar del cofre</strong> — Tus claves se cifran en reposo con AES-256-GCM, usando una clave derivada de tu contraseña vía PBKDF2-SHA256 con 200.000 iteraciones.',
+    'sec-layer4':'<strong>Bibliotecas criptográficas auditadas</strong> — Todas las operaciones crypto usan <code>@noble/curves</code> y <code>@noble/hashes</code> de Paul Miller — auditadas, sin dependencias, implementaciones JavaScript puras.',
+    'callout-sec':'Cada línea de código es auditable. Abre DevTools → Sources → wallet.html. Sin compilación, sin minificación, sin backend oculto.',
+    't-key-import':'IMPORTAR CLAVES',
+    'p-import-1':'Cuando importas un wallet, proporcionas un <strong>mnemónico BIP39</strong> (12 o 24 palabras) o un <strong>seed hex de 128 caracteres</strong>. Esto es exactamente lo que pasa, paso a paso:',
+    'import-step1':'<strong>Validación</strong> — La app verifica que hay un seed, que la contraseña tiene 8+ caracteres y que ambos campos coinciden.',
+    'import-step2':'<strong>Detección del seed</strong> — Si la entrada es una cadena hex de 128 caracteres, se usa directamente como seed de 64 bytes. Si no, se trata como frase mnemónica BIP39.',
+    'import-step3':'<strong>Derivación BIP39</strong> — El mnemónico se normaliza (minúsculas, espacios simples), luego pasa por <strong>PBKDF2-SHA512</strong> con sal "mnemonic" y 2.048 iteraciones para producir un seed maestro de 64 bytes. Es el estándar BIP39 usado por Ledger, Trezor y todos los wallets HD.',
+    'import-step4':'<strong>Derivación de claves</strong> — El seed de 64 bytes pasa por BIP32 + BIP44 para derivar tu clave privada BCH (ver <a href="#derivation">Derivación</a>).',
+    'import-step5':'<strong>Cifrado del cofre</strong> — Las claves derivadas se cifran con tu contraseña vía AES-256-GCM y se almacenan en <code>localStorage</code> (ver <a href="#vault">Cofre</a>).',
+    'import-step6':'<strong>Creación de sesión</strong> — Se crea un token de sesión de 30 minutos para no tener que volver a escribir tu contraseña en cada navegación.',
+    'callout-import':'<span class="badge cyan">BIP39</span> Es exactamente el mismo algoritmo usado por Ledger, Trezor, Electrum y todos los wallets principales. Tu frase semilla es totalmente compatible — impórtala en cualquier lugar.',
+    't-key-gen':'GENERACIÓN DE CLAVES',
+    'p-gen-1':'Cuando haces clic en <strong>"Generar nueva clave"</strong>, la app crea una nueva clave privada usando el generador aleatorio criptográfico del navegador.',
+    'gen-step1':'<strong>Generación aleatoria</strong> — 32 bytes (256 bits) se extraen de <code>crypto.getRandomValues()</code>, respaldado por el pool de entropía del SO (/dev/urandom en Linux, CryptGenRandom en Windows, SecRandomCopyBytes en macOS).',
+    'gen-step2':'<strong>Visualización hex</strong> — Los 32 bytes se convierten en una cadena hex de 64 caracteres y se muestran en el campo seed. <strong>Esta es tu única oportunidad de copiarla.</strong>',
+    'gen-step3':'<strong>Mismo flujo de import</strong> — Cuando haces clic en "Import", el seed hex sigue exactamente el mismo camino de derivación y cifrado (ver <a href="#key-import">Importar claves</a>).',
+    'callout-gen':'256 bits de entropía = 2²⁵⁶ claves posibles ≈ 1,16 × 10⁷⁷. Hay aproximadamente 10⁸⁰ átomos en el universo observable. La probabilidad de que alguien genere la misma clave es esencialmente cero — incluso con todos los ordenadores de la Tierra durante miles de millones de años.',
+    't-vault':'CIFRADO DEL COFRE',
+    'p-vault-1':'Tus claves privadas <strong>nunca se almacenan en texto plano</strong>. Se cifran con <strong>AES-256-GCM</strong> antes de guardarse en <code>localStorage</code>. Aunque alguien copie los datos de tu navegador, no puede acceder a tus claves sin tu contraseña.',
+    'vault-step1':'<strong>Generación de sal</strong> — 16 bytes aleatorios se generan para la sal PBKDF2 (única por cifrado).',
+    'vault-step2':'<strong>Generación del IV</strong> — 12 bytes aleatorios se generan para el vector de inicialización AES-GCM (único por cifrado).',
+    'vault-step3':'<strong>Estiramiento de clave</strong> — Tu contraseña pasa por <strong>PBKDF2-SHA256 con 200.000 iteraciones</strong> para derivar una clave AES de 256 bits. Esto hace el brute-force extremadamente costoso — cada intento requiere 200.000 operaciones de hash.',
+    'vault-step4':'<strong>Cifrado</strong> — Tus claves se serializan a JSON y se cifran con <strong>AES-256-GCM</strong>. El modo GCM proporciona confidencialidad y autenticación — cualquier manipulación se detecta.',
+    'vault-step5':'<strong>Almacenamiento</strong> — El blob cifrado se guarda como <code>00wallet_vault</code> en localStorage. Contiene: versión, sal hex, IV hex y ciphertext hex. <strong>Ningún material de clave en texto plano se escribe en disco.</strong>',
+    'callout-vault':'<span class="badge cyan">AES-256-GCM</span> El mismo cifrado usado por gobiernos, bancos y sistemas militares. Con 200.000 iteraciones PBKDF2, incluso una contraseña "12345678" tardaría años en forzarse en hardware especializado.',
+    't-derivation':'DERIVACIÓN DE CLAVES',
+    'p-deriv-1':'A partir de un único seed de 64 bytes, la app deriva todas tus claves blockchain usando el estándar <strong>BIP32/BIP44</strong> — la misma derivación jerárquica determinista (HD) usada por todos los wallets principales.',
+    'deriv-step1':'<strong>Clave maestra</strong> — El seed de 64 bytes se hashea con <code>HMAC-SHA512(clave="Bitcoin seed", data=seed)</code>. 32 bytes izquierda = clave privada maestra, 32 bytes derecha = código cadena maestro.',
+    'deriv-step2':'<strong>Ruta BIP44</strong> — Derivación hija endurecida en <code>m/44\'/145\'/0\'</code> (propósito 44 = BIP44, moneda 145 = BCH, cuenta 0). Crea el nodo de cuenta del que se derivan todas las direcciones.',
+    'deriv-step3':'<strong>Clave BCH</strong> — Cadena 0 (externa), índice 0: <code>m/44\'/145\'/0\'/0/0</code> → tu dirección BCH principal.',
+    'deriv-step4':'<strong>Claves stealth</strong> — Cadena 2, índice 0+1: clave de escaneo + clave de gasto para direcciones sigilosas (ver <a href="#stealth">Direcciones sigilosas</a>).',
+    'deriv-step5':'<strong>Clave BTC</strong> — Cadena 3, índice 0: derivada para swaps cross-chain vía THORChain.',
+    'deriv-step6':'<strong>Clave ETH</strong> — Cadena 4, índice 0: derivada para operaciones cross-chain.',
+    'callout-deriv':'Un seed, todas tus claves. BCH, BTC, ETH y direcciones stealth se derivan matemáticamente del mismo seed maestro. Respalda un solo seed → recupera todo.',
+    't-session':'SESIÓN & DESBLOQUEO',
+    'p-session-1':'Cuando desbloqueas tu wallet (o importas uno nuevo), se crea un <strong>token de sesión</strong> para no tener que volver a escribir tu contraseña cada vez que navegas entre páginas.',
+    'session-step1':'<strong>Creación del token</strong> — Tras el descifrado exitoso, la app almacena un token de sesión en <code>localStorage</code> con la clave <code>00_session_auth</code>. Contiene la contraseña codificada en base64 y un timestamp.',
+    'session-step2':'<strong>TTL de 30 minutos</strong> — La sesión expira tras 30 minutos de inactividad. Cada carga de página verifica el timestamp: si han pasado más de 30 minutos, debes desbloquear de nuevo.',
+    'session-step3':'<strong>Auto-refresco</strong> — Cuando una página se carga y la sesión es válida, el TTL se refresca para mantenerte conectado mientras usas la app activamente.',
+    'session-step4':'<strong>Compartido cross-page</strong> — La sesión funciona en todas las páginas 00 Protocol (Wallet, Pay, Chat, DEX) vía localStorage, compartido en el mismo origen.',
+    'callout-session':'Cierra la pestaña → sesión destruida. Espera 30 minutos → sesión expirada. La sesión solo existe en la memoria de tu navegador. Sin servidor, sin cookie, sin rastreo remoto.',
+    't-stealth':'DIRECCIONES SIGILOSAS',
+    'p-stealth-1':'Las <strong>direcciones sigilosas</strong> ofrecen máxima privacidad para recibir pagos. Cada pago crea una <strong>dirección única de un solo uso</strong> que solo el destinatario puede detectar y gastar. Aunque alguien conozca tu clave pública stealth, no puede vincular los pagos entrantes entre sí.',
+    'stealth-step1':'<strong>Par de claves</strong> — Dos claves se derivan de tu seed: una <strong>clave de escaneo</strong> (<code>m/44\'/145\'/0\'/2/0</code>) y una <strong>clave de gasto</strong> (<code>m/44\'/145\'/0\'/2/1</code>). La clave pública de escaneo se comparte; la clave privada de gasto nunca sale de tu dispositivo.',
+    'stealth-step2':'<strong>Secreto compartido ECDH</strong> — El remitente calcula un secreto compartido con su clave privada y la clave pública de escaneo del destinatario: <code>shared = ECDH(sender_priv, recipient_scan_pub)</code>.',
+    'stealth-step3':'<strong>Derivación del tweak</strong> — Se calcula un escalar tweak: <code>c = SHA256(SHA256(shared_x) || outpoint)</code>. Es único para cada transacción.',
+    'stealth-step4':'<strong>Dirección única</strong> — La clave pública stealth se calcula por adición de puntos en la curva elíptica: <code>P = B_spend + c*G</code>. Crea una dirección completamente nueva que solo el propietario de la clave de gasto puede derivar.',
+    'stealth-step5':'<strong>Gasto</strong> — El destinatario deriva la clave de gasto: <code>priv = b_spend + c</code> (adición escalar mod n). Solo el destinatario, que conoce <code>b_spend</code>, puede calcular esto.',
+    'callout-stealth':'<span class="badge cyan">PRIVACIDAD</span> Las direcciones sigilosas rompen el análisis de vínculos on-chain. Un observador de la blockchain ve una dirección aleatoria de un solo uso — no puede vincularla al wallet principal del destinatario ni a ningún otro pago stealth.',
+  },
+  CN: {
+    'nav-s1':'概述','nav-s2':'应用','nav-s3':'硬件','nav-s4':'协议',
+    'nav-intro':'简介','nav-arch':'架构','nav-apps':'所有应用',
+    'nav-chat':'00 聊天','nav-wallet':'00 钱包','nav-pay':'00 支付','nav-dex':'00 DEX',
+    'nav-ledger':'Ledger 集成','nav-bip44':'BIP44 扫描',
+    'nav-protocol':'CCSH 协议','nav-bch':'比特币现金','nav-privacy':'隐私',
+    't-privacy':'隐私',
+    'p-overview-1':'<strong>00 Protocol</strong> 是基于比特币现金构建的去中心化生态系统。零中央服务器，零托管，零边界。每个应用直接在浏览器中运行，点对点。',
+    'p-overview-2':'所有私钥保留在您的浏览器或硬件钱包中。没有任何数据发送给第三方。BCH交易通过公共中继直接广播到网络。',
+    'callout-overview':'无账户。无服务器。无KYC。您的私钥=您的身份。',
+    'p-arch-1':'00 Protocol 是由静态 HTML/JS 文件组成的渐进式 Web 应用（PWA）。无后端，无构建步骤——一切在客户端运行，安装后可离线使用。',
+    'callout-arch':'部分功能集成外部协议：00 DEX 链接到 <strong>Cauldron</strong> 进行 CashToken 兑换，00 Loan 链接到 <strong>Moria</strong> 进行抵押贷款，00 Pay 使用 <strong>THORChain</strong> 进行跨链发送。所有核心操作（钱包、消息、原子交换）完全原生——无中间人。',
+    'app-wallet-desc':'非托管多链钱包。BCH、BTC、ETH。Ledger 硬件、种子导入、隐身地址、币控制。BIP32/44 HD 派生。',
+    'app-chat-desc':'双通道端对端加密消息。BCH OP_RETURN（CCSH 协议）+ Nostr 中继同步。XOR 一次性密码本 + AES-256-GCM。',
+    'app-swap-desc':'原生点对点原子交换 BCH ↔ BTC。HTLC 合约，Nostr 订单簿，无中间人。',
+    'app-pay-desc':'BCH 支付终端。二维码发票，支付监控，Ledger 支持。跨链发送通过 THORChain（外部）。',
+    'app-onion-desc':'洋葱路由 HTLC 支付。通过 Nostr 中继的多跳加密路由。secp256k1 逐层解密。',
+    'app-id-desc':'自主主权 Nostr 身份。Schnorr 签名配置文件，确定性头像。您的密钥=您的身份。',
+    'app-mesh-desc':'Nostr 中继网络监控。中继目录，延迟检查，连接状态。',
+    'app-vault-desc':'隐形多重签名保险库（N-of-N）。MuSig2 Schnorr — 链上不可见，所有共签人必须签名。',
+    'app-fusion-desc':'协作 CoinJoin，隐身输出。零 OP_RETURN — 链上完全不可见。洋葱加密混洗，可变金额，通过 Nostr 点对点。',
+    'app-dex-desc':'CashToken 交换界面。报价本地计算，交换执行通过 Cauldron（外部链接）。',
+    'app-loan-desc':'抵押率计算器，带健康可视化。贷款通过 Moria（外部链接）。',
+    'p-chat-1':'Chat 使用 <strong>CCSH（Cash Chat Secure Hub）</strong> 协议进行<strong>双通道加密</strong>。消息通过 <strong>XOR 一次性密码本</strong>分割：一半通过 <strong>BCH OP_RETURN</strong> 上链（最大 220 字节），另一半通过 <strong>Nostr 中继</strong>同步。单独任何一个通道都不会泄露信息——信息论安全（Shannon 1949）。',
+    'p-chat-2':'每条消息生成一个<strong>全新的临时 X25519 密钥对</strong>以实现前向保密。临时私钥和收件人公钥通过 <strong>ECDH</strong> 派生共享密钥。AES 密钥为 <strong>SHA-256(shared_secret)</strong>，然后使用 <strong>AES-256-GCM</strong>（12 字节随机 IV、128 位认证标签）加密明文。收件箱扫描通过 <strong>Fulcrum/Electrum</strong> WebSocket 每 10 秒执行。',
+    'p-wallet-1':'非托管多链钱包（BCH、BTC、ETH），四种访问模式：',
+    'wallet-step1':'<strong>硬件（Ledger）</strong> — 通过 WebHID 连接。完整 BIP44 地址扫描（gap limit 20，最大 50）。私钥永远不离开设备。',
+    'wallet-step2':'<strong>导入种子</strong> — BIP39 助记词（12+ 词）或 128 字符十六进制种子。完整 HD 派生：从单个种子派生 BCH、BTC、ETH、隐身密钥。',
+    'wallet-step3':'<strong>新密钥</strong> — 通过 <code>crypto.getRandomValues()</code>（CSPRNG）生成 256 位。显示一次用于备份。',
+    'wallet-step4':'<strong>WalletConnect</strong> — 通过 WalletConnect 协议使用移动钱包签名。',
+    'p-wallet-2':'功能：<strong>币控制</strong>（手动 UTXO 选择）、<strong>隐身地址</strong>（ECDH + SHA256 点调整用于私密支付）、<strong>多链投资组合</strong>（Kraken 实时价格）。UTXO 通过 <strong>Fulcrum/Electrum</strong> WebSocket 获取。交易构建和广播完全在客户端完成。',
+    'p-pay-1':'支付终端，两种模式：<strong>接收</strong>（原生 QR 发票生成 + 通过 Fulcrum 支付监控）和<strong>发送</strong>（通过 THORChain 跨链——重定向到 THORChain 协议，BCH → BTC、ETH、USDT…）。支持 <strong>CashAddr</strong>、<strong>二维码</strong>和 <strong>Ledger</strong> 硬件签名。',
+    'callout-pay':'<span class=\"badge cyan\">LEDGER</span> 在 00 Pay 上，公钥直接从设备读取。签名在设备上完成。注意：Ledger 的 BCH 应用拒绝 OP_RETURN 输出，THORChain 跨链兑换需要软件钱包。',
+    'callout-pay-thor':'<span class=\"badge cyan\">THORCHAIN</span> SEND 选项卡可将 BCH 兑换为任何 THORChain 支持的资产（BTC、ETH、USDT…），通过 memo 路由到 THORChain 保险库。汇率来自 Midgard API。仅限软件钱包。',
+    'p-dex-1':'<strong>Cauldron AMM</strong>（BCH ↔ CashTokens）接口。代币列表和池数据从 Cauldron 索引器获取；报价（滑点、0.3% LP 费用）在客户端计算。<strong>交换执行重定向到 <code>app.cauldron.quest</code></strong>（外部）。跨链兑换（BCH ↔ BTC、ETH…）在 <strong>00 Pay</strong> 中通过 THORChain 单独处理。',
+    'p-ledger-1':'00 Protocol 原生支持 Ledger Nano S、Nano X、Nano S+、Stax、Flex 和 Apex P，通过 <strong>WebHID</strong>（仅 Chrome/Edge）。',
+    'callout-ledger':'<span class="badge cyan">前提条件</span> 连接前请在 Ledger 上打开 <strong>Bitcoin Cash</strong> 应用。',
+    'p-ledger-2':'通信使用 Ledger 的 <strong>APDU</strong> 协议，封装在 64 字节 HID 数据包中：',
+    'p-ledger-3':'<strong>ledger.js</strong> 文件提供公共 API：',
+    'p-bip44-1':"Ledger BCH 钱包的资金可能分布在数十个地址上（路径 <code>m/44'/145'/0'/0/k</code>）。00 Protocol 自动扫描所有已使用的地址。",
+    'p-bip44-2':'每个 UTXO 都标记了其派生路径和公钥。在交易期间，每个输入都用正确的 Ledger 路径签名。',
+    'callout-bip44':'实际上，拥有42个以上已用地址的钱包（真实案例：约87 BCH）完全受支持——扫描只需几秒。',
+    'p-protocol-1':'<strong>CCSH（Cash Chat Secure Hub）</strong> 是 00 Protocol 的消息协议。消息经端对端加密后嵌入 <strong>BCH OP_RETURN</strong> 交易（最大 220 字节），直接发送到收件人的 BCH 地址。扫描使用 <strong>Fulcrum/Electrum</strong> WebSocket 索引器。00 Mesh 使用 <strong>Nostr 中继</strong>作为独立的实时传输。',
+    'p-bch-1':'00 Protocol 使用 <strong>Bitcoin Cash（BCH）</strong> 作为支付、手续费和链上身份的原生货币。',
+    'p-bch-2':'交易费用估算为 <strong>2 sat/byte</strong>（最低 300 sats）。大小估算：148 bytes/输入 + 34 bytes/输出 + 10 bytes 开销。交易构建遵循 <strong>BIP143</strong> 格式（BCH REPLAY 保护的类 segwit sighash）。',
+    'p-privacy-1':'00 Protocol 旨在最小化元数据并最大化隐私：',
+    'priv-step1':'<strong>无账户</strong> — 无电子邮件，无密码，无服务器端存储的个人资料。',
+    'priv-step2':'<strong>无追踪器</strong> — 无分析，无第三方cookie，无专有CDN（Google Fonts除外）。',
+    'priv-step3':'<strong>本地密钥</strong> — 私钥永远不离开浏览器（或 Ledger）。',
+    'priv-step4':'<strong>开源</strong> — 所有代码可直接通过 DevTools 审计。',
+    'priv-step5':'<strong>离线优先</strong> — 可安装为PWA，本地操作无需连接即可运行。',
+    'callout-privacy':'为了BCH交易的最大隐私，在通过 00 Wallet 发送资金之前使用 <strong>CashFusion</strong>。',
+    'nav-s5':'安全',
+    'nav-security':'钱包安全','nav-key-import':'密钥导入','nav-key-gen':'密钥生成',
+    'nav-vault':'保险库加密','nav-derivation':'密钥派生','nav-session':'会话与解锁','nav-stealth':'隐身地址',
+    't-security':'钱包安全',
+    'p-sec-1':'<strong>00 Protocol</strong> 是非托管钱包。您的私钥完全在浏览器中生成、加密和存储。没有任何服务器能看到您的密钥、密码或助记词。',
+    'p-sec-2':'安全模型依赖于<strong>四个层次</strong>：',
+    'sec-layer1':'<strong>密码学随机性</strong> — 密钥通过浏览器原生 CSPRNG（<code>crypto.getRandomValues</code>）生成，源自操作系统熵池。',
+    'sec-layer2':'<strong>行业标准派生</strong> — BIP39 种子 → BIP32 主密钥 → BIP44 派生路径。与 Ledger、Trezor 及所有主流钱包使用相同标准。',
+    'sec-layer3':'<strong>军事级保险库加密</strong> — 您的密钥使用 AES-256-GCM 静态加密，密钥通过 PBKDF2-SHA256 从您的密码派生，迭代 200,000 次。',
+    'sec-layer4':'<strong>经审计的加密库</strong> — 所有加密操作使用 Paul Miller 的 <code>@noble/curves</code> 和 <code>@noble/hashes</code> — 经审计、零依赖、纯 JavaScript 实现。',
+    'callout-sec':'每一行代码都可审计。打开 DevTools → Sources → wallet.html。无构建步骤，无混淆，无隐藏后端。',
+    't-key-import':'密钥导入',
+    'p-import-1':'导入钱包时，您可以提供 <strong>BIP39 助记词</strong>（12 或 24 个词）或 <strong>128 字符的原始十六进制种子</strong>。以下是每一步详细过程：',
+    'import-step1':'<strong>输入验证</strong> — 应用检查是否提供了种子、密码是否8+字符、两个密码字段是否匹配。',
+    'import-step2':'<strong>种子检测</strong> — 如果输入是128字符的十六进制字符串，直接作为64字节种子使用。否则，作为 BIP39 助记词处理。',
+    'import-step3':'<strong>BIP39 种子派生</strong> — 助记词被标准化（小写、单空格），然后通过 <strong>PBKDF2-SHA512</strong>（盐值 "mnemonic"，2,048 次迭代）生成 64 字节主种子。这是 Ledger、Trezor 和所有 HD 钱包使用的 BIP39 标准。',
+    'import-step4':'<strong>密钥派生</strong> — 64 字节种子通过 BIP32 + BIP44 派生您的 BCH 私钥（参见<a href="#derivation">密钥派生</a>）。',
+    'import-step5':'<strong>保险库加密</strong> — 派生的密钥用您的密码通过 AES-256-GCM 加密并存储在 <code>localStorage</code>（参见<a href="#vault">保险库加密</a>）。',
+    'import-step6':'<strong>会话创建</strong> — 创建 30 分钟的会话令牌，这样您不需要在每次页面导航时重新输入密码。',
+    'callout-import':'<span class="badge cyan">BIP39</span> 这与 Ledger、Trezor、Electrum 及所有主流钱包使用完全相同的算法。您的助记词完全兼容 — 可以在任何地方导入。',
+    't-key-gen':'密钥生成',
+    'p-gen-1':'当您点击<strong>"生成新密钥"</strong>时，应用使用浏览器内置的密码学安全随机数生成器创建全新的私钥。',
+    'gen-step1':'<strong>随机生成</strong> — 从 <code>crypto.getRandomValues()</code> 提取 32 字节（256 位），由操作系统熵池支持（Linux 上的 /dev/urandom，Windows 上的 CryptGenRandom，macOS 上的 SecRandomCopyBytes）。',
+    'gen-step2':'<strong>十六进制显示</strong> — 32 个随机字节转换为 64 字符的十六进制字符串并显示在种子输入字段中。<strong>这是您复制它的唯一机会。</strong>',
+    'gen-step3':'<strong>相同的导入流程</strong> — 点击"导入"时，十六进制种子遵循与任何导入种子完全相同的派生和加密路径（参见<a href="#key-import">密钥导入</a>）。',
+    'callout-gen':'256 位熵 = 2²⁵⁶ 个可能的密钥 ≈ 1.16 × 10⁷⁷。可观测宇宙中大约有 10⁸⁰ 个原子。即使地球上所有计算机运行数十亿年，某人生成相同密钥的概率基本为零。',
+    't-vault':'保险库加密',
+    'p-vault-1':'您的私钥<strong>永远不会以明文存储</strong>。它们在保存到 <code>localStorage</code> 之前使用 <strong>AES-256-GCM</strong> 加密。即使有人复制了您的浏览器数据，没有密码也无法访问您的密钥。',
+    'vault-step1':'<strong>盐值生成</strong> — 为 PBKDF2 盐值生成 16 个随机字节（每次加密唯一）。',
+    'vault-step2':'<strong>IV 生成</strong> — 为 AES-GCM 初始化向量生成 12 个随机字节（每次加密唯一）。',
+    'vault-step3':'<strong>密钥拉伸</strong> — 您的密码通过 <strong>PBKDF2-SHA256 进行 200,000 次迭代</strong>以派生 256 位 AES 密钥。这使暴力破解极其昂贵 — 每次密码猜测需要 200,000 次哈希操作。',
+    'vault-step4':'<strong>加密</strong> — 您的密钥（种子、私钥、账户级密钥）序列化为 JSON，然后用 <strong>AES-256-GCM</strong> 加密。GCM 模式同时提供机密性和认证 — 任何篡改都会被检测到。',
+    'vault-step5':'<strong>存储</strong> — 加密的数据块存储为 localStorage 中的 <code>00wallet_vault</code>。包含：版本、十六进制编码的盐值、十六进制编码的 IV 和十六进制编码的密文。<strong>没有明文密钥材料写入磁盘。</strong>',
+    'callout-vault':'<span class="badge cyan">AES-256-GCM</span> 与全球政府、银行和军事系统使用的相同密码。通过 200,000 次 PBKDF2 迭代，即使密码是 "12345678"，在专用硬件上也需要数年才能暴力破解。',
+    't-derivation':'密钥派生',
+    'p-deriv-1':'从单个 64 字节种子，应用使用 <strong>BIP32/BIP44</strong> 标准派生所有区块链密钥 — 与加密行业每个主流钱包使用的相同分层确定性（HD）派生。',
+    'deriv-step1':'<strong>主密钥</strong> — 64 字节种子用 <code>HMAC-SHA512(key="Bitcoin seed", data=seed)</code> 哈希。左 32 字节 = 主私钥，右 32 字节 = 主链码。',
+    'deriv-step2':'<strong>BIP44 路径</strong> — 在 <code>m/44\'/145\'/0\'</code> 处进行硬化子派生（目的 44 = BIP44，币种 145 = BCH，账户 0）。创建派生所有地址的账户级节点。',
+    'deriv-step3':'<strong>BCH 密钥</strong> — 链 0（外部），索引 0：<code>m/44\'/145\'/0\'/0/0</code> → 您的主 BCH 地址。',
+    'deriv-step4':'<strong>隐身密钥</strong> — 链 2，索引 0+1：扫描密钥 + 花费密钥用于隐身地址（参见<a href="#stealth">隐身地址</a>）。',
+    'deriv-step5':'<strong>BTC 密钥</strong> — 链 3，索引 0：用于通过 THORChain 进行跨链交换。',
+    'deriv-step6':'<strong>ETH 密钥</strong> — 链 4，索引 0：用于跨链操作。',
+    'callout-deriv':'一个种子，所有密钥。BCH、BTC、ETH 和隐身地址都从同一主种子数学派生。备份一个种子 → 恢复一切。',
+    't-session':'会话与解锁',
+    'p-session-1':'当您解锁钱包（或导入新钱包）时，会创建一个<strong>会话令牌</strong>，这样您在页面之间导航时不必每次重新输入密码。',
+    'session-step1':'<strong>令牌创建</strong> — 成功解密后，应用将会话令牌存储在 <code>localStorage</code> 中，键为 <code>00_session_auth</code>。包含 base64 编码的密码和时间戳。',
+    'session-step2':'<strong>30 分钟 TTL</strong> — 会话在 30 分钟不活动后过期。每次页面加载检查时间戳：如果超过 30 分钟，必须重新解锁。',
+    'session-step3':'<strong>自动刷新</strong> — 当页面加载且会话仍然有效时，刷新 TTL 以在活跃使用应用期间保持登录。',
+    'session-step4':'<strong>跨页面共享</strong> — 会话通过 localStorage 在所有 00 Protocol 页面（Wallet、Pay、Chat、DEX）中共享，因为它们在同一源上。',
+    'callout-session':'关闭浏览器标签 → 会话销毁。等待 30 分钟 → 会话过期。会话仅存在于浏览器内存中。无服务器，无 cookie，无远程追踪。',
+    't-stealth':'隐身地址',
+    'p-stealth-1':'<strong>隐身地址</strong>为接收付款提供最大隐私。每次付款创建一个<strong>唯一的一次性地址</strong>，只有收款人才能检测和花费。即使有人知道您的公共隐身密钥，也无法将收入付款相互关联。',
+    'stealth-step1':'<strong>密钥对</strong> — 从您的种子派生两个密钥：<strong>扫描密钥</strong>（<code>m/44\'/145\'/0\'/2/0</code>）和<strong>花费密钥</strong>（<code>m/44\'/145\'/0\'/2/1</code>）。扫描公钥可共享；花费私钥永远不离开您的设备。',
+    'stealth-step2':'<strong>ECDH 共享密钥</strong> — 发送者使用他们的私钥和收款人的扫描公钥计算共享密钥：<code>shared = ECDH(sender_priv, recipient_scan_pub)</code>。',
+    'stealth-step3':'<strong>调整值派生</strong> — 计算调整标量：<code>c = SHA256(SHA256(shared_x) || outpoint)</code>。这对每笔交易都是唯一的。',
+    'stealth-step4':'<strong>一次性地址</strong> — 隐身公钥通过椭圆曲线上的点加法计算：<code>P = B_spend + c*G</code>。创建一个全新的地址，只有花费密钥的所有者才能派生私钥。',
+    'stealth-step5':'<strong>花费</strong> — 收款人派生花费密钥：<code>priv = b_spend + c</code>（标量加法 mod n）。只有知道 <code>b_spend</code> 的收款人才能计算。',
+    'callout-stealth':'<span class="badge cyan">隐私</span> 隐身地址打破链上链接分析。区块链观察者看到的是随机的一次性地址 — 无法将其与收款人的主钱包或任何其他隐身付款关联。',
+  }
+};
+function _applyDocLang(lang) {
+  const d = DOC_T[lang] || DOC_T.EN;
+  document.querySelectorAll('[data-di18n]').forEach(el => {
+    const v = d[el.dataset.di18n];
+    if (v !== undefined) el.innerHTML = v;
+  });
+}
+window._onLangChange = _applyDocLang;
+_applyDocLang(localStorage.getItem('00_lang') || 'EN');
+</script>
+<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{});}</script>
+</body>
+</html>

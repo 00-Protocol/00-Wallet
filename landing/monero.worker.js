@@ -1,0 +1,1 @@
+lib/monero.worker.js

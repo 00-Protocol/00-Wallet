@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#00ff41">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-name" content="0penw0rld">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <title>00 ID — 0penw0rld</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    :root { --green:#00ff41; --green-dim:#00c832; --black:#020a03; --grey:#0a110a; --panel:#060e06; --red:#ff4040; --cyan:#00f5ff; }
+    html, body { width:100%; height:100%; background:var(--black); font-family:'Share Tech Mono',monospace; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+    #rain { position:fixed; inset:0; z-index:0; pointer-events:none; opacity:.12; }
+    .scanlines { position:fixed; inset:0; z-index:1; pointer-events:none; background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.12) 2px,rgba(0,0,0,.12) 4px); }
+    .vignette { position:fixed; inset:0; z-index:1; pointer-events:none; background:radial-gradient(ellipse at center,transparent 30%,rgba(0,0,0,.9) 100%); }
+    #loading { position:fixed; inset:0; z-index:100; background:var(--black); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:24px; }
+    .loader-logo { font-family:'Orbitron',monospace; font-size:52px; font-weight:900; color:var(--green); text-shadow:0 0 20px var(--green),0 0 50px var(--green); animation:logoPulse 1s ease-in-out infinite; }
+    @keyframes logoPulse { 0%,100%{text-shadow:0 0 20px var(--green),0 0 50px var(--green)} 50%{text-shadow:0 0 30px var(--green),0 0 70px var(--green),0 0 120px rgba(0,255,65,.4)} }
+    .loader-bar-wrap { width:200px; height:2px; background:rgba(0,255,65,.1); border-radius:2px; overflow:hidden; }
+    .loader-bar { height:100%; background:var(--green); box-shadow:0 0 8px var(--green); animation:loadBar 2.5s ease-in-out forwards; }
+    @keyframes loadBar { from{width:0} to{width:100%} }
+    .loader-status { font-size:10px; color:rgba(0,255,65,.3); letter-spacing:2px; }
+    .blink { animation:blink .8s step-end infinite; }
+    @keyframes blink { 50%{opacity:0} }
+
+    /* Phone */
+    .phone-wrap { position:relative; z-index:10; }
+    .phone { width:375px; height:780px; background:var(--panel); border-radius:42px; border:2px solid rgba(0,255,65,.2); box-shadow:0 0 0 1px rgba(0,255,65,.05),0 0 40px rgba(0,255,65,.08),inset 0 0 30px rgba(0,0,0,.5); display:flex; flex-direction:column; overflow:hidden; position:relative; }
+    .notch { position:absolute; top:0; left:50%; transform:translateX(-50%); width:120px; height:28px; background:var(--black); border-radius:0 0 18px 18px; z-index:50; display:flex; align-items:center; justify-content:center; gap:8px; }
+    .notch-cam { width:8px; height:8px; border-radius:50%; background:#111; border:1px solid #222; }
+    .notch-speaker { width:40px; height:4px; border-radius:2px; background:#111; }
+    .status-bar { padding:10px 20px 4px; display:flex; align-items:center; justify-content:space-between; font-size:10px; color:rgba(0,255,65,.5); flex-shrink:0; margin-top:14px; }
+    .app-header { padding:10px 20px 0; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+    .app-title { font-family:'Orbitron',monospace; font-size:18px; font-weight:700; color:var(--green); text-shadow:0 0 10px rgba(0,255,65,.4); }
+    .app-title span { font-size:11px; color:rgba(0,255,65,.4); display:block; letter-spacing:2px; }
+    .header-icon { font-size:18px; cursor:pointer; color:rgba(0,255,65,.6); transition:.15s; }
+    .header-icon:hover { color:var(--green); }
+
+    /* Tabs */
+    .tabs { display:flex; padding:0 12px; border-bottom:1px solid rgba(0,255,65,.1); flex-shrink:0; }
+    .tab { flex:1; padding:10px; text-align:center; font-size:10px; letter-spacing:2px; color:rgba(0,255,65,.3); cursor:pointer; border-bottom:2px solid transparent; transition:.2s; }
+    .tab.active { color:var(--green); border-bottom-color:var(--green); }
+    .tab-pane { display:none; flex:1; overflow-y:auto; scrollbar-width:none; min-height:0; flex-direction:column; }
+    .tab-pane::-webkit-scrollbar { display:none; }
+    .tab-pane.active { display:flex; }
+
+    /* Identity Card */
+    .id-card-wrap { padding:16px; flex:1; display:flex; flex-direction:column; align-items:center; gap:14px; }
+    .id-card {
+      width:100%; background:linear-gradient(135deg,rgba(0,255,65,.04) 0%,rgba(0,255,65,.01) 100%);
+      border:1px solid rgba(0,255,65,.25); border-radius:16px; padding:20px;
+      position:relative; overflow:hidden;
+      box-shadow:0 0 30px rgba(0,255,65,.06),inset 0 0 20px rgba(0,0,0,.3);
+    }
+    .id-card::before {
+      content:''; position:absolute; top:-50%; left:-50%; width:200%; height:200%;
+      background:conic-gradient(from 0deg at 50% 50%, transparent 0deg, rgba(0,255,65,.03) 60deg, transparent 120deg);
+      animation:cardRotate 8s linear infinite; pointer-events:none;
+    }
+    @keyframes cardRotate { to { transform:rotate(360deg); } }
+    .id-card-top { display:flex; align-items:center; gap:16px; margin-bottom:16px; }
+    .avatar-wrap { position:relative; flex-shrink:0; }
+    .avatar-canvas { border-radius:12px; display:block; image-rendering:pixelated; border:1px solid rgba(0,255,65,.3); box-shadow:0 0 12px rgba(0,255,65,.2); }
+    .id-badge { position:absolute; bottom:-6px; right:-6px; background:var(--green); color:var(--black); font-size:8px; font-weight:700; padding:2px 5px; border-radius:4px; letter-spacing:1px; }
+    .id-info { flex:1; min-width:0; }
+    .id-name { font-family:'Orbitron',monospace; font-size:14px; font-weight:700; color:var(--green); text-shadow:0 0 8px rgba(0,255,65,.4); margin-bottom:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .id-bio { font-size:10px; color:rgba(0,255,65,.5); line-height:1.5; }
+    .id-divider { border:none; border-top:1px solid rgba(0,255,65,.1); margin:12px 0; }
+    .id-field { display:flex; flex-direction:column; gap:3px; margin-bottom:10px; cursor:pointer; padding:6px 8px; border-radius:6px; transition:background .2s; }
+    .id-field:active { background:rgba(10,193,142,.1); }
+    .id-field-lbl { font-size:8px; color:rgba(0,255,65,.3); letter-spacing:2px; }
+    .id-field-val { font-size:10px; color:rgba(0,255,65,.7); word-break:break-all; line-height:1.5; transition:color .2s; }
+    .id-field-val.copied { color:#0AC18E; }
+    .id-pills { display:flex; gap:6px; flex-wrap:wrap; margin-top:4px; }
+    .id-pill { font-size:8px; letter-spacing:1px; padding:3px 8px; border-radius:10px; }
+    .id-pill.bch { border:1px solid rgba(0,255,65,.3); color:rgba(0,255,65,.7); }
+    .id-pill.nostr { border:1px solid rgba(0,245,255,.3); color:rgba(0,245,255,.7); }
+    .id-card-actions { display:flex; gap:8px; width:100%; }
+    .id-action-btn { flex:1; padding:9px; background:rgba(0,255,65,.06); border:1px solid rgba(0,255,65,.25); border-radius:8px; color:rgba(0,255,65,.7); font-family:'Share Tech Mono',monospace; font-size:10px; letter-spacing:1px; cursor:pointer; transition:.2s; text-align:center; }
+    .id-action-btn:hover { background:rgba(0,255,65,.12); border-color:var(--green); color:var(--green); }
+    .id-action-btn.cyan { border-color:rgba(0,245,255,.3); color:rgba(0,245,255,.6); }
+    .id-action-btn.cyan:hover { background:rgba(0,245,255,.08); border-color:var(--cyan); color:var(--cyan); }
+
+    /* Edit tab */
+    .edit-form { display:flex; flex-direction:column; gap:14px; padding:20px; flex:1; }
+    .form-lbl { font-size:9px; color:rgba(0,255,65,.4); letter-spacing:2px; margin-bottom:4px; }
+    .form-input { width:100%; background:rgba(0,255,65,.04); border:1px solid rgba(0,255,65,.2); border-radius:8px; padding:11px 14px; color:var(--green); font-family:'Share Tech Mono',monospace; font-size:11px; outline:none; transition:.2s; }
+    .form-input:focus { border-color:rgba(0,255,65,.5); box-shadow:0 0 8px rgba(0,255,65,.08); }
+    .form-input::placeholder { color:rgba(0,255,65,.2); }
+    .form-textarea { resize:none; height:70px; line-height:1.5; }
+    .publish-btn { width:100%; padding:13px; background:rgba(0,255,65,.1); border:1px solid rgba(0,255,65,.4); border-radius:8px; color:var(--green); font-family:'Share Tech Mono',monospace; font-size:12px; letter-spacing:3px; cursor:pointer; transition:.2s; }
+    .publish-btn:hover { background:rgba(0,255,65,.18); box-shadow:0 0 16px rgba(0,255,65,.2); }
+    .publish-btn:disabled { opacity:.4; cursor:not-allowed; }
+    .publish-status { font-size:10px; letter-spacing:1px; min-height:14px; }
+    .publish-status.ok { color:var(--green); }
+    .publish-status.err { color:var(--red); }
+    .nostr-relay-row { display:flex; align-items:center; gap:6px; font-size:9px; color:rgba(0,255,65,.3); }
+    .relay-mini-dot { width:5px; height:5px; border-radius:50%; background:rgba(0,255,65,.2); }
+    .relay-mini-dot.on { background:var(--green); box-shadow:0 0 4px var(--green); }
+    .save-local-btn { width:100%; padding:10px; background:transparent; border:1px solid rgba(0,255,65,.2); border-radius:8px; color:rgba(0,255,65,.5); font-family:'Share Tech Mono',monospace; font-size:11px; letter-spacing:2px; cursor:pointer; transition:.2s; }
+    .save-local-btn:hover { border-color:rgba(0,255,65,.4); color:rgba(0,255,65,.8); }
+
+    /* Share tab */
+    .share-wrap { display:flex; flex-direction:column; align-items:center; padding:20px; gap:14px; flex:1; }
+    .share-qr-wrap { background:#000; border:2px solid rgba(0,255,65,.3); border-radius:12px; padding:12px; box-shadow:0 0 20px rgba(0,255,65,.1); }
+    .share-info { width:100%; background:rgba(0,255,65,.03); border:1px solid rgba(0,255,65,.1); border-radius:8px; padding:10px 14px; font-size:9px; color:rgba(0,255,65,.5); line-height:2; word-break:break-all; }
+    .share-actions { display:flex; gap:8px; width:100%; }
+    .share-btn { flex:1; padding:10px; background:none; border:1px solid rgba(0,255,65,.25); border-radius:8px; color:rgba(0,255,65,.6); font-family:'Share Tech Mono',monospace; font-size:10px; letter-spacing:1px; cursor:pointer; transition:.15s; text-align:center; }
+    .share-btn:hover { border-color:var(--green); color:var(--green); }
+    .share-url { width:100%; background:rgba(0,255,65,.03); border:1px solid rgba(0,255,65,.1); border-radius:8px; padding:10px 14px; font-size:8px; color:rgba(0,255,65,.4); word-break:break-all; line-height:1.7; cursor:pointer; transition:.15s; }
+    .share-url:hover { border-color:rgba(0,255,65,.3); color:rgba(0,255,65,.7); }
+
+    /* Lookup tab */
+    .lookup-wrap { display:flex; flex-direction:column; padding:20px; gap:14px; flex:1; }
+    .lookup-result { background:rgba(0,255,65,.03); border:1px solid rgba(0,255,65,.1); border-radius:10px; padding:14px; display:none; flex-direction:column; gap:10px; }
+    .lookup-result.visible { display:flex; }
+    .lookup-avatar { border-radius:8px; display:block; image-rendering:pixelated; border:1px solid rgba(0,255,65,.3); }
+    .lookup-name { font-family:'Orbitron',monospace; font-size:13px; color:var(--green); }
+    .lookup-bio { font-size:10px; color:rgba(0,255,65,.5); line-height:1.5; }
+    .lookup-field { font-size:9px; color:rgba(0,255,65,.4); line-height:1.8; word-break:break-all; }
+    .lookup-actions { display:flex; gap:6px; flex-wrap:wrap; }
+    .lookup-action { font-size:9px; padding:5px 10px; border:1px solid rgba(0,255,65,.25); border-radius:5px; color:rgba(0,255,65,.6); cursor:pointer; transition:.15s; }
+    .lookup-action:hover { border-color:var(--green); color:var(--green); }
+    .lookup-spinner { display:none; align-items:center; justify-content:center; padding:24px; }
+    .spinner { width:20px; height:20px; border:2px solid rgba(0,255,65,.1); border-top-color:var(--green); border-radius:50%; animation:spin .7s linear infinite; }
+    @keyframes spin { to{transform:rotate(360deg)} }
+    .lookup-error { font-size:10px; color:var(--red); letter-spacing:1px; min-height:14px; }
+
+    /* Auth */
+    #auth-import, #auth-unlock { display:none; flex:1; flex-direction:column; }
+    #auth-view { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:30px 24px; gap:16px; }
+    .auth-logo { font-family:'Orbitron',monospace; font-size:28px; font-weight:900; color:var(--green); text-shadow:0 0 20px rgba(0,255,65,.5); }
+    .auth-sub { font-size:10px; color:rgba(0,255,65,.35); letter-spacing:3px; margin-top:-8px; }
+    .auth-input { width:100%; background:rgba(0,255,65,.04); border:1px solid rgba(0,255,65,.2); border-radius:8px; padding:12px 14px; color:var(--green); font-family:'Share Tech Mono',monospace; font-size:12px; outline:none; transition:.2s; }
+    .auth-input:focus { border-color:rgba(0,255,65,.5); }
+    .auth-input::placeholder { color:rgba(0,255,65,.2); }
+    .auth-btn { width:100%; padding:14px; background:rgba(0,255,65,.1); border:1px solid rgba(0,255,65,.4); border-radius:8px; color:var(--green); font-family:'Share Tech Mono',monospace; font-size:13px; letter-spacing:3px; cursor:pointer; transition:.2s; }
+    .auth-btn:hover { background:rgba(0,255,65,.18); }
+    .auth-btn-secondary { background:transparent; border-color:rgba(0,255,65,.2); color:rgba(0,255,65,.5); font-size:11px; padding:10px; }
+    .auth-error { font-size:10px; color:#ff4040; letter-spacing:1px; min-height:14px; }
+    .auth-divider { width:100%; border-top:1px solid rgba(0,255,65,.1); }
+    .auth-lbl { font-size:9px; color:rgba(0,255,65,.35); letter-spacing:2px; align-self:flex-start; }
+    #main-view { min-height:0; }
+    /* Desktop: skip loading, hide phone overlays */
+    @media (min-width: 900px) {
+      #loading { display: none !important; }
+      #rain, .scanlines, .vignette { display: none !important; }
+    }
+  </style>
+  <link rel="stylesheet" href="desktop.css">
+</head>
+<body>
+<canvas id="rain"></canvas>
+<div class="scanlines"></div>
+<div class="vignette"></div>
+
+<div id="loading">
+  <div class="loader-logo">00 ID</div>
+  <div class="loader-bar-wrap"><div class="loader-bar"></div></div>
+  <div class="loader-status" id="loader-status"></div>
+</div>
+
+<!-- ── Desktop ID View (hidden on mobile) ── -->
+<div id="id-desktop" style="display:none">
+  <div class="dt-inner">
+    <div class="dt-page-header">
+      <div class="dt-page-title-wrap">
+        <div class="dt-page-icon">◈</div>
+        <div>
+          <div class="dt-page-title">Identity</div>
+          <div class="dt-page-sub">Sovereign Decentralized ID</div>
+        </div>
+      </div>
+    </div>
+
+
+    <div class="dt-tabs" id="dt-id-tabs">
+      <button class="dt-tab active" onclick="dtIdTab('card')">Card</button>
+      <button class="dt-tab" onclick="dtIdTab('edit')">Edit</button>
+      <button class="dt-tab" onclick="dtIdTab('share')">Share</button>
+      <button class="dt-tab" onclick="dtIdTab('lookup')">Lookup</button>
+    </div>
+
+    <!-- CARD pane -->
+    <div class="dt-pane active" id="dt-id-p-card">
+      <div class="dt-card" style="max-width:520px">
+        <div style="display:flex;gap:20px;align-items:center;margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid var(--dt-border)">
+          <div class="dt-id-avatar">
+            <canvas id="dt-id-avatar-canvas" width="72" height="72" style="border-radius:50%;width:72px;height:72px"></canvas>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div class="dt-id-name" id="dt-card-name">ANONYMOUS</div>
+            <div class="dt-id-bio" id="dt-card-bio">// no bio set</div>
+          </div>
+        </div>
+
+        <div style="margin-bottom:12px">
+          <div class="dt-form-lbl" style="margin-bottom:6px">BCH ADDRESS</div>
+          <div id="dt-card-bch" class="dt-id-copyable" onclick="idCopy(this)"></div>
+        </div>
+
+        <div style="margin-bottom:12px">
+          <div class="dt-form-lbl" style="margin-bottom:6px">STEALTH CODE</div>
+          <div id="dt-card-stealth" class="dt-id-copyable" onclick="idCopy(this)" style="font-size:10px"></div>
+        </div>
+
+        <div style="margin-bottom:12px">
+          <div class="dt-form-lbl" style="margin-bottom:6px">NOSTR NPUB</div>
+          <div id="dt-card-npub" class="dt-id-copyable" onclick="idCopy(this)"></div>
+        </div>
+
+        <div style="margin-bottom:12px">
+          <div class="dt-form-lbl" style="margin-bottom:6px">HEX PUBKEY</div>
+          <div id="dt-card-pubhex" class="dt-id-copyable" onclick="idCopy(this)" style="opacity:.7"></div>
+        </div>
+
+        <div style="margin-bottom:16px">
+          <div class="dt-form-lbl" style="margin-bottom:6px">VAULT PUBKEY <span style="font-size:10px;font-weight:400;color:var(--dt-text-secondary);opacity:.6">(MuSig2)</span></div>
+          <div id="dt-card-vaultpub" class="dt-id-copyable" onclick="idCopy(this)" style="opacity:.7"></div>
+        </div>
+
+        <div style="display:flex;gap:10px">
+          <button class="dt-action-btn" onclick="dtIdTab('share')" style="width:auto;padding:10px 24px">Share</button>
+          <button class="dt-action-btn" onclick="dtIdTab('edit')" style="width:auto;padding:10px 24px">Edit</button>
+          <button class="dt-action-btn" onclick="if(window.publishToNostr)window.publishToNostr()" style="width:auto;padding:10px 24px;background:var(--dt-accent-bg);color:var(--dt-accent-text)">◈ Publish</button>
+        </div>
+        <div id="dt-card-publish-status" style="font-size:12px;color:var(--dt-text-secondary);margin-top:10px;min-height:18px"></div>
+      </div>
+    </div>
+
+    <!-- EDIT pane -->
+    <div class="dt-pane" id="dt-id-p-edit">
+      <div class="dt-card" style="max-width:520px">
+        <div class="dt-card-title">Edit Profile</div>
+        <div class="dt-form-group">
+          <div class="dt-form-lbl">Display Name</div>
+          <input class="dt-form-input" id="dt-edit-name" placeholder="anon" maxlength="40">
+        </div>
+        <div class="dt-form-group">
+          <div class="dt-form-lbl">Bio</div>
+          <textarea class="dt-form-input" id="dt-edit-bio" placeholder="// about you..." rows="3" style="resize:vertical"></textarea>
+        </div>
+        <div class="dt-form-group">
+          <div class="dt-form-lbl">Picture URL (optional)</div>
+          <input class="dt-form-input" id="dt-edit-picture" placeholder="https://...">
+        </div>
+        <div style="display:flex;gap:10px;margin-top:8px">
+          <button class="dt-action-btn" onclick="dtIdSaveLocal()" style="width:auto;padding:10px 24px">Save Locally</button>
+          <button class="dt-action-btn" onclick="dtIdPublish()" style="width:auto;padding:10px 24px;background:var(--dt-accent-bg);color:var(--dt-accent-text)">◈ Broadcast Identity</button>
+        </div>
+        <div id="dt-publish-status" style="font-size:12px;color:var(--dt-text-secondary);margin-top:10px;min-height:18px"></div>
+      </div>
+    </div>
+
+    <!-- SHARE pane -->
+    <div class="dt-pane" id="dt-id-p-share">
+      <div class="dt-card" style="max-width:520px;text-align:center">
+        <div class="dt-card-title">Share Identity</div>
+        <div style="font-size:12px;color:var(--dt-text-secondary);margin-bottom:20px">Universal QR — works in all 00 apps</div>
+        <div style="display:flex;justify-content:center;margin-bottom:20px">
+          <canvas id="dt-share-qr" width="200" height="200" style="border-radius:12px;background:var(--dt-input-bg);padding:16px"></canvas>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:center;margin-bottom:16px">
+          <button class="dt-action-btn-outline" onclick="if(window.copyShareData)window.copyShareData()" style="width:auto;padding:8px 22px">📋 Copy JSON</button>
+          <button class="dt-action-btn-outline" onclick="if(window.copyShareLink)window.copyShareLink()" style="width:auto;padding:8px 22px">🔗 Copy Link</button>
+        </div>
+        <div id="dt-share-info" style="font-size:10px;color:var(--dt-text-secondary);word-break:break-all;font-family:'SF Mono','Fira Code','Consolas',monospace;background:var(--dt-input-bg);padding:10px 14px;border-radius:10px;border:1px solid var(--dt-border);line-height:1.5;text-align:left;margin-bottom:10px;max-height:60px;overflow:hidden"></div>
+        <div id="dt-share-url" style="font-size:10px;color:var(--dt-text-secondary);word-break:break-all;font-family:'SF Mono','Fira Code','Consolas',monospace;background:var(--dt-input-bg);padding:10px 14px;border-radius:10px;border:1px solid var(--dt-border);line-height:1.5;text-align:left;cursor:pointer;max-height:60px;overflow:hidden" onclick="if(window.copyShareLink)window.copyShareLink()"></div>
+        <div style="font-size:11px;color:var(--dt-text-secondary);margin-top:12px;opacity:.5">QR contains BCH + Nostr public keys — no private data shared</div>
+      </div>
+    </div>
+
+    <!-- LOOKUP pane -->
+    <div class="dt-pane" id="dt-id-p-lookup">
+      <div class="dt-card" style="max-width:520px">
+        <div class="dt-card-title">Lookup Identity</div>
+        <div class="dt-form-group">
+          <div class="dt-form-lbl">npub or Hex Pubkey</div>
+          <input class="dt-form-input" id="dt-lookup-input" placeholder="npub1... or 64-char hex" onkeydown="if(event.key==='Enter')dtIdLookup()">
+        </div>
+        <button class="dt-action-btn" onclick="dtIdLookup()" style="width:100%;padding:12px">⌖ Resolve Identity</button>
+        <div id="dt-lookup-error" style="font-size:12px;color:var(--dt-danger);margin-top:10px;min-height:18px"></div>
+        <div id="dt-lookup-spinner" style="display:none;text-align:center;padding:20px">
+          <div style="display:inline-block;width:24px;height:24px;border:2px solid var(--dt-border);border-top-color:var(--dt-accent);border-radius:50%;animation:spin 1s linear infinite"></div>
+          <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+        </div>
+        <div id="dt-lookup-result" style="display:none;margin-top:16px">
+          <div class="dt-card" style="background:var(--dt-input-bg)">
+            <div style="display:flex;gap:16px;align-items:center;margin-bottom:16px">
+              <canvas id="dt-lookup-avatar" width="56" height="56" style="border-radius:50%;width:56px;height:56px;flex-shrink:0"></canvas>
+              <div style="flex:1;min-width:0">
+                <div id="dt-lookup-name" style="font-weight:700;font-size:16px;color:var(--dt-text)"></div>
+                <div id="dt-lookup-bio" style="font-size:13px;color:var(--dt-text-secondary);margin-top:2px"></div>
+              </div>
+            </div>
+            <div id="dt-lookup-bch-field" style="font-size:12px;color:var(--dt-text-secondary);word-break:break-all;margin-bottom:8px;font-family:monospace"></div>
+            <div id="dt-lookup-npub-field" style="font-size:12px;color:var(--dt-text-secondary);word-break:break-all;margin-bottom:16px;font-family:monospace"></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="dt-action-btn-outline" onclick="if(window.addToChat)window.addToChat()" style="width:auto;font-size:12px;padding:6px 14px">+ 00 Chat</button>
+              <button class="dt-action-btn-outline" onclick="if(window.followOnMesh)window.followOnMesh()" style="width:auto;font-size:12px;padding:6px 14px">+ 00 Mesh</button>
+              <button class="dt-action-btn-outline" onclick="if(window.sendBch)window.sendBch()" style="width:auto;font-size:12px;padding:6px 14px">⬡ Send BCH</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  if(!window.matchMedia('(min-width:900px)').matches) return;
+  var el=document.getElementById('id-desktop');if(!el)return;
+  el.style.display='';
+
+  /* ── Tab switching ─── */
+  var _tabs=['card','edit','share','lookup'];
+  window.dtIdTab=function(t){
+    _tabs.forEach(function(x){
+      var p=document.getElementById('dt-id-p-'+x);
+      if(p)p.classList.toggle('active',x===t);
+    });
+    var btns=document.querySelectorAll('#dt-id-tabs .dt-tab');
+    btns.forEach(function(b){b.classList.toggle('active',b.textContent.toLowerCase()===t);});
+    // Sync to mobile tab so QR / lookup get triggered
+    if(window.switchTab) window.switchTab(t);
+  };
+
+  /* ── Save locally — sync to mobile inputs then call saveLocal ─── */
+  window.dtIdSaveLocal=function(){
+    var mn=document.getElementById('edit-name');
+    var mb=document.getElementById('edit-bio');
+    var mp=document.getElementById('edit-picture');
+    if(mn) mn.value=document.getElementById('dt-edit-name').value;
+    if(mb) mb.value=document.getElementById('dt-edit-bio').value;
+    if(mp) mp.value=document.getElementById('dt-edit-picture').value;
+    if(window.saveLocal) window.saveLocal();
+    var st=document.getElementById('dt-publish-status');
+    if(st){st.textContent='Saved locally ✓';setTimeout(function(){st.textContent='';},3000);}
+  };
+
+  /* ── Publish — sync to mobile inputs then call publishToNostr ─── */
+  window.dtIdPublish=function(){
+    var mn=document.getElementById('edit-name');
+    var mb=document.getElementById('edit-bio');
+    var mp=document.getElementById('edit-picture');
+    if(mn) mn.value=document.getElementById('dt-edit-name').value;
+    if(mb) mb.value=document.getElementById('dt-edit-bio').value;
+    if(mp) mp.value=document.getElementById('dt-edit-picture').value;
+    if(window.publishToNostr) window.publishToNostr();
+  };
+
+  /* ── Lookup — sync to mobile input then call lookupIdentity ─── */
+  window.dtIdLookup=function(){
+    var mi=document.getElementById('lookup-input');
+    if(mi) mi.value=document.getElementById('dt-lookup-input').value;
+    if(window.lookupIdentity) window.lookupIdentity();
+  };
+
+  /* ── Mirror avatar canvas ─── */
+  function mirrorCanvas(srcId,dstId,w,h,recolor){
+    var src=document.getElementById(srcId);
+    var dst=document.getElementById(dstId);
+    if(!src||!dst)return;
+    try{
+      var ctx=dst.getContext('2d');
+      dst.width=w;dst.height=h;
+      ctx.drawImage(src,0,0,w,h);
+      if(recolor){
+        var img=ctx.getImageData(0,0,w,h);
+        var d=img.data;
+        for(var i=0;i<d.length;i+=4){
+          // Replace neon green (#00ff41 / high-green low-blue) with accent (#0AC18E)
+          if(d[i+1]>200&&d[i]<50&&d[i+2]<100&&d[i+3]>200){
+            d[i]=10;d[i+1]=193;d[i+2]=142;
+          }
+        }
+        ctx.putImageData(img,0,0);
+      }
+    }catch(e){}
+  }
+
+  /* ── Poll mobile DOM ─── */
+  var _lastData='';
+  setInterval(function(){
+    // Mirror identity fields
+    var cn=document.getElementById('card-name');
+    var cb=document.getElementById('card-bio');
+    var cbch=document.getElementById('card-bch');
+    var cst=document.getElementById('card-stealth');
+    var cnp=document.getElementById('card-npub');
+    var cph=document.getElementById('card-pubhex');
+    var cvp=document.getElementById('card-vaultpub');
+
+    var dn=document.getElementById('dt-card-name');
+    var db=document.getElementById('dt-card-bio');
+    var dbch=document.getElementById('dt-card-bch');
+    var dst=document.getElementById('dt-card-stealth');
+    var dnp=document.getElementById('dt-card-npub');
+    var dph=document.getElementById('dt-card-pubhex');
+    var dvp=document.getElementById('dt-card-vaultpub');
+
+    if(cn&&dn) dn.textContent=cn.textContent;
+    if(cb&&db) db.textContent=cb.textContent;
+    if(cbch&&dbch&&!dbch.classList.contains('copied')) dbch.textContent=cbch.textContent;
+    if(cst&&dst&&!dst.classList.contains('copied')) dst.textContent=cst.textContent;
+    if(cnp&&dnp&&!dnp.classList.contains('copied')) dnp.textContent=cnp.textContent;
+    if(cph&&dph&&!dph.classList.contains('copied')) dph.textContent=cph.textContent;
+    if(cvp&&dvp&&!dvp.classList.contains('copied')) dvp.textContent=cvp.textContent;
+
+    // Mirror avatar
+    mirrorCanvas('my-avatar','dt-id-avatar-canvas',72,72);
+
+    // Mirror share QR
+    mirrorCanvas('share-qr','dt-share-qr',200,200,true);
+
+    // Mirror share info + URL
+    var si=document.getElementById('share-info');
+    var dsi=document.getElementById('dt-share-info');
+    if(si&&dsi) dsi.textContent=si.textContent;
+
+    var su=document.getElementById('share-url-preview');
+    var dsu=document.getElementById('dt-share-url');
+    if(su&&dsu) dsu.textContent=su.textContent;
+
+    // Mirror edit fields (only if desktop fields are empty — don't overwrite user edits)
+    var en=document.getElementById('edit-name');
+    var eb=document.getElementById('edit-bio');
+    var ep=document.getElementById('edit-picture');
+    var den=document.getElementById('dt-edit-name');
+    var deb=document.getElementById('dt-edit-bio');
+    var dep=document.getElementById('dt-edit-picture');
+    var sig=''+(cn?cn.textContent:'')+(cbch?cbch.textContent:'');
+    if(sig!==_lastData){
+      _lastData=sig;
+      if(en&&den&&!den.value) den.value=en.value;
+      if(eb&&deb&&!deb.value) deb.value=eb.value;
+      if(ep&&dep&&!dep.value) dep.value=ep.value;
+    }
+
+    // Mirror publish status
+    var ps=document.getElementById('publish-status');
+    var dps=document.getElementById('dt-publish-status');
+    if(ps&&dps&&ps.textContent) dps.textContent=ps.textContent;
+    var cps=document.getElementById('card-publish-status');
+    var dcps=document.getElementById('dt-card-publish-status');
+    if(cps&&dcps&&cps.textContent) dcps.textContent=cps.textContent;
+
+    // Mirror lookup results
+    var lr=document.getElementById('lookup-result');
+    var dlr=document.getElementById('dt-lookup-result');
+    if(lr&&dlr){
+      dlr.style.display=lr.style.display==='none'?'none':'block';
+    }
+    var le=document.getElementById('lookup-error');
+    var dle=document.getElementById('dt-lookup-error');
+    if(le&&dle) dle.textContent=le.textContent;
+
+    var ls=document.getElementById('lookup-spinner');
+    var dls=document.getElementById('dt-lookup-spinner');
+    if(ls&&dls) dls.style.display=(ls.style.display==='none'||!ls.style.display)?'none':'block';
+
+    // Mirror lookup result fields
+    var ln=document.getElementById('lookup-name');
+    var dln=document.getElementById('dt-lookup-name');
+    if(ln&&dln) dln.textContent=ln.textContent;
+    var lb=document.getElementById('lookup-bio');
+    var dlb=document.getElementById('dt-lookup-bio');
+    if(lb&&dlb) dlb.textContent=lb.textContent;
+    var lbf=document.getElementById('lookup-bch-field');
+    var dlbf=document.getElementById('dt-lookup-bch-field');
+    if(lbf&&dlbf) dlbf.textContent=lbf.textContent;
+    var lnf=document.getElementById('lookup-npub-field');
+    var dlnf=document.getElementById('dt-lookup-npub-field');
+    if(lnf&&dlnf) dlnf.textContent=lnf.textContent;
+
+    // Mirror lookup avatar
+    mirrorCanvas('lookup-avatar','dt-lookup-avatar',56,56);
+
+    // Mirror relay status chip
+    var rd=document.getElementById('relay-row');
+    var nChip=document.getElementById('dt-status-id-nostr');
+    var nDot=document.getElementById('dt-id-dot-nostr');
+    var nSrv=document.getElementById('dt-status-id-nostr-server');
+    if(rd&&nChip){
+      var dots=rd.querySelectorAll('.relay-mini-dot');
+      var anyOn=false;
+      dots.forEach(function(d){if(d.classList.contains('on'))anyOn=true;});
+      nChip.classList.toggle('on',anyOn);
+      nChip.classList.toggle('err',!anyOn);
+      if(nDot){nDot.classList.toggle('on',anyOn);nDot.classList.toggle('err',!anyOn);}
+      var rl=document.getElementById('relay-status-lbl');
+      if(rl&&nSrv) nSrv.textContent=rl.textContent||'—';
+    }
+  },800);
+})();
+</script>
+
+<div class="phone-wrap">
+  <div class="phone">
+    <div class="notch"><div class="notch-cam"></div><div class="notch-speaker"></div><div class="notch-cam"></div></div>
+
+    <!-- AUTH IMPORT -->
+    <div id="auth-import" style="flex:1;flex-direction:column">
+      <div id="auth-view">
+        <div class="auth-logo">00 ID</div>
+        <div class="auth-sub">// DECENTRALIZED IDENTITY</div>
+        <div class="auth-lbl">SEED PHRASE OR HEX KEY</div>
+        <textarea class="auth-input" id="import-seed" rows="3" placeholder="12 words or 64-char hex..." style="resize:none;line-height:1.6"></textarea>
+        <div class="auth-lbl">PASSWORD</div>
+        <input class="auth-input" id="import-pass" type="password" placeholder="min 8 chars...">
+        <div class="auth-lbl">CONFIRM</div>
+        <input class="auth-input" id="import-pass2" type="password" placeholder="confirm...">
+        <div class="auth-error" id="import-error"></div>
+        <button class="auth-btn" onclick="idImport()">GENERATE IDENTITY →</button>
+        <div class="auth-divider"></div>
+        <button class="auth-btn auth-btn-secondary" onclick="idGenKey()">⚡ GENERATE NEW KEY</button>
+      </div>
+    </div>
+
+    <!-- AUTH UNLOCK -->
+    <div id="auth-unlock" style="flex:1;flex-direction:column;align-items:center;justify-content:center;padding:30px 24px;gap:16px">
+      <div class="auth-logo">00 ID</div>
+      <div style="font-size:10px;color:rgba(0,255,65,.35);letter-spacing:2px">// ENTER PASSWORD</div>
+      <input class="auth-input" id="unlock-pass" type="password" placeholder="password..." onkeydown="if(event.key==='Enter')idUnlock()">
+      <div class="auth-error" id="unlock-error"></div>
+      <button class="auth-btn" onclick="idUnlock()">UNLOCK →</button>
+      <button class="auth-btn auth-btn-secondary" onclick="showIdImport()">← IMPORT NEW KEY</button>
+    </div>
+
+    <!-- MAIN VIEW -->
+    <div id="main-view" style="display:none;flex-direction:column;flex:1">
+      <div class="status-bar">
+        <span id="phone-clock">00:00</span>
+        <span style="font-size:9px;letter-spacing:1px;color:rgba(0,255,65,.4)">00 ID ◈</span>
+      </div>
+      <div class="app-header">
+        <div class="app-title">00 ID<span>// SOVEREIGN IDENTITY</span></div>
+        <div class="header-icon" title="Scan shared ID" onclick="switchTab('lookup')">⌖</div>
+      </div>
+      <div class="tabs">
+        <div class="tab active" id="tab-card" onclick="switchTab('card')">CARD</div>
+        <div class="tab" id="tab-edit" onclick="switchTab('edit')">EDIT</div>
+        <div class="tab" id="tab-share" onclick="switchTab('share')">SHARE</div>
+        <div class="tab" id="tab-lookup" onclick="switchTab('lookup')">LOOKUP</div>
+      </div>
+
+      <!-- CARD TAB -->
+      <div class="tab-pane active" id="pane-card">
+        <div class="id-card-wrap">
+          <div class="id-card">
+            <div class="id-card-top">
+              <div class="avatar-wrap">
+                <canvas class="avatar-canvas" id="my-avatar" width="72" height="72"></canvas>
+                <div class="id-badge">ID</div>
+              </div>
+              <div class="id-info">
+                <div class="id-name" id="card-name">ANONYMOUS</div>
+                <div class="id-bio" id="card-bio">// no bio set</div>
+                <div class="id-pills" style="margin-top:6px">
+                  <span class="id-pill bch">⬡ BCH</span>
+                  <span class="id-pill nostr">◈ NOSTR</span>
+                </div>
+              </div>
+            </div>
+            <hr class="id-divider">
+            <div class="id-field" onclick="idCopy(this.querySelector('.id-field-val'))">
+              <div class="id-field-lbl">BCH ADDRESS</div>
+              <div class="id-field-val" id="card-bch" style="font-size:9px"></div>
+            </div>
+            <div class="id-field" onclick="idCopy(this.querySelector('.id-field-val'))">
+              <div class="id-field-lbl">STEALTH CODE</div>
+              <div class="id-field-val" id="card-stealth" style="font-size:7.5px"></div>
+            </div>
+            <div class="id-field" onclick="idCopy(this.querySelector('.id-field-val'))">
+              <div class="id-field-lbl">NOSTR PUBKEY (npub)</div>
+              <div class="id-field-val" id="card-npub" style="font-size:9px"></div>
+            </div>
+            <div class="id-field" onclick="idCopy(this.querySelector('.id-field-val'))">
+              <div class="id-field-lbl">HEX PUBKEY</div>
+              <div class="id-field-val" id="card-pubhex" style="font-size:8px;opacity:.5"></div>
+            </div>
+            <div class="id-field" onclick="idCopy(this.querySelector('.id-field-val'))">
+              <div class="id-field-lbl">VAULT PUBKEY <span style="font-size:6px;opacity:.5;letter-spacing:0">(MuSig2)</span></div>
+              <div class="id-field-val" id="card-vaultpub" style="font-size:8px;opacity:.5">—</div>
+            </div>
+          </div>
+          <div class="id-card-actions">
+            <div class="id-action-btn" onclick="switchTab('share')">⬡ SHARE</div>
+            <div class="id-action-btn" onclick="switchTab('edit')">✎ EDIT</div>
+            <div class="id-action-btn cyan" onclick="publishToNostr()">◈ PUBLISH</div>
+          </div>
+          <div class="publish-status" id="card-publish-status"></div>
+        </div>
+      </div>
+
+      <!-- EDIT TAB -->
+      <div class="tab-pane" id="pane-edit">
+        <div class="edit-form">
+          <div>
+            <div class="form-lbl">DISPLAY NAME</div>
+            <input class="form-input" id="edit-name" placeholder="anon" maxlength="40">
+          </div>
+          <div>
+            <div class="form-lbl">BIO</div>
+            <textarea class="form-input form-textarea" id="edit-bio" placeholder="// about you..."></textarea>
+          </div>
+          <div>
+            <div class="form-lbl">PICTURE URL (optional)</div>
+            <input class="form-input" id="edit-picture" placeholder="https://...">
+          </div>
+          <button class="save-local-btn" onclick="saveLocal()">💾 SAVE LOCALLY</button>
+          <div style="border-top:1px solid rgba(0,255,65,.08);padding-top:14px">
+            <div class="form-lbl" style="margin-bottom:10px">PUBLISH TO NOSTR (kind:0)</div>
+            <div class="nostr-relay-row" id="relay-row">
+              <div class="relay-mini-dot" id="relay-dot-0"></div>
+              <div class="relay-mini-dot" id="relay-dot-1"></div>
+              <div class="relay-mini-dot" id="relay-dot-2"></div>
+              <div class="relay-mini-dot" id="relay-dot-3"></div>
+              <span id="relay-status-lbl">CONNECTING...</span>
+            </div>
+          </div>
+          <button class="publish-btn" id="publish-btn" onclick="publishToNostr()">◈ BROADCAST IDENTITY →</button>
+          <div class="publish-status" id="publish-status"></div>
+        </div>
+      </div>
+
+      <!-- SHARE TAB -->
+      <div class="tab-pane" id="pane-share">
+        <div class="share-wrap">
+          <div style="font-size:9px;color:rgba(0,255,65,.4);letter-spacing:2px">// UNIVERSAL QR — WORKS IN ALL 00 APPS</div>
+          <div class="share-qr-wrap">
+            <canvas id="share-qr" width="190" height="190"></canvas>
+          </div>
+          <div class="share-info" id="share-info"></div>
+          <div class="share-actions">
+            <div class="share-btn" onclick="copyShareData()">COPY JSON</div>
+            <div class="share-btn" onclick="copyShareLink()">COPY LINK</div>
+          </div>
+          <div class="share-url" id="share-url-preview" onclick="copyShareLink()" title="Click to copy"></div>
+          <div style="font-size:9px;color:rgba(0,255,65,.2);letter-spacing:1px;text-align:center;line-height:2">
+            // QR CONTAINS BCH + NOSTR PUBLIC KEYS<br>
+            // NO PRIVATE DATA SHARED
+          </div>
+        </div>
+      </div>
+
+      <!-- LOOKUP TAB -->
+      <div class="tab-pane" id="pane-lookup">
+        <div class="lookup-wrap">
+          <div>
+            <div class="form-lbl">NPUB OR HEX PUBKEY</div>
+            <input class="form-input" id="lookup-input" placeholder="npub1... or 64-char hex" onkeydown="if(event.key==='Enter')lookupIdentity()">
+          </div>
+          <button class="publish-btn" onclick="lookupIdentity()">⌖ RESOLVE IDENTITY</button>
+          <div class="lookup-error" id="lookup-error"></div>
+          <div class="lookup-spinner" id="lookup-spinner"><div class="spinner"></div></div>
+          <div class="lookup-result" id="lookup-result">
+            <div style="display:flex;gap:12px;align-items:center">
+              <canvas class="lookup-avatar" id="lookup-avatar" width="56" height="56"></canvas>
+              <div style="flex:1;min-width:0">
+                <div class="lookup-name" id="lookup-name"></div>
+                <div class="lookup-bio" id="lookup-bio"></div>
+              </div>
+            </div>
+            <div class="lookup-field" id="lookup-bch-field"></div>
+            <div class="lookup-field" id="lookup-npub-field"></div>
+            <div class="lookup-actions">
+              <div class="lookup-action" onclick="addToChat()">+ 00 CHAT</div>
+              <div class="lookup-action" onclick="followOnMesh()">+ 00 MESH</div>
+              <div class="lookup-action" onclick="sendBch()">⬡ SEND BCH</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>(function(){var v=localStorage.getItem('00wallet_vault');if(!v){window.location.href='/wallet.html';return;}try{var s=JSON.parse(localStorage.getItem('00_session_auth')||'{}');if(!s.ts||Date.now()-s.ts>30*60*1000){window.location.href='/wallet.html';}}catch(e){window.location.href='/wallet.html';}})();</script>
+<script>
+(function() {
+  const statuses = ['BOOT 0penw0rld OS...','LOADING IDENTITY MODULE...','DERIVING KEYS...','IDENTITY READY'];
+  let si = 0;
+  const el = document.getElementById('loader-status');
+  const iv = setInterval(() => { if(si<statuses.length){el.innerHTML=statuses[si]+'<span class="blink">_</span>';si++;}else clearInterval(iv); }, 500);
+  setTimeout(() => {
+    document.getElementById('loading').style.transition='opacity .5s';
+    document.getElementById('loading').style.opacity='0';
+    setTimeout(() => {
+      document.getElementById('loading').style.display='none';
+      if(typeof window._idBoot==='function') window._idBoot();
+      else document.getElementById('auth-import').style.display='flex';
+    }, 500);
+  }, 2200);
+})();
+</script>
+
+<script type="module">
+import { secp256k1, schnorr } from 'https://esm.sh/@noble/curves@1.8.1/secp256k1';
+import { hmac }    from 'https://esm.sh/@noble/hashes@1.7.1/hmac';
+import { sha256 }  from 'https://esm.sh/@noble/hashes@1.7.1/sha256';
+import { sha512 }  from 'https://esm.sh/@noble/hashes@1.7.1/sha512';
+import { ripemd160 } from 'https://esm.sh/@noble/hashes@1.7.1/ripemd160';
+import QRCode from 'https://esm.sh/qrcode@1.5.4';
+
+// ── Utils ──────────────────────────────────────────
+const b2h = b => Array.from(b).map(x=>x.toString(16).padStart(2,'0')).join('');
+const h2b = h => new Uint8Array(h.match(/.{2}/g).map(b=>parseInt(b,16)));
+const concat = (...a) => { const t=new Uint8Array(a.reduce((s,x)=>s+x.length,0)); let o=0; for(const x of a){t.set(x,o);o+=x.length;} return t; };
+const utf8 = s => new TextEncoder().encode(s);
+const rand = n => crypto.getRandomValues(new Uint8Array(n));
+
+// ── BIP32 / BIP44 ──────────────────────────────────
+const N_SECP = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141n;
+function bip32Master(seed) { const I=hmac(sha512,utf8('Bitcoin seed'),seed); return {priv:I.slice(0,32),chain:I.slice(32)}; }
+function _bip32Child(priv, chain, idx, hard) {
+  const ib = new Uint8Array([idx>>>24,(idx>>>16)&0xff,(idx>>>8)&0xff,idx&0xff]);
+  const data = hard ? concat(new Uint8Array([0]),priv,ib) : concat(secp256k1.getPublicKey(priv,true),ib);
+  const I = hmac(sha512, chain, data);
+  const child = ((BigInt('0x'+b2h(I.slice(0,32)))+BigInt('0x'+b2h(priv)))%N_SECP).toString(16).padStart(64,'0');
+  return { priv: h2b(child), chain: I.slice(32) };
+}
+function deriveBchPriv(s) {
+  let n=bip32Master(s); n=_bip32Child(n.priv,n.chain,0x8000002c,true); n=_bip32Child(n.priv,n.chain,0x80000091,true);
+  n=_bip32Child(n.priv,n.chain,0x80000000,true); n=_bip32Child(n.priv,n.chain,0,false); n=_bip32Child(n.priv,n.chain,0,false);
+  return n.priv;
+}
+function deriveNostrPriv(s) {
+  let n=bip32Master(s); n=_bip32Child(n.priv,n.chain,0x8000002c,true); n=_bip32Child(n.priv,n.chain,0x800004d5,true);
+  n=_bip32Child(n.priv,n.chain,0x80000000,true); n=_bip32Child(n.priv,n.chain,0,false); n=_bip32Child(n.priv,n.chain,0,false);
+  return n.priv;
+}
+async function mnemonicToSeed(words) {
+  const key = await crypto.subtle.importKey('raw',utf8(words.trim().toLowerCase().replace(/\s+/g,' ')),'PBKDF2',false,['deriveBits']);
+  return new Uint8Array(await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-512',salt:utf8('mnemonic'),iterations:2048},key,512));
+}
+
+// ── Bech32 / npub ──────────────────────────────────
+const B32='qpzry9x8gf2tvdw0s3jn54khce6mua7l';
+function _b32Poly(v){let c=1;for(const d of v){const t=c>>25;c=((c&0x1ffffff)<<5)^d;if(t&1)c^=0x3b6a57b2;if(t&2)c^=0x26508e6d;if(t&4)c^=0x1ea119fa;if(t&8)c^=0x3d4233dd;if(t&16)c^=0x2a1462b3;}return c;}
+function bech32Encode(hrp,bytes){const d5=[];let acc=0,bits=0;for(const b of bytes){acc=(acc<<8)|b;bits+=8;while(bits>=5){bits-=5;d5.push((acc>>bits)&31);}}if(bits>0)d5.push((acc<<(5-bits))&31);const vals=[...hrp.split('').map(c=>c.charCodeAt(0)>>5),0,...hrp.split('').map(c=>c.charCodeAt(0)&31),...d5,0,0,0,0,0,0];const chk=_b32Poly(vals)^1;const cs=[0,1,2,3,4,5].map(i=>(chk>>(5*(5-i)))&31);return hrp+'1'+'[...d5,...cs]'.replace('[...d5,...cs]',[...d5,...cs].map(v=>B32[v]).join(''));}
+function npubEncode(pub32){const d5=[];let acc=0,bits=0;for(const b of pub32){acc=(acc<<8)|b;bits+=8;while(bits>=5){bits-=5;d5.push((acc>>bits)&31);}}if(bits>0)d5.push((acc<<(5-bits))&31);const hrp='npub';const vals=[...hrp.split('').map(c=>c.charCodeAt(0)>>5),0,...hrp.split('').map(c=>c.charCodeAt(0)&31),...d5,0,0,0,0,0,0];const chk=_b32Poly(vals)^1;const cs=[0,1,2,3,4,5].map(i=>(chk>>(5*(5-i)))&31);return hrp+'1'+[...d5,...cs].map(v=>B32[v]).join('');}
+function npubDecode(str){if(str.length===64&&/^[0-9a-f]+$/i.test(str))return h2b(str);const sep=str.lastIndexOf('1');const d5=str.slice(sep+1).split('').map(c=>B32.indexOf(c));const bytes=[];let acc=0,bits=0;for(const v of d5.slice(0,-6)){acc=(acc<<5)|v;bits+=5;while(bits>=8){bits-=8;bytes.push((acc>>bits)&0xff);}}return new Uint8Array(bytes);}
+
+// ── CashAddr ───────────────────────────────────────
+const _caCharset='qpzry9x8gf2tvdw0s3jn54khce6mua7l';
+function _caPolymod(v){const G=[0x98f2bc8e61n,0x79b76d99e2n,0xf33e5fb3c4n,0xae2eabe2a8n,0x1e4f43e470n];let c=1n;for(const d of v){const c0=c>>35n;c=((c&0x07ffffffffn)<<5n)^BigInt(d);if(c0&1n)c^=G[0];if(c0&2n)c^=G[1];if(c0&4n)c^=G[2];if(c0&8n)c^=G[3];if(c0&16n)c^=G[4];}return c^1n;}
+function pubHashToCashAddr(hash20){const payload=new Uint8Array([0x00,...hash20]);const d5=[];let acc=0,bits=0;for(const b of payload){acc=(acc<<8)|b;bits+=8;while(bits>=5){bits-=5;d5.push((acc>>bits)&31);}}if(bits>0)d5.push((acc<<(5-bits))&31);const pe=[...'bitcoincash'.split('').map(c=>c.charCodeAt(0)&31),0];const mod=_caPolymod([...pe,...d5,0,0,0,0,0,0,0,0]);const cs=[];for(let i=7;i>=0;i--)cs.push(Number((mod>>(BigInt(i)*5n))&31n));return'bitcoincash:'+[...d5,...cs].map(v=>_caCharset[v]).join('');}
+
+// ── Vault ──────────────────────────────────────────
+async function _pbkdf2Key(pass,salt){const km=await crypto.subtle.importKey('raw',utf8(pass),'PBKDF2',false,['deriveKey']);return crypto.subtle.deriveKey({name:'PBKDF2',hash:'SHA-256',salt,iterations:200000},km,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);}
+async function encryptVault(data,pass){const salt=rand(16),iv=rand(12);const key=await _pbkdf2Key(pass,salt);const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,utf8(JSON.stringify(data)));return JSON.stringify({v:1,salt:b2h(salt),iv:b2h(iv),data:b2h(new Uint8Array(ct))});}
+async function decryptVault(enc,pass){const{salt,iv,data}=JSON.parse(enc);const key=await _pbkdf2Key(pass,h2b(salt));const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:h2b(iv)},key,h2b(data));return JSON.parse(new TextDecoder().decode(pt));}
+
+// ── Avatar generator ───────────────────────────────
+function drawAvatar(pubHex, canvas) {
+  const size = canvas.width;
+  const ctx = canvas.getContext('2d');
+  const bytes = h2b(pubHex);
+  const grid = 8, cell = size / grid;
+  ctx.fillStyle = '#020a03';
+  ctx.fillRect(0, 0, size, size);
+  for (let row = 0; row < grid; row++) {
+    for (let col = 0; col < Math.ceil(grid / 2); col++) {
+      const idx = row * Math.ceil(grid / 2) + col;
+      const byte = bytes[idx % bytes.length];
+      const bit = (byte >> (col % 8)) & 1;
+      if (bit) {
+        const brightness = 0.35 + (bytes[(idx * 3 + 7) % bytes.length] / 255) * 0.65;
+        ctx.shadowColor = '#0AC18E';
+        ctx.shadowBlur = 3;
+        ctx.fillStyle = `rgba(10,193,142,${brightness.toFixed(2)})`;
+        ctx.fillRect(col * cell + 1, row * cell + 1, cell - 2, cell - 2);
+        if (col < grid / 2) ctx.fillRect((grid - 1 - col) * cell + 1, row * cell + 1, cell - 2, cell - 2);
+      }
+    }
+  }
+  ctx.shadowBlur = 0;
+  // Border glow
+  ctx.strokeStyle = 'rgba(10,193,142,0.3)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(0.5, 0.5, size - 1, size - 1);
+}
+
+// ── Nostr relay ────────────────────────────────────
+const RELAYS = JSON.parse(localStorage.getItem('00_ep_relays') || 'null') || ['wss://relay.damus.io','wss://nos.lol','wss://relay.nostr.band','wss://relay.snort.social'];
+const _rSockets = {};
+const _rStatus = {};
+
+function _relayConnect(url, onConnected) {
+  _rStatus[url] = 'connecting';
+  const ws = new WebSocket(url);
+  const t = setTimeout(() => ws.close(), 8000);
+  ws.onopen = () => { clearTimeout(t); _rSockets[url] = ws; _rStatus[url] = 'connected'; updateRelayDots(); if(onConnected) onConnected(ws); };
+  ws.onclose = () => { clearTimeout(t); delete _rSockets[url]; _rStatus[url] = 'disconnected'; updateRelayDots(); setTimeout(() => _relayConnect(url), 10000); };
+  ws.onerror = () => ws.close();
+  return ws;
+}
+function updateRelayDots() {
+  RELAYS.forEach((url, i) => {
+    const d = document.getElementById('relay-dot-' + i);
+    if (d) d.className = 'relay-mini-dot' + (_rStatus[url] === 'connected' ? ' on' : '');
+  });
+  const n = Object.values(_rStatus).filter(s => s === 'connected').length;
+  const lbl = document.getElementById('relay-status-lbl');
+  if (lbl) lbl.textContent = n + '/4 RELAYS CONNECTED';
+}
+async function nostrPublish(event) {
+  const msg = JSON.stringify(['EVENT', event]);
+  let sent = 0;
+  for (const ws of Object.values(_rSockets)) {
+    if (ws.readyState === WebSocket.OPEN) { ws.send(msg); sent++; }
+  }
+  return sent;
+}
+async function nostrFetchMeta(pubHex) {
+  return new Promise((resolve, reject) => {
+    const connected = Object.values(_rSockets).filter(ws => ws.readyState === WebSocket.OPEN);
+    if (!connected.length) { reject(new Error('no relay connected')); return; }
+    const ws = connected[0];
+    const sid = 'meta-' + Date.now();
+    const t = setTimeout(() => { ws.onmessage = null; reject(new Error('timeout')); }, 8000);
+    const orig = ws.onmessage;
+    ws.onmessage = e => {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg[0] === 'EVENT' && msg[1] === sid) {
+          clearTimeout(t); ws.onmessage = orig;
+          ws.send(JSON.stringify(['CLOSE', sid]));
+          resolve(msg[2]);
+        } else if (msg[0] === 'EOSE' && msg[1] === sid) {
+          clearTimeout(t); ws.onmessage = orig;
+          ws.send(JSON.stringify(['CLOSE', sid]));
+          resolve(null);
+        } else if (orig) orig(e);
+      } catch {}
+    };
+    ws.send(JSON.stringify(['REQ', sid, { kinds:[0], authors:[pubHex], limit:1 }]));
+  });
+}
+async function makeNostrEvent(privHex, kind, content, tags = []) {
+  const priv = h2b(privHex);
+  const pub = b2h(secp256k1.getPublicKey(priv, true).slice(1));
+  const created_at = Math.floor(Date.now() / 1000);
+  const idHash = sha256(utf8(JSON.stringify([0, pub, created_at, kind, tags, content])));
+  const sig = b2h(await schnorr.sign(idHash, priv));
+  return { id: b2h(idHash), pubkey: pub, created_at, kind, tags, content, sig };
+}
+
+// ── State ──────────────────────────────────────────
+let _profile = null;
+let _bchAddr = '', _nostrPubHex = '', _nostrPrivHex = '', _npub = '';
+let _stealthCode = '', _vaultPubHex = '';
+let _meta = { name: '', bio: '', picture: '' };
+let _lookupResult = null;
+
+// ── Click-to-copy ──────────────────────────────────
+function idCopy(el) {
+  if (!el) return;
+  var v = el.textContent;
+  if (!v || v === '—') return;
+  navigator.clipboard.writeText(v);
+  var orig = v;
+  el.textContent = 'COPIED ✓';
+  el.classList.add('copied');
+  setTimeout(function() { el.textContent = orig; el.classList.remove('copied'); }, 1200);
+}
+
+function loadMeta() {
+  try { const m = JSON.parse(localStorage.getItem('00id_meta')||'{}'); _meta = { name: m.name||'', bio: m.bio||'', picture: m.picture||'' }; } catch {}
+}
+function saveMeta() { localStorage.setItem('00id_meta', JSON.stringify(_meta)); }
+
+// ── Render card ────────────────────────────────────
+function renderCard() {
+  const name = _meta.name || 'ANONYMOUS';
+  const bio = _meta.bio || '// no bio set';
+  document.getElementById('card-name').textContent = name;
+  document.getElementById('card-bio').textContent = bio;
+  document.getElementById('card-bch').textContent = _bchAddr;
+  document.getElementById('card-stealth').textContent = _stealthCode || '—';
+  document.getElementById('card-npub').textContent = _npub;
+  document.getElementById('card-pubhex').textContent = _nostrPubHex;
+  document.getElementById('card-vaultpub').textContent = _vaultPubHex || '—';
+  drawAvatar(_nostrPubHex, document.getElementById('my-avatar'));
+}
+
+function fillEditForm() {
+  document.getElementById('edit-name').value = _meta.name;
+  document.getElementById('edit-bio').value = _meta.bio;
+  document.getElementById('edit-picture').value = _meta.picture;
+}
+
+// ── Share QR ───────────────────────────────────────
+async function renderShareQR() {
+  const payload = JSON.stringify({ v:1, n:_meta.name||'', b:_bchAddr, p:_npub });
+  const canvas = document.getElementById('share-qr');
+  await QRCode.toCanvas(canvas, payload, { width:190, margin:1, color:{ dark:'#00ff41', light:'#000000' } });
+  document.getElementById('share-info').textContent = payload;
+  const link = buildShareLink();
+  document.getElementById('share-url-preview').textContent = link;
+}
+
+function buildShareLink() {
+  const payload = btoa(JSON.stringify({ v:1, n:_meta.name||'', b:_bchAddr, p:_npub }));
+  return location.origin + location.pathname + '#' + payload;
+}
+
+async function copyShareData() {
+  const payload = JSON.stringify({ v:1, n:_meta.name||'', b:_bchAddr, p:_npub });
+  await navigator.clipboard.writeText(payload);
+  const btn = document.querySelector('.share-btn');
+  if (btn) { const o = btn.textContent; btn.textContent = 'COPIED ✓'; setTimeout(()=>btn.textContent=o, 1500); }
+}
+async function copyShareLink() {
+  await navigator.clipboard.writeText(buildShareLink());
+  const el = document.getElementById('share-url-preview');
+  if (el) { const o = el.textContent; el.textContent = 'COPIED ✓'; setTimeout(()=>el.textContent=o, 1500); }
+}
+
+// ── Publish to Nostr ───────────────────────────────
+async function publishToNostr() {
+  const btn = document.getElementById('publish-btn');
+  const status = document.getElementById('publish-status');
+  const cardStatus = document.getElementById('card-publish-status');
+  const name = document.getElementById('edit-name')?.value.trim() || _meta.name;
+  const bio = document.getElementById('edit-bio')?.value.trim() || _meta.bio;
+  const picture = document.getElementById('edit-picture')?.value.trim() || _meta.picture;
+  if (btn) { btn.disabled = true; btn.textContent = '// BROADCASTING...'; }
+  if (status) { status.textContent = '// signing event...'; status.className = 'publish-status'; }
+  if (cardStatus) { cardStatus.textContent = '// signing...'; cardStatus.className = 'publish-status'; }
+  try {
+    const content = JSON.stringify({ name, about: bio, picture, nip05: undefined });
+    const evt = await makeNostrEvent(_nostrPrivHex, 0, content);
+    const sent = await nostrPublish(evt);
+    if (!sent) throw new Error('no relay available');
+    _meta = { name, bio, picture };
+    saveMeta(); renderCard();
+    const msg = `// PUBLISHED TO ${sent} RELAY${sent > 1 ? 'S' : ''}`;
+    if (status) { status.textContent = msg; status.className = 'publish-status ok'; }
+    if (cardStatus) { cardStatus.textContent = msg; cardStatus.className = 'publish-status ok'; }
+    setTimeout(() => { if(status) status.textContent=''; if(cardStatus) cardStatus.textContent=''; }, 4000);
+  } catch(e) {
+    const msg = '// failed: ' + e.message;
+    if (status) { status.textContent = msg; status.className = 'publish-status err'; }
+    if (cardStatus) { cardStatus.textContent = msg; cardStatus.className = 'publish-status err'; }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '◈ BROADCAST IDENTITY →'; }
+  }
+}
+
+function saveLocal() {
+  _meta.name = document.getElementById('edit-name').value.trim();
+  _meta.bio = document.getElementById('edit-bio').value.trim();
+  _meta.picture = document.getElementById('edit-picture').value.trim();
+  saveMeta(); renderCard();
+  const btn = document.querySelector('.save-local-btn');
+  if (btn) { btn.textContent = '✓ SAVED'; setTimeout(() => btn.textContent = '💾 SAVE LOCALLY', 1500); }
+}
+
+// ── Lookup ─────────────────────────────────────────
+async function lookupIdentity() {
+  const raw = document.getElementById('lookup-input').value.trim();
+  const errEl = document.getElementById('lookup-error');
+  const spinner = document.getElementById('lookup-spinner');
+  const result = document.getElementById('lookup-result');
+  errEl.textContent = ''; result.classList.remove('visible');
+  if (!raw) { errEl.textContent = '// enter npub or hex pubkey'; return; }
+  let pubBytes;
+  try { pubBytes = npubDecode(raw); } catch { errEl.textContent = '// invalid npub or pubkey'; return; }
+  const pubHex = b2h(pubBytes);
+  spinner.style.display = 'flex';
+  try {
+    const evt = await nostrFetchMeta(pubHex);
+    spinner.style.display = 'none';
+    const meta = evt ? (() => { try { return JSON.parse(evt.content); } catch { return {}; } })() : {};
+    _lookupResult = { pubHex, npub: npubEncode(pubBytes), name: meta.name||'', bio: meta.about||'', bchAddr: meta.bch||null };
+    document.getElementById('lookup-name').textContent = meta.name || pubHex.slice(0,16) + '...';
+    document.getElementById('lookup-bio').textContent = meta.about || '// no bio';
+    document.getElementById('lookup-npub-field').textContent = '◈ ' + npubEncode(pubBytes);
+    document.getElementById('lookup-bch-field').textContent = meta.bch ? '⬡ ' + meta.bch : '⬡ BCH address not published';
+    drawAvatar(pubHex, document.getElementById('lookup-avatar'));
+    result.classList.add('visible');
+  } catch(e) {
+    spinner.style.display = 'none';
+    errEl.textContent = '// ' + e.message;
+  }
+}
+
+function addToChat() {
+  if (!_lookupResult) return;
+  const data = { bch: _lookupResult.bchAddr, pub: _lookupResult.pubHex };
+  const enc = btoa(JSON.stringify(data));
+  alert('// Copy this to 00 Chat → Add Contact:\n' + _lookupResult.bchAddr);
+}
+function followOnMesh() {
+  if (!_lookupResult) return;
+  const url = 'mesh.html#add=' + _lookupResult.npub;
+  navigator.clipboard.writeText(_lookupResult.npub).then(() => alert('// npub copied — paste in 00 Mesh → Add Contact'));
+}
+function sendBch() {
+  if (!_lookupResult?.bchAddr) { alert('// no BCH address in their Nostr profile'); return; }
+  window.open('wallet.html#send=' + encodeURIComponent(_lookupResult.bchAddr), '_blank');
+}
+
+// ── Tabs ───────────────────────────────────────────
+function switchTab(tab) {
+  ['card','edit','share','lookup'].forEach(t => {
+    document.getElementById('tab-'+t).classList.toggle('active', t===tab);
+    document.getElementById('pane-'+t).classList.toggle('active', t===tab);
+  });
+  if (tab === 'share') renderShareQR();
+  if (tab === 'edit') fillEditForm();
+}
+
+// ── Auth ───────────────────────────────────────────
+async function idImport() {
+  const seed = document.getElementById('import-seed').value.trim();
+  const pass = document.getElementById('import-pass').value;
+  const pass2 = document.getElementById('import-pass2').value;
+  const err = document.getElementById('import-error');
+  if (!seed) { err.textContent = '// seed required'; return; }
+  if (pass.length < 8) { err.textContent = '// password min 8 chars'; return; }
+  if (pass !== pass2) { err.textContent = '// passwords don\'t match'; return; }
+  err.textContent = '// DERIVING KEYS...';
+  try {
+    let seed64;
+    if (/^[0-9a-f]{128}$/i.test(seed)) seed64 = h2b(seed);
+    else seed64 = await mnemonicToSeed(seed);
+    const bchPriv    = deriveBchPriv(seed64);
+    const nostrPriv  = deriveNostrPriv(seed64);
+    const nostrPub   = secp256k1.getPublicKey(nostrPriv, true).slice(1);
+    const bchPub33   = secp256k1.getPublicKey(bchPriv, true);
+    const bchHash160 = ripemd160(sha256(bchPub33));
+    // Derive stealth keys: m/44'/145'/0'/2/0 (scan) + m/44'/145'/0'/2/1 (spend)
+    let stealthScanHex = '', stealthSpendHex = '';
+    try {
+      let acct = bip32Master(seed64);
+      acct = _bip32Child(acct.priv, acct.chain, 0x8000002c, true);
+      acct = _bip32Child(acct.priv, acct.chain, 0x80000091, true);
+      acct = _bip32Child(acct.priv, acct.chain, 0x80000000, true);
+      const stChain = _bip32Child(acct.priv, acct.chain, 2, false);
+      const scanChild = _bip32Child(stChain.priv, stChain.chain, 0, false);
+      const spendChild = _bip32Child(stChain.priv, stChain.chain, 1, false);
+      stealthScanHex = b2h(secp256k1.getPublicKey(scanChild.priv, true));
+      stealthSpendHex = b2h(secp256k1.getPublicKey(spendChild.priv, true));
+    } catch(e) { console.warn('[ID] stealth derivation failed:', e); }
+    const profile = { bchPrivHex: b2h(bchPriv), nostrPrivHex: b2h(nostrPriv), nostrPubHex: b2h(nostrPub), bchAddr: pubHashToCashAddr(Array.from(bchHash160)), stealthScanHex, stealthSpendHex };
+    localStorage.setItem('00id_vault', await encryptVault(profile, pass));
+    await bootApp(profile);
+  } catch(e) { err.textContent = '// error: ' + e.message; }
+}
+async function idUnlock() {
+  const pass = document.getElementById('unlock-pass').value;
+  try {
+    await bootApp(await decryptVault(localStorage.getItem('00id_vault'), pass));
+    // Shared session — all apps auto-unlock
+    localStorage.setItem('00_session_auth', JSON.stringify({ p: btoa(pass), ts: Date.now() }));
+  }
+  catch { document.getElementById('unlock-error').textContent = '// wrong password'; }
+}
+function idGenKey() {
+  const priv = rand(32);
+  document.getElementById('import-seed').value = b2h(priv);
+  document.getElementById('import-seed').style.fontSize = '9px';
+}
+function showIdImport() {
+  document.getElementById('auth-unlock').style.display = 'none';
+  document.getElementById('auth-import').style.display = 'flex';
+}
+
+async function bootApp(profile) {
+  _profile = profile;
+  _nostrPrivHex = profile.nostrPrivHex;
+  _nostrPubHex  = profile.nostrPubHex;
+  _npub = npubEncode(h2b(_nostrPubHex));
+  _bchAddr = profile.bchAddr;
+  // Derive vault pubkey (compressed secp256k1 — for MuSig2 vault creation)
+  try { _vaultPubHex = b2h(secp256k1.getPublicKey(h2b(profile.bchPrivHex), true)); } catch(e) { _vaultPubHex = ''; }
+  // Derive stealth code — from profile or from wallet vault seed
+  if (profile.stealthScanHex && profile.stealthSpendHex) {
+    _stealthCode = 'stealth:' + profile.stealthScanHex + profile.stealthSpendHex;
+  } else {
+    _stealthCode = '';
+    try {
+      const sess = JSON.parse(localStorage.getItem('00_session_auth') || '{}');
+      const wv = localStorage.getItem('00wallet_vault');
+      if (sess.p && wv) {
+        const wp = await decryptVault(wv, atob(sess.p));
+        const seed64 = wp.seedHex ? h2b(wp.seedHex) : null;
+        if (seed64) {
+          let acct = bip32Master(seed64);
+          acct = _bip32Child(acct.priv, acct.chain, 0x8000002c, true);
+          acct = _bip32Child(acct.priv, acct.chain, 0x80000091, true);
+          acct = _bip32Child(acct.priv, acct.chain, 0x80000000, true);
+          const stChain = _bip32Child(acct.priv, acct.chain, 2, false);
+          const scanChild = _bip32Child(stChain.priv, stChain.chain, 0, false);
+          const spendChild = _bip32Child(stChain.priv, stChain.chain, 1, false);
+          _stealthCode = 'stealth:' + b2h(secp256k1.getPublicKey(scanChild.priv, true)) + b2h(secp256k1.getPublicKey(spendChild.priv, true));
+        }
+      }
+    } catch(e) { console.warn('[ID] stealth fallback failed:', e); }
+  }
+  loadMeta();
+  document.getElementById('auth-import').style.display = 'none';
+  document.getElementById('auth-unlock').style.display = 'none';
+  document.getElementById('main-view').style.display = 'flex';
+  renderCard();
+  setInterval(updateClock, 1000); updateClock();
+  // Connect relays in background
+  for (const url of RELAYS) _relayConnect(url);
+  // Check URL hash for shared ID
+  if (location.hash.length > 1) {
+    try {
+      const data = JSON.parse(atob(location.hash.slice(1)));
+      if (data.p) {
+        document.getElementById('lookup-input').value = data.p;
+        switchTab('lookup');
+        setTimeout(lookupIdentity, 1500);
+      }
+    } catch {}
+  }
+}
+function updateClock() { const el=document.getElementById('phone-clock'); if(el) el.textContent=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); }
+
+window._idBoot = async function() {
+  const vault = localStorage.getItem('00id_vault');
+  if (vault) {
+    // Auto-unlock from shared session (cross-app, 30 min TTL)
+    try {
+      const sess = JSON.parse(localStorage.getItem('00_session_auth') || '{}');
+      if (sess.p && sess.ts && Date.now() - sess.ts < 30 * 60 * 1000) {
+        const pass = atob(sess.p);
+        await bootApp(await decryptVault(vault, pass));
+        localStorage.setItem('00_session_auth', JSON.stringify({ p: sess.p, ts: Date.now() }));
+        return;
+      }
+    } catch {}
+    document.getElementById('auth-unlock').style.display = 'flex';
+  }
+  else {
+    // No ID vault — try auto-create from wallet vault + session
+    try {
+      const sess = JSON.parse(localStorage.getItem('00_session_auth') || '{}');
+      const wv = localStorage.getItem('00wallet_vault');
+      if (sess.p && sess.ts && Date.now() - sess.ts < 30 * 60 * 1000 && wv) {
+        const pass = atob(sess.p);
+        const wp = await decryptVault(wv, pass);
+        const seed64 = wp.seedHex ? h2b(wp.seedHex) : await mnemonicToSeed(wp.bchPrivHex);
+        const bchPriv = deriveBchPriv(seed64);
+        const nostrPriv = deriveNostrPriv(seed64);
+        const nostrPub = secp256k1.getPublicKey(nostrPriv, true).slice(1);
+        const bchPub33 = secp256k1.getPublicKey(bchPriv, true);
+        const bchHash160 = ripemd160(sha256(bchPub33));
+        let stealthScanHex = '', stealthSpendHex = '';
+        try {
+          let acct = bip32Master(seed64);
+          acct = _bip32Child(acct.priv, acct.chain, 0x8000002c, true);
+          acct = _bip32Child(acct.priv, acct.chain, 0x80000091, true);
+          acct = _bip32Child(acct.priv, acct.chain, 0x80000000, true);
+          const stChain = _bip32Child(acct.priv, acct.chain, 2, false);
+          const scanChild = _bip32Child(stChain.priv, stChain.chain, 0, false);
+          const spendChild = _bip32Child(stChain.priv, stChain.chain, 1, false);
+          stealthScanHex = b2h(secp256k1.getPublicKey(scanChild.priv, true));
+          stealthSpendHex = b2h(secp256k1.getPublicKey(spendChild.priv, true));
+        } catch(e) { console.warn('[ID] stealth derivation failed:', e); }
+        const profile = { bchPrivHex: b2h(bchPriv), nostrPrivHex: b2h(nostrPriv), nostrPubHex: b2h(nostrPub), bchAddr: pubHashToCashAddr(Array.from(bchHash160)), stealthScanHex, stealthSpendHex };
+        localStorage.setItem('00id_vault', await encryptVault(profile, pass));
+        localStorage.setItem('00_session_auth', JSON.stringify({ p: sess.p, ts: Date.now() }));
+        await bootApp(profile);
+        return;
+      }
+    } catch { /* wallet decrypt failed */ }
+    document.getElementById('auth-import').style.display = 'flex';
+  }
+};
+Object.assign(window, {
+  idImport, idUnlock, idGenKey, showIdImport,
+  switchTab, publishToNostr, saveLocal, lookupIdentity,
+  copyShareData, copyShareLink, addToChat, followOnMesh, sendBch, idCopy,
+});
+
+// ── Matrix Rain ────────────────────────────────────
+const canvas = document.getElementById('rain');
+const ctx = canvas.getContext('2d');
+function resize() { canvas.width=window.innerWidth; canvas.height=window.innerHeight; }
+resize(); window.addEventListener('resize', resize);
+const drops = [];
+for(let i=0;i<120;i++) drops.push({x:Math.random()*1440,y:Math.random()*900,len:Math.random()*18+6,speed:Math.random()*7+5,op:Math.random()*.4+.1,w:Math.random()*.8+.2});
+function drawRain() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  drops.forEach(d=>{ctx.beginPath();ctx.moveTo(d.x,d.y);ctx.lineTo(d.x-1,d.y+d.len);ctx.strokeStyle=`rgba(0,255,65,${d.op})`;ctx.lineWidth=d.w;ctx.stroke();d.y+=d.speed;if(d.y>canvas.height){d.y=-d.len;d.x=Math.random()*canvas.width;}});
+  requestAnimationFrame(drawRain);
+}
+drawRain();
+</script>
+<script src="/shell.js?v=263"></script>
+<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{});}</script>
+</body>
+</html>

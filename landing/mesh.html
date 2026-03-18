@@ -1,0 +1,1676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#00ff41">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-name" content="0penw0rld">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <title>00 Mesh — 0penw0rld</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --green: #00ff41; --green-dim: #00c832; --green-dark: #003d0f;
+      --black: #020a03; --grey: #0a110a; --panel: #060e06;
+      --purple: #9d4edd; --cyan: #00f5ff;
+    }
+    html, body {
+      width:100%; height:100%; background:var(--black);
+      font-family:'Share Tech Mono',monospace;
+      display:flex; align-items:center; justify-content:center; overflow:hidden;
+    }
+    #rain { position:fixed; inset:0; z-index:0; pointer-events:none; opacity:.12; }
+    .scanlines {
+      position:fixed; inset:0; z-index:1; pointer-events:none;
+      background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.12) 2px,rgba(0,0,0,.12) 4px);
+    }
+    .vignette {
+      position:fixed; inset:0; z-index:1; pointer-events:none;
+      background:radial-gradient(ellipse at center,transparent 30%,rgba(0,0,0,.9) 100%);
+    }
+    #loading {
+      position:fixed; inset:0; z-index:100; background:var(--black);
+      display:flex; flex-direction:column; align-items:center; justify-content:center; gap:24px;
+    }
+    .loader-logo {
+      font-family:'Orbitron',monospace; font-size:52px; font-weight:900; color:var(--green);
+      text-shadow:0 0 20px var(--green),0 0 50px var(--green),0 0 100px rgba(0,255,65,.3);
+      animation:logoPulse 1s ease-in-out infinite;
+    }
+    @keyframes logoPulse {
+      0%,100%{text-shadow:0 0 20px var(--green),0 0 50px var(--green),0 0 100px rgba(0,255,65,.3)}
+      50%{text-shadow:0 0 30px var(--green),0 0 70px var(--green),0 0 140px rgba(0,255,65,.5)}
+    }
+    .loader-bar-wrap { width:200px; height:2px; background:rgba(0,255,65,.1); border-radius:2px; overflow:hidden; }
+    .loader-bar { height:100%; background:var(--green); box-shadow:0 0 8px var(--green); animation:loadBar 2.5s ease-in-out forwards; }
+    @keyframes loadBar { from{width:0} to{width:100%} }
+    .loader-status { font-size:10px; color:rgba(0,255,65,.3); letter-spacing:2px; min-height:14px; }
+    .blink { animation:blink .8s step-end infinite; }
+    @keyframes blink { 50%{opacity:0} }
+
+    /* Phone */
+    .phone-wrap { position:relative; z-index:10; display:flex; align-items:center; justify-content:center; }
+    .phone {
+      width:375px; height:780px; background:var(--panel); border-radius:42px;
+      border:2px solid rgba(0,255,65,.2);
+      box-shadow:0 0 0 1px rgba(0,255,65,.05),0 0 40px rgba(0,255,65,.08),0 0 80px rgba(0,255,65,.04),inset 0 0 30px rgba(0,0,0,.5);
+      display:flex; flex-direction:column; overflow:hidden; position:relative;
+    }
+    .notch {
+      position:absolute; top:0; left:50%; transform:translateX(-50%);
+      width:120px; height:28px; background:var(--black); border-radius:0 0 18px 18px;
+      z-index:50; display:flex; align-items:center; justify-content:center; gap:8px;
+    }
+    .notch-cam { width:8px; height:8px; border-radius:50%; background:#111; border:1px solid #222; }
+    .notch-speaker { width:40px; height:4px; border-radius:2px; background:#111; }
+    .status-bar {
+      padding:10px 20px 4px; display:flex; align-items:center; justify-content:space-between;
+      font-size:10px; color:rgba(0,255,65,.5); flex-shrink:0; margin-top:14px;
+    }
+    .status-icons { display:flex; gap:6px; align-items:center; }
+    .app-header {
+      padding:10px 20px 0; display:flex; align-items:center; justify-content:space-between; flex-shrink:0;
+    }
+    .app-title { font-family:'Orbitron',monospace; font-size:18px; font-weight:700; color:var(--green); text-shadow:0 0 10px rgba(0,255,65,.4); }
+    .app-title span { font-size:11px; color:rgba(0,255,65,.4); display:block; letter-spacing:2px; }
+    .header-icon { font-size:18px; cursor:pointer; color:rgba(0,255,65,.6); transition:.15s; }
+    .header-icon:hover { color:var(--green); }
+
+    /* Relay status bar */
+    .relay-bar {
+      display:flex; align-items:center; gap:8px; padding:6px 20px;
+      border-bottom:1px solid rgba(0,255,65,.08); flex-shrink:0;
+      font-size:9px; color:rgba(0,255,65,.4); letter-spacing:1px;
+    }
+    .relay-dot { width:5px; height:5px; border-radius:50%; background:rgba(0,255,65,.2); flex-shrink:0; transition:.3s; }
+    .relay-dot.on { background:var(--green); box-shadow:0 0 4px var(--green); }
+    .relay-count { color:var(--green); font-weight:bold; }
+
+    /* Tabs */
+    .tabs { display:flex; padding:0 16px; border-bottom:1px solid rgba(0,255,65,.1); flex-shrink:0; }
+    .tab { flex:1; padding:10px; text-align:center; font-size:11px; letter-spacing:2px; text-transform:uppercase; color:rgba(0,255,65,.3); cursor:pointer; border-bottom:2px solid transparent; transition:.2s; }
+    .tab.active { color:var(--green); border-bottom-color:var(--green); }
+    .list-wrap { flex:1; overflow-y:auto; scrollbar-width:none; min-height:0; }
+    .list-wrap::-webkit-scrollbar { display:none; }
+
+    /* Feed items */
+    .feed-item {
+      padding:12px 16px; border-bottom:1px solid rgba(0,255,65,.05);
+      cursor:pointer; transition:.15s;
+    }
+    .feed-item:hover { background:rgba(0,255,65,.03); }
+    .feed-meta { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+    .feed-avatar {
+      width:32px; height:32px; border-radius:50%; background:rgba(0,255,65,.08);
+      border:1px solid rgba(0,255,65,.2); display:flex; align-items:center; justify-content:center;
+      font-size:11px; font-family:'Orbitron',monospace; font-weight:700; color:var(--green); flex-shrink:0;
+    }
+    .feed-author { font-size:11px; color:rgba(0,255,65,.6); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .feed-time { font-size:9px; color:rgba(0,255,65,.25); flex-shrink:0; }
+    .feed-content { font-size:12px; color:rgba(0,255,65,.8); line-height:1.5; word-break:break-word; }
+    .feed-actions { display:flex; gap:16px; margin-top:8px; }
+    .feed-action { font-size:9px; color:rgba(0,255,65,.3); cursor:pointer; letter-spacing:1px; transition:.15s; }
+    .feed-action:hover { color:var(--green); }
+
+    /* DM list */
+    .dm-item {
+      display:flex; align-items:center; gap:12px; padding:12px 16px;
+      border-bottom:1px solid rgba(0,255,65,.05); cursor:pointer; transition:.15s;
+    }
+    .dm-item:hover { background:rgba(0,255,65,.04); }
+    .dm-avatar {
+      width:44px; height:44px; border-radius:50%; background:rgba(0,255,65,.08);
+      border:1px solid rgba(0,255,65,.2); display:flex; align-items:center; justify-content:center;
+      font-family:'Orbitron',monospace; font-size:14px; font-weight:700; color:var(--green); flex-shrink:0;
+    }
+    .dm-info { flex:1; min-width:0; }
+    .dm-name { font-size:13px; color:rgba(0,255,65,.9); margin-bottom:3px; }
+    .dm-preview { font-size:11px; color:rgba(0,255,65,.3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .dm-meta { text-align:right; flex-shrink:0; }
+    .dm-time { font-size:10px; color:rgba(0,255,65,.25); }
+    .badge { background:var(--green); color:var(--black); font-size:9px; font-weight:700; padding:2px 6px; border-radius:10px; display:inline-block; }
+
+    /* Relay list */
+    .relay-item {
+      display:flex; align-items:center; gap:10px; padding:10px 16px;
+      border-bottom:1px solid rgba(0,255,65,.05); font-size:11px;
+    }
+    .relay-status-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; transition:.3s; }
+    .relay-status-dot.connected { background:var(--green); box-shadow:0 0 6px var(--green); }
+    .relay-status-dot.connecting { background:#ffaa00; box-shadow:0 0 6px #ffaa00; animation:pulse .8s ease-in-out infinite; }
+    .relay-status-dot.disconnected { background:rgba(255,64,64,.6); }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .relay-url { flex:1; color:rgba(0,255,65,.6); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .relay-label { font-size:9px; letter-spacing:1px; padding:2px 6px; border-radius:3px; }
+    .relay-label.connected { color:var(--green); border:1px solid rgba(0,255,65,.3); }
+    .relay-label.connecting { color:#ffaa00; border:1px solid rgba(255,170,0,.3); }
+    .relay-label.disconnected { color:rgba(255,64,64,.7); border:1px solid rgba(255,64,64,.2); }
+
+    /* DM conv view */
+    #dm-conv-view {
+      display:none; flex-direction:column; position:absolute; inset:0;
+      background:var(--panel); border-radius:42px; overflow:hidden; z-index:20;
+    }
+    .conv-header {
+      padding:50px 16px 12px; display:flex; align-items:center; gap:12px;
+      border-bottom:1px solid rgba(0,255,65,.1); flex-shrink:0; background:rgba(0,0,0,.3);
+    }
+    .conv-back { color:rgba(0,255,65,.6); cursor:pointer; font-size:18px; padding:4px; transition:.15s; }
+    .conv-back:hover { color:var(--green); }
+    .conv-info { flex:1; }
+    .conv-name { font-size:14px; color:var(--green); }
+    .conv-status { font-size:10px; color:rgba(0,255,65,.35); letter-spacing:1px; margin-top:2px; }
+    .messages { flex:1; overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:8px; scrollbar-width:none; }
+    .messages::-webkit-scrollbar { display:none; }
+    .msg { display:flex; flex-direction:column; max-width:80%; }
+    .msg.me { align-self:flex-end; align-items:flex-end; }
+    .msg.them { align-self:flex-start; align-items:flex-start; }
+    .msg-bubble {
+      padding:9px 12px; border-radius:14px; font-size:12px; line-height:1.5;
+    }
+    .msg.me .msg-bubble { background:rgba(0,255,65,.12); border:1px solid rgba(0,255,65,.2); color:rgba(0,255,65,.9); border-bottom-right-radius:4px; }
+    .msg.them .msg-bubble { background:rgba(0,255,65,.05); border:1px solid rgba(0,255,65,.1); color:rgba(0,255,65,.7); border-bottom-left-radius:4px; }
+    .msg-time { font-size:9px; color:rgba(0,255,65,.2); margin-top:3px; padding:0 4px; }
+    .msg-input-wrap {
+      padding:12px 16px; border-top:1px solid rgba(0,255,65,.1); flex-shrink:0;
+      display:flex; gap:8px; align-items:flex-end;
+    }
+    .msg-input {
+      flex:1; background:rgba(0,255,65,.04); border:1px solid rgba(0,255,65,.15); border-radius:20px;
+      padding:10px 16px; color:var(--green); font-family:'Share Tech Mono',monospace; font-size:12px;
+      outline:none; resize:none; max-height:80px; overflow-y:auto; scrollbar-width:none; line-height:1.4;
+    }
+    .msg-input:focus { border-color:rgba(0,255,65,.4); }
+    .send-btn {
+      width:36px; height:36px; border-radius:50%; background:rgba(0,255,65,.1);
+      border:1px solid rgba(0,255,65,.3); cursor:pointer; display:flex; align-items:center; justify-content:center;
+      color:var(--green); font-size:16px; transition:.15s; flex-shrink:0;
+    }
+    .send-btn:hover { background:rgba(0,255,65,.2); }
+
+    /* FAB */
+    .fab {
+      position:absolute; bottom:24px; right:20px;
+      width:44px; height:44px; border-radius:50%;
+      background:rgba(0,255,65,.12); border:1px solid rgba(0,255,65,.4);
+      display:flex; align-items:center; justify-content:center;
+      font-size:22px; color:var(--green); cursor:pointer; transition:.2s; z-index:5;
+      box-shadow:0 0 12px rgba(0,255,65,.2);
+    }
+    .fab:hover { background:rgba(0,255,65,.22); box-shadow:0 0 20px rgba(0,255,65,.35); }
+
+    /* Auth */
+    #auth-view {
+      flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+      padding:30px 24px; gap:16px;
+    }
+    .auth-logo { font-family:'Orbitron',monospace; font-size:28px; font-weight:900; color:var(--green); text-shadow:0 0 20px rgba(0,255,65,.5); }
+    .auth-sub { font-size:10px; color:rgba(0,255,65,.35); letter-spacing:3px; margin-top:-8px; }
+    .auth-input {
+      width:100%; background:rgba(0,255,65,.04); border:1px solid rgba(0,255,65,.2); border-radius:8px;
+      padding:12px 14px; color:var(--green); font-family:'Share Tech Mono',monospace; font-size:12px;
+      outline:none; transition:.2s;
+    }
+    .auth-input:focus { border-color:rgba(0,255,65,.5); box-shadow:0 0 8px rgba(0,255,65,.1); }
+    .auth-input::placeholder { color:rgba(0,255,65,.2); }
+    .auth-btn {
+      width:100%; padding:14px; background:rgba(0,255,65,.1); border:1px solid rgba(0,255,65,.4);
+      border-radius:8px; color:var(--green); font-family:'Share Tech Mono',monospace;
+      font-size:13px; letter-spacing:3px; cursor:pointer; transition:.2s;
+    }
+    .auth-btn:hover { background:rgba(0,255,65,.18); box-shadow:0 0 16px rgba(0,255,65,.2); }
+    .auth-btn:disabled { opacity:.4; cursor:not-allowed; }
+    .auth-btn-secondary { background:transparent; border-color:rgba(0,255,65,.2); color:rgba(0,255,65,.5); font-size:11px; padding:10px; }
+    .auth-error { font-size:10px; color:#ff4040; letter-spacing:1px; min-height:14px; }
+    .auth-divider { width:100%; border-top:1px solid rgba(0,255,65,.1); }
+    .auth-lbl { font-size:9px; color:rgba(0,255,65,.35); letter-spacing:2px; align-self:flex-start; }
+
+    /* Overlays */
+    .overlay {
+      position:absolute; inset:0; z-index:30; background:rgba(2,10,3,.96);
+      border-radius:42px; display:flex; flex-direction:column; align-items:center;
+      justify-content:center; padding:28px 20px; gap:14px; overflow-y:auto;
+    }
+    .overlay-title { font-family:'Orbitron',monospace; font-size:14px; font-weight:700; color:var(--green); letter-spacing:3px; text-align:center; }
+    .overlay-lbl { font-size:9px; color:rgba(0,255,65,.4); letter-spacing:2px; align-self:flex-start; width:100%; }
+    .overlay-val { font-size:9px; color:rgba(0,255,65,.7); word-break:break-all; line-height:1.6; width:100%; }
+    .copy-btn {
+      background:none; border:1px solid rgba(0,255,65,.25); color:rgba(0,255,65,.6);
+      font-family:'Share Tech Mono',monospace; font-size:10px; letter-spacing:1px;
+      padding:5px 12px; border-radius:4px; cursor:pointer; transition:.15s; align-self:flex-end;
+    }
+    .copy-btn:hover { border-color:rgba(0,255,65,.6); color:var(--green); }
+
+    /* Profile overlay */
+    .profile-section { width:100%; display:flex; flex-direction:column; gap:8px; padding:10px 0; border-bottom:1px solid rgba(0,255,65,.08); }
+    .profile-npub {
+      font-size:8px; color:rgba(0,255,65,.5); word-break:break-all; line-height:1.6;
+      padding:8px; background:rgba(0,255,65,.03); border:1px solid rgba(0,255,65,.1); border-radius:6px;
+    }
+
+    /* Compose post */
+    .compose-textarea {
+      width:100%; height:120px; background:rgba(0,255,65,.04); border:1px solid rgba(0,255,65,.2);
+      border-radius:8px; padding:12px; color:var(--green); font-family:'Share Tech Mono',monospace;
+      font-size:12px; outline:none; resize:none; line-height:1.5;
+    }
+    .compose-textarea:focus { border-color:rgba(0,255,65,.4); }
+    .compose-textarea::placeholder { color:rgba(0,255,65,.2); }
+    .char-count { font-size:9px; color:rgba(0,255,65,.3); align-self:flex-end; }
+
+    /* Fix: main-view must not grow beyond phone height */
+    #main-view { min-height:0; }
+    /* Desktop: skip loading, hide phone overlays */
+    @media (min-width: 900px) {
+      #loading { display: none !important; }
+      #rain, .scanlines, .vignette { display: none !important; }
+    }
+
+    /* Global tag chips */
+    .gtag { font-size:9px; letter-spacing:1px; padding:3px 8px; border-radius:12px; border:1px solid rgba(0,255,65,.2); color:rgba(0,255,65,.4); cursor:pointer; transition:.15s; }
+    .gtag:hover { border-color:rgba(0,255,65,.4); color:rgba(0,255,65,.7); }
+    .gtag.active { border-color:var(--green); color:var(--green); background:rgba(0,255,65,.06); }
+
+    /* DM delete button */
+    .dm-delete { color:rgba(0,255,65,.25); font-size:18px; cursor:pointer; padding:4px 6px; transition:.15s; align-self:center; line-height:1; }
+    .dm-delete:hover { color:#ff4040; }
+
+    /* Empty states */
+    .empty-state { padding:40px 20px; text-align:center; font-size:11px; color:rgba(0,255,65,.25); letter-spacing:2px; line-height:2.5; }
+
+    /* Spinner */
+    .spinner {
+      width:20px; height:20px; border:2px solid rgba(0,255,65,.1);
+      border-top-color:var(--green); border-radius:50%;
+      animation:spin .7s linear infinite; flex-shrink:0;
+    }
+    @keyframes spin { to{transform:rotate(360deg)} }
+
+    /* Unlock */
+    #auth-unlock { display:none; flex:1; flex-direction:column; align-items:center; justify-content:center; padding:30px 24px; gap:16px; }
+    .unlock-logo { font-family:'Orbitron',monospace; font-size:28px; font-weight:900; color:var(--green); text-shadow:0 0 20px rgba(0,255,65,.5); }
+  </style>
+  <link rel="stylesheet" href="desktop.css">
+</head>
+<body>
+<canvas id="rain"></canvas>
+<div class="scanlines"></div>
+<div class="vignette"></div>
+
+<!-- Loading -->
+<div id="loading">
+  <div class="loader-logo">00 MESH</div>
+  <div class="loader-bar-wrap"><div class="loader-bar"></div></div>
+  <div class="loader-status" id="loader-status"></div>
+</div>
+
+<!-- ── Desktop Mesh View (hidden on mobile) ── -->
+<div id="mesh-desktop" style="display:none">
+  <div class="dt-inner">
+    <div class="dt-page-header">
+      <div class="dt-page-title-wrap">
+        <div class="dt-page-icon">◈</div>
+        <div>
+          <div class="dt-page-title">Mesh</div>
+          <div class="dt-page-sub">Nostr Social Network</div>
+        </div>
+      </div>
+      </div>
+    </div>
+
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div class="dt-tabs" id="dt-mesh-tabs" style="margin-bottom:0">
+        <button class="dt-tab active" onclick="dtMeshTab('feed')">Feed</button>
+        <button class="dt-tab" onclick="dtMeshTab('dms')">DMs</button>
+        <button class="dt-tab" onclick="dtMeshTab('global')">Global</button>
+        <button class="dt-tab" onclick="dtMeshTab('relays')">Relays</button>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <button class="dt-tab" onclick="dtMeshOpenProfile()">◈ Identity</button>
+        <button class="dt-tab" onclick="dtMeshOpenAdd()">+ Contact</button>
+      </div>
+    </div>
+
+    <!-- FEED pane -->
+    <div class="dt-pane active" id="dt-mesh-p-feed">
+      <div style="margin-bottom:16px">
+        <button class="dt-action-btn" onclick="dtMeshOpenCompose()">✎ New Post</button>
+      </div>
+      <div id="dt-feed-list"></div>
+    </div>
+
+    <!-- DMs pane -->
+    <div class="dt-pane" id="dt-mesh-p-dms">
+      <div class="dt-split">
+        <div class="dt-split-left">
+          <div class="dt-split-header">
+            <span style="font-weight:600;color:var(--dt-text)">Conversations</span>
+          </div>
+          <div class="dt-split-list" id="dt-mesh-dm-list"></div>
+        </div>
+        <div class="dt-split-right">
+          <div id="dt-mesh-conv-empty" style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--dt-text-secondary);font-size:14px">Select a conversation</div>
+          <div id="dt-mesh-conv" style="display:none;flex-direction:column;height:100%">
+            <div style="padding:16px 20px;border-bottom:1px solid var(--dt-border);display:flex;align-items:center;gap:12px">
+              <div class="dt-avatar" id="dt-mesh-conv-avatar"></div>
+              <div>
+                <div style="font-weight:600;color:var(--dt-text)" id="dt-mesh-conv-name">—</div>
+                <div style="font-size:11px;color:var(--dt-text-secondary)" id="dt-mesh-conv-npub"></div>
+              </div>
+            </div>
+            <div class="dt-msg-list" id="dt-mesh-messages"></div>
+            <div class="dt-msg-input">
+              <input class="dt-form-input" id="dt-mesh-dm-input" placeholder="Encrypted message..." style="flex:1;margin:0" onkeydown="if(event.key==='Enter')dtMeshSendDm()">
+              <button class="dt-msg-send" onclick="dtMeshSendDm()">↑</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GLOBAL pane -->
+    <div class="dt-pane" id="dt-mesh-p-global">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+        <div class="dt-chips" id="dt-mesh-tags" style="margin-bottom:0;flex:1;min-width:0">
+          <span class="dt-chip active" onclick="dtMeshGlobalTag('bitcoincash')">#bitcoincash</span>
+          <span class="dt-chip" onclick="dtMeshGlobalTag('bch')">#bch</span>
+          <span class="dt-chip" onclick="dtMeshGlobalTag('privacy')">#privacy</span>
+          <span class="dt-chip" onclick="dtMeshGlobalTag('cypherpunk')">#cypherpunk</span>
+          <span class="dt-chip" onclick="dtMeshGlobalTag('nostr')">#nostr</span>
+          <span class="dt-chip" onclick="dtMeshGlobalTag('freedom')">#freedom</span>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+          <input class="dt-form-input" id="dt-mesh-custom-tag" type="text" placeholder="# custom tag…" style="width:140px;padding:6px 10px;font-size:11px;border-radius:20px" onkeydown="if(event.key==='Enter'){dtMeshSearchTag();event.preventDefault();}">
+          <button class="dt-action-btn" onclick="dtMeshSearchTag()" style="width:auto;padding:6px 14px;font-size:11px;border-radius:20px">Search</button>
+        </div>
+      </div>
+      <div id="dt-global-list"></div>
+    </div>
+
+    <!-- RELAYS pane -->
+    <div class="dt-pane" id="dt-mesh-p-relays">
+      <div id="dt-relay-list"></div>
+    </div>
+
+    <!-- Desktop Compose overlay -->
+    <div class="dt-overlay" id="dt-mesh-compose-overlay">
+      <div class="dt-card" style="max-width:520px;margin:60px auto">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <div style="font-size:16px;font-weight:700;color:var(--dt-text)">New Post</div>
+          <button class="dt-action-btn-outline" onclick="dtMeshCloseCompose()" style="width:auto;padding:4px 12px;font-size:13px;flex-shrink:0">×</button>
+        </div>
+        <textarea class="dt-form-input" id="dt-compose-text" placeholder="Broadcast to the mesh..." style="min-height:120px;resize:vertical;font-size:13px;line-height:1.6" oninput="dtMeshCharCount()"></textarea>
+        <div style="text-align:right;font-size:11px;color:var(--dt-text-secondary);margin:4px 0 12px"><span id="dt-char-count">0</span>/280</div>
+        <div style="display:flex;gap:10px">
+          <button class="dt-action-btn" onclick="dtMeshPublishPost()" id="dt-compose-btn" style="flex:1">⚡ Broadcast</button>
+          <button class="dt-action-btn-outline" onclick="dtMeshCloseCompose()" style="width:auto;flex-shrink:0;padding:10px 20px">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Desktop Profile overlay -->
+    <div class="dt-overlay" id="dt-mesh-profile-overlay">
+      <div class="dt-card" style="max-width:520px;margin:60px auto">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+          <div style="font-size:16px;font-weight:700;color:var(--dt-text)">My Identity</div>
+          <button class="dt-action-btn-outline" onclick="dtMeshCloseProfile()" style="width:auto;padding:4px 12px;font-size:13px;flex-shrink:0">×</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div>
+            <div class="dt-form-lbl" style="margin-bottom:6px">Npub (Nostr Public Key)</div>
+            <div id="dt-my-npub" style="font-size:11px;color:var(--dt-text-secondary);word-break:break-all;font-family:'SF Mono','Fira Code','Consolas',monospace;padding:12px 14px;background:var(--dt-input-bg);border:1px solid var(--dt-border);border-radius:10px;line-height:1.6"></div>
+            <button class="dt-action-btn-outline" onclick="dtMeshCopy('dt-my-npub')" style="width:auto;margin-top:8px;padding:6px 20px;font-size:11px;display:inline-flex;align-items:center;gap:5px">📋 Copy Npub</button>
+          </div>
+          <div>
+            <div class="dt-form-lbl" style="margin-bottom:6px">BCH Address (Same Seed)</div>
+            <div id="dt-my-bch-addr" style="font-size:11px;color:var(--dt-text-secondary);word-break:break-all;font-family:'SF Mono','Fira Code','Consolas',monospace;padding:12px 14px;background:var(--dt-input-bg);border:1px solid var(--dt-border);border-radius:10px;line-height:1.6"></div>
+          </div>
+          <div>
+            <div class="dt-form-lbl" style="margin-bottom:6px">Hex Pubkey (32 bytes)</div>
+            <div id="dt-my-pubhex" style="font-size:11px;color:var(--dt-text-secondary);word-break:break-all;font-family:'SF Mono','Fira Code','Consolas',monospace;padding:12px 14px;background:var(--dt-input-bg);border:1px solid var(--dt-border);border-radius:10px;line-height:1.6"></div>
+          </div>
+          <button class="dt-action-btn-outline" onclick="dtMeshCloseProfile()" style="width:auto;padding:8px 24px;align-self:flex-start">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Desktop Add Contact overlay -->
+    <div class="dt-overlay" id="dt-mesh-add-overlay">
+      <div class="dt-card" style="max-width:480px;margin:60px auto">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+          <div style="font-size:16px;font-weight:700;color:var(--dt-text)">Add Contact</div>
+          <button class="dt-action-btn-outline" onclick="dtMeshCloseAdd()" style="width:auto;padding:4px 12px;font-size:13px;flex-shrink:0">×</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div class="dt-form-group" style="margin:0">
+            <div class="dt-form-lbl">Npub or Hex Pubkey</div>
+            <input class="dt-form-input" type="text" id="dt-mesh-ac-npub" placeholder="npub1... or 64-char hex" style="font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:12px">
+          </div>
+          <div class="dt-form-group" style="margin:0">
+            <div class="dt-form-lbl">Name (optional)</div>
+            <input class="dt-form-input" type="text" id="dt-mesh-ac-name" placeholder="anon">
+          </div>
+          <div id="dt-mesh-ac-error" style="font-size:11px;color:var(--dt-danger);min-height:16px"></div>
+          <div style="display:flex;gap:10px">
+            <button class="dt-action-btn" onclick="dtMeshSaveContact()" style="width:auto;flex:0 0 auto;padding:10px 24px">+ Add Contact</button>
+            <button class="dt-action-btn-outline" onclick="dtMeshCloseAdd()" style="width:auto;flex-shrink:0;padding:10px 20px">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  if(!window.matchMedia('(min-width:900px)').matches) return;
+  var el=document.getElementById('mesh-desktop');if(!el)return;
+  el.style.display='';
+
+  /* ── Tab switching ─── */
+  var _tabs=['feed','dms','global','relays'];
+  window.dtMeshTab=function(t){
+    _tabs.forEach(function(x){
+      var p=document.getElementById('dt-mesh-p-'+x);
+      if(p)p.classList.toggle('active',x===t);
+    });
+    var btns=document.querySelectorAll('#dt-mesh-tabs .dt-tab');
+    btns.forEach(function(b){b.classList.toggle('active',b.textContent.toLowerCase()===t);});
+  };
+
+  /* ── Global tag ─── */
+  window.dtMeshGlobalTag=function(tag){
+    var chips=document.querySelectorAll('#dt-mesh-tags .dt-chip');
+    chips.forEach(function(c){c.classList.toggle('active',c.textContent==='#'+tag);});
+    document.getElementById('dt-mesh-custom-tag').value='';
+    if(window.setGlobalTag) window.setGlobalTag(tag);
+  };
+  window.dtMeshSearchTag=function(){
+    var input=document.getElementById('dt-mesh-custom-tag');
+    var tag=input.value.trim().replace(/^#/,'').toLowerCase();
+    if(!tag)return;
+    // Deselect all preset chips
+    var chips=document.querySelectorAll('#dt-mesh-tags .dt-chip');
+    chips.forEach(function(c){c.classList.remove('active');});
+    if(window.setGlobalTag) window.setGlobalTag(tag);
+  };
+
+  /* ── Open DM conversation ─── */
+  var _activeDmPub='';
+  window.dtMeshOpenDm=function(pub){
+    _activeDmPub=pub;
+    if(window.openDmConv) window.openDmConv(pub);
+    document.getElementById('dt-mesh-conv-empty').style.display='none';
+    var cv=document.getElementById('dt-mesh-conv');
+    cv.style.display='flex';
+  };
+
+  /* ── Send DM ─── */
+  window.dtMeshSendDm=function(){
+    var inp=document.getElementById('dt-mesh-dm-input');
+    if(!inp||!inp.value.trim()) return;
+    var mi=document.getElementById('dm-input');
+    if(mi) mi.value=inp.value;
+    if(window.sendDm) window.sendDm();
+    inp.value='';
+  };
+
+  /* ── Desktop Compose ─── */
+  window.dtMeshOpenCompose=function(){
+    document.getElementById('dt-compose-text').value='';
+    document.getElementById('dt-char-count').textContent='0';
+    document.getElementById('dt-mesh-compose-overlay').classList.add('active');
+    setTimeout(function(){document.getElementById('dt-compose-text').focus();},100);
+  };
+  window.dtMeshCloseCompose=function(){
+    document.getElementById('dt-mesh-compose-overlay').classList.remove('active');
+    document.getElementById('dt-compose-text').value='';
+  };
+  window.dtMeshCharCount=function(){
+    document.getElementById('dt-char-count').textContent=document.getElementById('dt-compose-text').value.length;
+  };
+  window.dtMeshPublishPost=function(){
+    var text=document.getElementById('dt-compose-text').value.trim();
+    if(!text||text.length>280) return;
+    // Sync to mobile compose and call publishPost
+    var mi=document.getElementById('compose-text');
+    if(mi) mi.value=text;
+    if(window.publishPost) window.publishPost();
+    dtMeshCloseCompose();
+  };
+
+  /* ── Desktop Profile ─── */
+  window.dtMeshOpenProfile=function(){
+    // Trigger mobile openProfile to populate data, then mirror it
+    if(window.openProfile) window.openProfile();
+    setTimeout(function(){
+      var npub=document.getElementById('my-npub');
+      var bch=document.getElementById('my-bch-addr');
+      var hex=document.getElementById('my-pubhex');
+      if(npub) document.getElementById('dt-my-npub').textContent=npub.textContent;
+      if(bch) document.getElementById('dt-my-bch-addr').textContent=bch.textContent;
+      if(hex) document.getElementById('dt-my-pubhex').textContent=hex.textContent;
+      if(window.closeProfile) window.closeProfile();
+    },100);
+    document.getElementById('dt-mesh-profile-overlay').classList.add('active');
+  };
+  window.dtMeshCloseProfile=function(){
+    document.getElementById('dt-mesh-profile-overlay').classList.remove('active');
+  };
+  window.dtMeshCopy=function(id){
+    var el=document.getElementById(id);
+    if(el&&navigator.clipboard) navigator.clipboard.writeText(el.textContent);
+  };
+
+  /* ── Desktop Add Contact ─── */
+  window.dtMeshOpenAdd=function(){
+    document.getElementById('dt-mesh-ac-npub').value='';
+    document.getElementById('dt-mesh-ac-name').value='';
+    document.getElementById('dt-mesh-ac-error').textContent='';
+    document.getElementById('dt-mesh-add-overlay').classList.add('active');
+  };
+  window.dtMeshCloseAdd=function(){
+    document.getElementById('dt-mesh-add-overlay').classList.remove('active');
+  };
+  window.dtMeshSaveContact=function(){
+    var npub=document.getElementById('dt-mesh-ac-npub').value.trim();
+    var name=document.getElementById('dt-mesh-ac-name').value.trim()||'anon';
+    if(!npub){document.getElementById('dt-mesh-ac-error').textContent='Npub or hex pubkey required';return;}
+    // Sync to mobile form and call mobile saveContact
+    var mi=document.getElementById('ac-npub');if(mi)mi.value=npub;
+    mi=document.getElementById('ac-name');if(mi)mi.value=name;
+    if(window.saveContact) window.saveContact();
+    // Check for error
+    var err=document.getElementById('ac-error');
+    if(err&&err.textContent){
+      document.getElementById('dt-mesh-ac-error').textContent=err.textContent;
+      return;
+    }
+    dtMeshCloseAdd();
+  };
+
+  /* ── Render feed items ─── */
+  function escHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  function formatPostText(raw){
+    var esc=escHtml(raw);
+    // Highlight hashtags
+    esc=esc.replace(/(#\w+)/g,'<span style="color:var(--dt-accent);font-weight:600">$1</span>');
+    // Linkify URLs
+    esc=esc.replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" rel="noopener" style="color:var(--dt-accent);text-decoration:none;word-break:break-all;opacity:.8;font-size:11px">$1</a>');
+    // Line breaks
+    esc=esc.replace(/\n/g,'<br>');
+    return esc;
+  }
+  function renderFeedItems(mobileList, desktopEl){
+    if(!mobileList||!desktopEl) return;
+    var items=mobileList.querySelectorAll('.feed-item,.post-item');
+    if(!items.length){
+      desktopEl.innerHTML='<div class="dt-empty"><div class="dt-empty-text">No posts yet</div></div>';
+      return;
+    }
+    var html='';
+    items.forEach(function(it){
+      var author=it.querySelector('.feed-author,.post-author,.post-name');
+      var avatar=it.querySelector('.feed-avatar');
+      var text=it.querySelector('.feed-content,.post-text,.post-content');
+      var time=it.querySelector('.feed-time,.post-time,.post-date');
+      var avatarInit=avatar?avatar.textContent.trim().substring(0,2).toUpperCase():(author?author.textContent.charAt(0).toUpperCase():'?');
+      var rawText=text?text.textContent:'';
+      var formatted=formatPostText(rawText);
+      html+='<div style="display:flex;gap:14px;padding:16px 20px;border-bottom:1px solid var(--dt-border);transition:background .15s"'
+        +' onmouseenter="this.style.background=\'var(--dt-sidebar-hover)\'" onmouseleave="this.style.background=\'\'">'
+        +'<div style="width:40px;height:40px;border-radius:12px;background:var(--dt-input-bg);border:1px solid var(--dt-border);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--dt-text-secondary);flex-shrink:0;font-family:monospace">'+avatarInit+'</div>'
+        +'<div style="flex:1;min-width:0">'
+        +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+        +'<span style="font-size:13px;font-weight:700;color:var(--dt-text)">'+(author?author.textContent:'Anon')+'</span>'
+        +(time?'<span style="font-size:11px;color:var(--dt-text-secondary);opacity:.6">· '+time.textContent+'</span>':'')
+        +'</div>'
+        +'<div style="font-size:13px;line-height:1.6;color:var(--dt-text);word-break:break-word">'+formatted+'</div>'
+        +'</div></div>';
+    });
+    desktopEl.innerHTML=html;
+  }
+
+  /* ── Poll mobile DOM ─── */
+  setInterval(function(){
+    // Mirror feed
+    var ml=document.getElementById('feed-list');
+    var dl=document.getElementById('dt-feed-list');
+    renderFeedItems(ml,dl);
+
+    // Mirror global feed
+    var gl=document.getElementById('global-list');
+    var dgl=document.getElementById('dt-global-list');
+    renderFeedItems(gl,dgl);
+
+    // Mirror DM list
+    var dml=document.getElementById('dm-list');
+    var ddml=document.getElementById('dt-mesh-dm-list');
+    if(dml&&ddml){
+      var contacts=dml.querySelectorAll('.dm-item,.dm-contact');
+      if(!contacts.length){
+        ddml.innerHTML='<div style="padding:20px;text-align:center;color:var(--dt-text-secondary);font-size:12px">No conversations</div>';
+      } else {
+        var html='';
+        contacts.forEach(function(c){
+          var name=c.querySelector('.dm-name,.dm-contact-name');
+          var preview=c.querySelector('.dm-preview,.dm-last');
+          var time=c.querySelector('.dm-time,.dm-date');
+          var badge=c.querySelector('.badge,.dm-badge');
+          var oc=c.getAttribute('onclick')||'';
+          var pubMatch=oc.match(/'([^']+)'/);
+          var pub=pubMatch?pubMatch[1]:'';
+          html+='<div class="dt-contact-row'+(pub===_activeDmPub?' active':'')+'" onclick="dtMeshOpenDm(\''+pub+'\')">'
+            +'<div class="dt-avatar">'+((name?name.textContent:'?').charAt(0).toUpperCase())+'</div>'
+            +'<div class="dt-contact-info"><div class="dt-contact-name">'+(name?name.textContent:'Anon')+'</div>'
+            +'<div class="dt-contact-preview">'+(preview?preview.textContent:'')+'</div></div>'
+            +'<div class="dt-contact-meta">'
+            +(time?'<div class="dt-contact-time">'+time.textContent+'</div>':'')
+            +(badge&&badge.style.display!=='none'?'<div class="dt-contact-badge">'+badge.textContent+'</div>':'')
+            +'</div></div>';
+        });
+        ddml.innerHTML=html;
+      }
+    }
+
+    // Mirror active DM conversation
+    var cv=document.getElementById('dt-mesh-conv');
+    if(cv&&cv.style.display!=='none'){
+      var cn=document.getElementById('conv-name');
+      var dcn=document.getElementById('dt-mesh-conv-name');
+      if(cn&&dcn) dcn.textContent=cn.textContent;
+
+      var cnp=document.getElementById('conv-npub');
+      var dcnp=document.getElementById('dt-mesh-conv-npub');
+      if(cnp&&dcnp) dcnp.textContent=cnp.textContent;
+
+      // Mirror messages
+      var msgs=document.getElementById('messages');
+      var dmsgs=document.getElementById('dt-mesh-messages');
+      if(msgs&&dmsgs){
+        var mobMsgs=msgs.querySelectorAll('.msg');
+        var html='';
+        mobMsgs.forEach(function(m){
+          var isMe=m.classList.contains('me');
+          var bubble=m.querySelector('.msg-bubble');
+          var time=m.querySelector('.msg-time');
+          html+='<div class="dt-msg '+(isMe?'me':'them')+'">'
+            +'<div class="dt-msg-bubble">'+(bubble?bubble.textContent:'')+'</div>'
+            +(time?'<div class="dt-msg-time">'+time.textContent+'</div>':'')
+            +'</div>';
+        });
+        dmsgs.innerHTML=html;
+      }
+    }
+
+    // Mirror relay list
+    var rl=document.getElementById('relay-list');
+    var drl=document.getElementById('dt-relay-list');
+    if(rl&&drl){
+      var relays=rl.querySelectorAll('.relay-item');
+      if(!relays.length){
+        drl.innerHTML='<div class="dt-empty"><div class="dt-empty-text">No relay data</div></div>';
+      } else {
+        var html='';
+        relays.forEach(function(r){
+          var url=r.querySelector('.relay-url');
+          var dot=r.querySelector('.relay-status-dot');
+          var label=r.querySelector('.relay-label');
+          var isConn=dot&&dot.classList.contains('connected');
+          var isConnecting=dot&&dot.classList.contains('connecting');
+          html+='<div class="dt-row" style="cursor:default">'
+            +'<div class="dt-row-left"><div class="dt-row-title" style="font-family:monospace;font-size:12px">'+(url?url.textContent:'')+'</div></div>'
+            +'<div class="dt-row-right"><span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px;border:1px solid;'
+            +(isConn?'color:var(--dt-accent)':isConnecting?'color:var(--dt-warning)':'color:var(--dt-danger)')+'">'
+            +(label?label.textContent:(isConn?'Connected':'Disconnected'))+'</span></div>'
+            +'</div>';
+        });
+        drl.innerHTML=html;
+      }
+    }
+
+    // Connection status chip
+    var rd=document.querySelectorAll('.relay-dot');
+    var dnd=document.getElementById('dt-mesh-dot-nostr');
+    var dnChip=document.getElementById('dt-status-mesh-nostr');
+    var dnServer=document.getElementById('dt-status-mesh-nostr-server');
+    if(dnd&&rd.length){
+      var anyOn=false;var connNames=[];
+      rd.forEach(function(d){if(d.classList.contains('on')){anyOn=true;}});
+      dnd.classList.toggle('on',anyOn);
+      dnd.classList.toggle('err',!anyOn);
+      if(dnChip){dnChip.classList.toggle('on',anyOn);dnChip.classList.toggle('err',!anyOn);}
+      // Get relay names from mobile relay list
+      if(dnServer&&relays&&relays.length){
+        var names=[];
+        relays.forEach(function(r){
+          var dot=r.querySelector('.relay-status-dot');
+          var url=r.querySelector('.relay-url');
+          if(dot&&dot.classList.contains('connected')&&url)try{names.push(new URL(url.textContent).hostname);}catch{names.push(url.textContent);}
+        });
+        if(names.length)dnServer.textContent=names.join(', ');
+        else dnServer.textContent=anyOn?'connected':'disconnected';
+      }
+    } else if(dnd){
+      dnd.classList.remove('on');dnd.classList.add('err');
+      if(dnChip){dnChip.classList.remove('on');dnChip.classList.add('err');}
+      if(dnServer)dnServer.textContent='disconnected';
+    }
+  },800);
+})();
+</script>
+
+<div class="phone-wrap">
+  <div class="phone">
+    <div class="notch"><div class="notch-cam"></div><div class="notch-speaker"></div><div class="notch-cam"></div></div>
+
+    <!-- AUTH: IMPORT -->
+    <div id="auth-import" style="display:none;flex:1;flex-direction:column">
+      <div id="auth-view">
+        <div class="auth-logo">00 MESH</div>
+        <div class="auth-sub">// NOSTR · BCH · DECENTRALIZED</div>
+        <div class="auth-lbl">SEED PHRASE OR HEX KEY</div>
+        <textarea class="auth-input" id="import-seed" rows="3" placeholder="12 words or 64-char hex..." style="resize:none;line-height:1.6"></textarea>
+        <div class="auth-lbl">PASSWORD</div>
+        <input class="auth-input" id="import-pass" type="password" placeholder="min 8 chars...">
+        <div class="auth-lbl">CONFIRM</div>
+        <input class="auth-input" id="import-pass2" type="password" placeholder="confirm...">
+        <div class="auth-error" id="import-error"></div>
+        <button class="auth-btn" onclick="meshImport()">CONNECT TO MESH →</button>
+        <div class="auth-divider"></div>
+        <button class="auth-btn auth-btn-secondary" onclick="meshGenKey()">⚡ GENERATE NEW IDENTITY</button>
+      </div>
+    </div>
+
+    <!-- AUTH: UNLOCK -->
+    <div id="auth-unlock">
+      <div class="unlock-logo">00 MESH</div>
+      <div style="font-size:10px;color:rgba(0,255,65,.35);letter-spacing:2px">// ENTER PASSWORD</div>
+      <input class="auth-input" id="unlock-pass" type="password" placeholder="password..." onkeydown="if(event.key==='Enter')meshUnlock()">
+      <div class="auth-error" id="unlock-error"></div>
+      <button class="auth-btn" onclick="meshUnlock()">UNLOCK →</button>
+      <button class="auth-btn auth-btn-secondary" onclick="showMeshImport()">← IMPORT NEW KEY</button>
+    </div>
+
+    <!-- MAIN VIEW -->
+    <div id="main-view" style="display:none;flex-direction:column;flex:1">
+      <div class="status-bar">
+        <span id="phone-clock">00:00</span>
+        <div class="status-icons">
+          <span id="mesh-relay-indicator" style="font-size:9px;letter-spacing:1px;color:rgba(0,255,65,.4)">MESH ●</span>
+        </div>
+      </div>
+      <div class="app-header">
+        <div class="app-title">00 MESH<span>// NOSTR NETWORK</span></div>
+        <div style="display:flex;gap:14px">
+          <div class="header-icon" title="My Identity" onclick="openProfile()">◈</div>
+          <div class="header-icon" title="Add Contact" onclick="openAddContact()">+</div>
+        </div>
+      </div>
+      <!-- Relay bar -->
+      <div class="relay-bar">
+        <div class="relay-dot" id="relay-dot-0"></div>
+        <div class="relay-dot" id="relay-dot-1"></div>
+        <div class="relay-dot" id="relay-dot-2"></div>
+        <div class="relay-dot" id="relay-dot-3"></div>
+        <span><span class="relay-count" id="relay-connected-count">0</span>/4 RELAYS</span>
+        <span style="margin-left:auto;opacity:.5" id="relay-last-event"></span>
+      </div>
+      <div class="tabs">
+        <div class="tab active" id="tab-feed" onclick="switchTab('feed')">FEED</div>
+        <div class="tab" id="tab-global" onclick="switchTab('global')">GLOBAL</div>
+        <div class="tab" id="tab-dms" onclick="switchTab('dms')">DMs <span id="dm-badge" style="display:none" class="badge">0</span></div>
+        <div class="tab" id="tab-relays" onclick="switchTab('relays')">RELAYS</div>
+      </div>
+      <div class="list-wrap" id="tab-content-feed">
+        <div class="empty-state" id="feed-empty">// NO POSTS YET<br>SCANNING NETWORK...</div>
+        <div id="feed-list"></div>
+      </div>
+      <div class="list-wrap" id="tab-content-global" style="display:none">
+        <div style="padding:6px 16px 4px;display:flex;gap:6px;flex-wrap:wrap" id="global-tags-bar">
+          <span style="font-size:8px;color:rgba(0,255,65,.3);letter-spacing:1px;align-self:center">#</span>
+          <span class="gtag active" onclick="setGlobalTag('bitcoincash')">#bitcoincash</span>
+          <span class="gtag" onclick="setGlobalTag('bch')">#bch</span>
+          <span class="gtag" onclick="setGlobalTag('privacy')">#privacy</span>
+          <span class="gtag" onclick="setGlobalTag('cypherpunk')">#cypherpunk</span>
+          <span class="gtag" onclick="setGlobalTag('nostr')">#nostr</span>
+          <span class="gtag" onclick="setGlobalTag('freedom')">#freedom</span>
+        </div>
+        <div class="empty-state" id="global-empty">// SCANNING MESH...</div>
+        <div id="global-list"></div>
+      </div>
+      <div class="list-wrap" id="tab-content-dms" style="display:none">
+        <div class="empty-state" id="dms-empty">// NO MESSAGES<br>ADD A CONTACT TO START</div>
+        <div id="dm-list"></div>
+      </div>
+      <div class="list-wrap" id="tab-content-relays" style="display:none">
+        <div id="relay-list"></div>
+      </div>
+      <!-- FAB: Compose -->
+      <div class="fab" onclick="openCompose()" title="New Post">✎</div>
+    </div>
+
+    <!-- DM CONV VIEW -->
+    <div id="dm-conv-view">
+      <div class="conv-header">
+        <div class="conv-back" onclick="closeDmConv()">←</div>
+        <div class="conv-info">
+          <div class="conv-name" id="conv-name">—</div>
+          <div class="conv-status" id="conv-npub" style="font-size:8px;word-break:break-all"></div>
+        </div>
+      </div>
+      <div class="messages" id="messages"></div>
+      <div class="msg-input-wrap">
+        <textarea class="msg-input" id="dm-input" rows="1" placeholder="// encrypted message..." onkeydown="handleDmKey(event)" oninput="autoResize(this)"></textarea>
+        <div class="send-btn" onclick="sendDm()">↑</div>
+      </div>
+    </div>
+
+    <!-- PROFILE OVERLAY -->
+    <div class="overlay" id="profile-overlay" style="display:none">
+      <div class="overlay-title">// MY IDENTITY</div>
+      <div class="profile-section">
+        <div class="overlay-lbl">NPUB (NOSTR PUBLIC KEY)</div>
+        <div class="profile-npub" id="my-npub"></div>
+        <button class="copy-btn" onclick="copyText('my-npub',this)">COPY NPUB</button>
+      </div>
+      <div class="profile-section">
+        <div class="overlay-lbl">BCH ADDRESS (SAME SEED)</div>
+        <div class="profile-npub" id="my-bch-addr" style="font-size:8px"></div>
+        <button class="copy-btn" onclick="copyText('my-bch-addr',this)">COPY BCH</button>
+      </div>
+      <div class="profile-section">
+        <div class="overlay-lbl">HEX PUBKEY (32 bytes)</div>
+        <div class="profile-npub" id="my-pubhex" style="font-size:8px"></div>
+      </div>
+      <button class="auth-btn auth-btn-secondary" onclick="closeProfile()">← CLOSE</button>
+    </div>
+
+    <!-- ADD CONTACT OVERLAY -->
+    <div class="overlay" id="add-contact-overlay" style="display:none">
+      <div class="overlay-title">// ADD CONTACT</div>
+      <div class="overlay-lbl">NPUB OR HEX PUBKEY</div>
+      <input class="auth-input" id="ac-npub" placeholder="npub1... or 64-char hex">
+      <div class="overlay-lbl">NAME (OPTIONAL)</div>
+      <input class="auth-input" id="ac-name" placeholder="anon">
+      <div class="auth-error" id="ac-error"></div>
+      <button class="auth-btn" onclick="saveContact()">+ ADD CONTACT</button>
+      <button class="auth-btn auth-btn-secondary" onclick="closeAddContact()">← CANCEL</button>
+    </div>
+
+    <!-- COMPOSE OVERLAY -->
+    <div class="overlay" id="compose-overlay" style="display:none">
+      <div class="overlay-title">// NEW POST</div>
+      <textarea class="compose-textarea" id="compose-text" placeholder="// broadcast to the mesh..." oninput="updateCharCount()"></textarea>
+      <div class="char-count"><span id="char-count">0</span>/280</div>
+      <button class="auth-btn" id="compose-btn" onclick="publishPost()">⚡ BROADCAST →</button>
+      <button class="auth-btn auth-btn-secondary" onclick="closeCompose()">← CANCEL</button>
+    </div>
+
+  </div><!-- /phone -->
+</div><!-- /phone-wrap -->
+
+<!-- Boot -->
+<script>(function(){var v=localStorage.getItem('00wallet_vault');if(!v){window.location.href='/wallet.html';return;}try{var s=JSON.parse(localStorage.getItem('00_session_auth')||'{}');if(!s.ts||Date.now()-s.ts>30*60*1000){window.location.href='/wallet.html';}}catch(e){window.location.href='/wallet.html';}})();</script>
+<script>
+(function() {
+  const statuses = ['BOOT 0penw0rld OS...','SCANNING NOSTR RELAYS...','LOADING CCSH PROTOCOL...','MESH READY'];
+  let si = 0;
+  const statusEl = document.getElementById('loader-status');
+  const iv = setInterval(() => {
+    if (si < statuses.length) { statusEl.innerHTML = statuses[si] + '<span class="blink">_</span>'; si++; }
+    else clearInterval(iv);
+  }, 480);
+  setTimeout(() => {
+    document.getElementById('loading').style.transition = 'opacity .5s';
+    document.getElementById('loading').style.opacity = '0';
+    setTimeout(() => {
+      document.getElementById('loading').style.display = 'none';
+      if (typeof window._meshBoot === 'function') window._meshBoot();
+      else document.getElementById('auth-import').style.display = 'flex';
+    }, 500);
+  }, 2200);
+})();
+</script>
+
+<script type="module">
+import { secp256k1, schnorr } from 'https://esm.sh/@noble/curves@1.8.1/secp256k1';
+import { hmac }       from 'https://esm.sh/@noble/hashes@1.7.1/hmac';
+import { sha256 }     from 'https://esm.sh/@noble/hashes@1.7.1/sha256';
+import { sha512 }     from 'https://esm.sh/@noble/hashes@1.7.1/sha512';
+
+// ── Utils ──────────────────────────────────────────
+const b2h = b => Array.from(b).map(x => x.toString(16).padStart(2,'0')).join('');
+const h2b = h => new Uint8Array(h.match(/.{2}/g).map(b => parseInt(b,16)));
+const concat = (...a) => { const t = new Uint8Array(a.reduce((s,x) => s+x.length,0)); let o=0; for(const x of a){t.set(x,o);o+=x.length;} return t; };
+const utf8 = s => new TextEncoder().encode(s);
+const rand = n => crypto.getRandomValues(new Uint8Array(n));
+
+// ── Bech32 (NIP-19) ───────────────────────────────
+const B32 = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l';
+function _b32Poly(v) {
+  let c = 1;
+  for (const d of v) {
+    const t = c >> 25; c = ((c & 0x1ffffff) << 5) ^ d;
+    if (t & 1) c ^= 0x3b6a57b2; if (t & 2) c ^= 0x26508e6d;
+    if (t & 4) c ^= 0x1ea119fa; if (t & 8) c ^= 0x3d4233dd; if (t & 16) c ^= 0x2a1462b3;
+  }
+  return c;
+}
+function bech32Encode(hrp, bytes) {
+  const d5 = [];
+  let acc = 0, bits = 0;
+  for (const b of bytes) { acc = (acc<<8)|b; bits+=8; while(bits>=5){bits-=5;d5.push((acc>>bits)&31);} }
+  if (bits > 0) d5.push((acc<<(5-bits))&31);
+  const vals = [...hrp.split('').map(c=>c.charCodeAt(0)>>5),0,...hrp.split('').map(c=>c.charCodeAt(0)&31),...d5,0,0,0,0,0,0];
+  const chk = _b32Poly(vals) ^ 1;
+  const cs = [0,1,2,3,4,5].map(i => (chk>>(5*(5-i)))&31);
+  return hrp + '1' + [...d5,...cs].map(v=>B32[v]).join('');
+}
+function bech32Decode(str) {
+  str = str.toLowerCase();
+  const sep = str.lastIndexOf('1');
+  const hrp = str.slice(0, sep);
+  const d5 = str.slice(sep+1).split('').map(c => B32.indexOf(c));
+  if (d5.includes(-1)) throw new Error('invalid bech32');
+  const bytes = []; let acc=0, bits=0;
+  for (const v of d5.slice(0,-6)) { acc=(acc<<5)|v; bits+=5; while(bits>=8){bits-=8;bytes.push((acc>>bits)&0xff);} }
+  return { hrp, bytes: new Uint8Array(bytes) };
+}
+const npubEncode = pub32 => bech32Encode('npub', pub32);
+const nsecEncode = priv32 => bech32Encode('nsec', priv32);
+function npubDecode(str) {
+  if (str.length === 64 && /^[0-9a-f]+$/i.test(str)) return h2b(str);
+  const { hrp, bytes } = bech32Decode(str);
+  if (hrp !== 'npub') throw new Error('not an npub');
+  return bytes;
+}
+
+// ── BIP32 / BIP44 / NIP-06 ────────────────────────
+const N_SECP = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141n;
+function bip32Master(seed) {
+  const I = hmac(sha512, utf8('Bitcoin seed'), seed);
+  return { priv: I.slice(0,32), chain: I.slice(32) };
+}
+function _bip32Child(priv, chain, idx, hard) {
+  const ib = new Uint8Array([idx>>>24,(idx>>>16)&0xff,(idx>>>8)&0xff,idx&0xff]);
+  const data = hard ? concat(new Uint8Array([0]),priv,ib) : concat(secp256k1.getPublicKey(priv,true),ib);
+  const I = hmac(sha512, chain, data);
+  const child = ((BigInt('0x'+b2h(I.slice(0,32)))+BigInt('0x'+b2h(priv)))%N_SECP).toString(16).padStart(64,'0');
+  return { priv: h2b(child), chain: I.slice(32) };
+}
+function deriveNostrPriv(seed64) {
+  // NIP-06: m/44'/1237'/0'/0/0
+  let n = bip32Master(seed64);
+  n = _bip32Child(n.priv, n.chain, 0x8000002c, true); // 44'
+  n = _bip32Child(n.priv, n.chain, 0x800004d5, true); // 1237'
+  n = _bip32Child(n.priv, n.chain, 0x80000000, true); // 0'
+  n = _bip32Child(n.priv, n.chain, 0, false);
+  n = _bip32Child(n.priv, n.chain, 0, false);
+  return n.priv;
+}
+function deriveBchAddr(seed64) {
+  // m/44'/145'/0'/0/0 (same as chat.cash)
+  const ripemd160 = (data) => {
+    // minimal RIPEMD-160 via SubtleCrypto not available, use secp256k1 pubkey hash trick
+    // We just return the pubkey hash for display; full impl in chat.html
+    return null;
+  };
+  let n = bip32Master(seed64);
+  n = _bip32Child(n.priv, n.chain, 0x8000002c, true);
+  n = _bip32Child(n.priv, n.chain, 0x80000091, true);
+  n = _bip32Child(n.priv, n.chain, 0x80000000, true);
+  n = _bip32Child(n.priv, n.chain, 0, false);
+  n = _bip32Child(n.priv, n.chain, 0, false);
+  return b2h(n.priv); // return privkey hex for reference
+}
+
+// ── BIP39 mnemonic → seed ─────────────────────────
+async function mnemonicToSeed(words) {
+  const normalized = words.trim().toLowerCase().replace(/\s+/g,' ');
+  const key = await crypto.subtle.importKey('raw', utf8(normalized), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({ name:'PBKDF2', hash:'SHA-512', salt:utf8('mnemonic'), iterations:2048 }, key, 512);
+  return new Uint8Array(bits);
+}
+
+// ── Vault ─────────────────────────────────────────
+async function _pbkdf2Key(pass, salt) {
+  const km = await crypto.subtle.importKey('raw', utf8(pass), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name:'PBKDF2', hash:'SHA-256', salt, iterations:200000 }, km, { name:'AES-GCM', length:256 }, false, ['encrypt','decrypt']);
+}
+async function encryptVault(profile, pass) {
+  const salt = rand(16); const iv = rand(12);
+  const key = await _pbkdf2Key(pass, salt);
+  const ct = await crypto.subtle.encrypt({ name:'AES-GCM', iv }, key, utf8(JSON.stringify(profile)));
+  return JSON.stringify({ v:1, salt:b2h(salt), iv:b2h(iv), data:b2h(new Uint8Array(ct)) });
+}
+async function decryptVault(enc, pass) {
+  const { salt, iv, data } = JSON.parse(enc);
+  const key = await _pbkdf2Key(pass, h2b(salt));
+  const pt = await crypto.subtle.decrypt({ name:'AES-GCM', iv:h2b(iv) }, key, h2b(data));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+
+// ── NIP-04 DM encryption ──────────────────────────
+async function nip04Encrypt(myPriv, theirPubHex) {
+  const shared = secp256k1.getSharedSecret(myPriv, h2b('02'+theirPubHex)).slice(1,33);
+  return async (msg) => {
+    const iv = rand(16);
+    const key = await crypto.subtle.importKey('raw', shared, { name:'AES-CBC' }, false, ['encrypt']);
+    const ct = await crypto.subtle.encrypt({ name:'AES-CBC', iv }, key, utf8(msg));
+    return btoa(String.fromCharCode(...new Uint8Array(ct))) + '?iv=' + btoa(String.fromCharCode(...iv));
+  };
+}
+async function nip04Decrypt(myPriv, senderPubHex, encContent) {
+  try {
+    const [ctB64, ivB64] = encContent.split('?iv=');
+    const ct = Uint8Array.from(atob(ctB64), c=>c.charCodeAt(0));
+    const iv = Uint8Array.from(atob(ivB64), c=>c.charCodeAt(0));
+    const shared = secp256k1.getSharedSecret(myPriv, h2b('02'+senderPubHex)).slice(1,33);
+    const key = await crypto.subtle.importKey('raw', shared, { name:'AES-CBC' }, false, ['decrypt']);
+    const pt = await crypto.subtle.decrypt({ name:'AES-CBC', iv }, key, ct);
+    return new TextDecoder().decode(pt);
+  } catch { return '// [decryption failed]'; }
+}
+
+// ── NIP-01 Event ──────────────────────────────────
+async function makeEvent(privHex, kind, content, tags=[]) {
+  const priv = h2b(privHex);
+  const pub  = b2h(secp256k1.getPublicKey(priv, true).slice(1)); // x-only
+  const created_at = Math.floor(Date.now()/1000);
+  const idHash = sha256(utf8(JSON.stringify([0, pub, created_at, kind, tags, content])));
+  const sig = b2h(await schnorr.sign(idHash, priv));
+  return { id: b2h(idHash), pubkey: pub, created_at, kind, tags, content, sig };
+}
+
+// ── Relay Pool ────────────────────────────────────
+const RELAYS = JSON.parse(localStorage.getItem('00_ep_relays') || 'null') || [
+  'wss://relay.damus.io',
+  'wss://nos.lol',
+  'wss://relay.nostr.band',
+  'wss://relay.snort.social',
+];
+const _rStatus = {};   // url → 'connecting'|'connected'|'disconnected'
+const _rSockets = {};  // url → WebSocket
+const _rSubs = {};     // subId → { filters, cb }
+const _seenEvt = new Set();
+
+function _relayConnect(url) {
+  _rStatus[url] = 'connecting';
+  renderRelays();
+  const ws = new WebSocket(url);
+  const t = setTimeout(() => { ws.close(); }, 10000);
+  ws.onopen = () => {
+    clearTimeout(t);
+    _rStatus[url] = 'connected'; _rSockets[url] = ws;
+    updateRelayBar();
+    for (const [sid, {filters}] of Object.entries(_rSubs)) {
+      ws.send(JSON.stringify(['REQ', sid, ...filters]));
+    }
+  };
+  ws.onmessage = e => {
+    try {
+      const msg = JSON.parse(e.data);
+      if (msg[0] === 'EVENT') {
+        const [, sid, evt] = msg;
+        if (_seenEvt.has(evt.id)) return;
+        _seenEvt.add(evt.id);
+        document.getElementById('relay-last-event').textContent = _timeAgo(evt.created_at);
+        if (_rSubs[sid]) _rSubs[sid].cb(evt);
+      }
+    } catch {}
+  };
+  ws.onclose = () => {
+    clearTimeout(t);
+    _rStatus[url] = 'disconnected'; delete _rSockets[url];
+    updateRelayBar();
+    setTimeout(() => _relayConnect(url), 8000);
+  };
+  ws.onerror = () => ws.close();
+}
+function relaySubscribe(sid, filters, cb) {
+  _rSubs[sid] = { filters, cb };
+  for (const ws of Object.values(_rSockets)) {
+    if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(['REQ', sid, ...filters]));
+  }
+}
+function relayUnsubscribe(sid) {
+  delete _rSubs[sid];
+  for (const ws of Object.values(_rSockets)) {
+    if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(['CLOSE', sid]));
+  }
+}
+async function relayPublish(event) {
+  const msg = JSON.stringify(['EVENT', event]);
+  let sent = 0;
+  for (const ws of Object.values(_rSockets)) {
+    if (ws.readyState === WebSocket.OPEN) { ws.send(msg); sent++; }
+  }
+  if (!sent) throw new Error('No relay connected');
+}
+function updateRelayBar() {
+  const connected = Object.values(_rStatus).filter(s=>s==='connected').length;
+  document.getElementById('relay-connected-count').textContent = connected;
+  try{localStorage.setItem('00mesh_net',JSON.stringify({peers:connected,ts:Date.now()}));}catch(e){}
+  const dot = document.getElementById('mesh-relay-indicator');
+  dot.style.color = connected > 0 ? 'var(--green)' : 'rgba(0,255,65,.3)';
+  dot.textContent = `MESH ${connected > 0 ? '●' : '○'}`;
+  RELAYS.forEach((url, i) => {
+    const d = document.getElementById('relay-dot-' + i);
+    if (!d) return;
+    d.classList.toggle('on', _rStatus[url] === 'connected');
+  });
+  renderRelays();
+}
+function renderRelays() {
+  const el = document.getElementById('relay-list');
+  if (!el) return;
+  el.innerHTML = RELAYS.map(url => {
+    const s = _rStatus[url] || 'disconnected';
+    return `<div class="relay-item">
+      <div class="relay-status-dot ${s}"></div>
+      <div class="relay-url">${url.replace('wss://','')}</div>
+      <span class="relay-label ${s}">${s.toUpperCase()}</span>
+    </div>`;
+  }).join('');
+}
+
+// ── State ─────────────────────────────────────────
+let _profile = null;   // { nostrPrivHex, nostrPubHex, npub, bchPrivHex }
+let _sessionPass = '';
+let contacts = [];     // { name, pubHex, npub, msgs:[] }
+let _feedItems = [];
+let _globalItems = [];
+let _globalTag = 'bitcoincash';
+let _currentDmIdx = null;
+let _unreadCount = 0;
+
+function saveContacts() { localStorage.setItem('00mesh_contacts', JSON.stringify(contacts)); }
+function loadContacts() {
+  try { contacts = JSON.parse(localStorage.getItem('00mesh_contacts') || '[]'); } catch { contacts = []; }
+}
+function findContactByPub(pubHex) { return contacts.find(c => c.pubHex === pubHex); }
+
+// ── Subscriptions ─────────────────────────────────
+function startSubscriptions() {
+  if (!_profile) return;
+  const myPub = _profile.nostrPubHex;
+  const contactPubs = contacts.map(c => c.pubHex);
+  const allPubs = [myPub, ...contactPubs];
+
+  // Feed: kind 1 from contacts + self (last 24h)
+  relaySubscribe('feed', [{ kinds:[1], authors: allPubs.length > 1 ? allPubs : [myPub], limit:50, since: Math.floor(Date.now()/1000) - 86400 }], onFeedEvent);
+
+  // DMs: kind 4 sent to me or by me
+  relaySubscribe('dms-in',  [{ kinds:[4], '#p':[myPub], limit:100 }], onDmEvent);
+  relaySubscribe('dms-out', [{ kinds:[4], authors:[myPub], limit:100 }], onDmEvent);
+
+  // Global: kind 1 with active hashtag
+  relaySubscribe('global', [{ kinds:[1], '#t':[_globalTag], limit:30 }], onGlobalEvent);
+}
+function restartSubscriptions() {
+  relayUnsubscribe('feed');
+  relayUnsubscribe('dms-in');
+  relayUnsubscribe('dms-out');
+  relayUnsubscribe('global');
+  startSubscriptions();
+}
+
+function onGlobalEvent(evt) {
+  if (evt.kind !== 1) return;
+  if (_globalItems.some(f => f.id === evt.id)) return;
+  _globalItems.unshift(evt);
+  _globalItems.sort((a,b) => b.created_at - a.created_at);
+  if (_globalItems.length > 100) _globalItems.pop();
+  renderGlobalFeed();
+}
+
+function onFeedEvent(evt) {
+  if (evt.kind !== 1) return;
+  if (_feedItems.some(f => f.id === evt.id)) return;
+  _feedItems.unshift(evt);
+  _feedItems.sort((a,b) => b.created_at - a.created_at);
+  if (_feedItems.length > 100) _feedItems.pop();
+  renderFeed();
+}
+
+async function onDmEvent(evt) {
+  if (evt.kind !== 4) return;
+  const myPub = _profile.nostrPubHex;
+  const isIncoming = evt.pubkey !== myPub;
+  const theirPub = isIncoming ? evt.pubkey : (evt.tags.find(t=>t[0]==='p')?.[1] || '');
+  if (!theirPub) return;
+
+  let contact = findContactByPub(theirPub);
+  if (!contact) {
+    contact = { name: 'Unknown ' + theirPub.slice(0,8), pubHex: theirPub, npub: npubEncode(h2b(theirPub)), msgs: [], unread: 0 };
+    contacts.push(contact);
+    saveContacts();
+  }
+  contact.msgs = contact.msgs || [];
+  if (contact.msgs.some(m => m.evtId === evt.id)) return;
+
+  const text = isIncoming
+    ? await nip04Decrypt(h2b(_profile.nostrPrivHex), theirPub, evt.content)
+    : await nip04Decrypt(h2b(_profile.nostrPrivHex), theirPub, evt.content).catch(() => evt.content);
+
+  const time = new Date(evt.created_at * 1000).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  const msg = { from: isIncoming ? 'them' : 'me', text, time, evtId: evt.id, ts: evt.created_at };
+  contact.msgs.push(msg);
+  contact.msgs.sort((a,b) => a.ts - b.ts);
+  if (isIncoming && _currentDmIdx !== contacts.indexOf(contact)) {
+    contact.unread = (contact.unread || 0) + 1;
+    _unreadCount++;
+    updateDmBadge();
+  }
+  saveContacts();
+  renderDmList();
+  if (_currentDmIdx !== null && contacts[_currentDmIdx]?.pubHex === theirPub) appendDmMsg(msg);
+}
+
+// ── Render ─────────────────────────────────────────
+function _timeAgo(ts) {
+  const s = Math.floor(Date.now()/1000) - ts;
+  if (s < 60) return s + 's';
+  if (s < 3600) return Math.floor(s/60) + 'm';
+  if (s < 86400) return Math.floor(s/3600) + 'h';
+  return Math.floor(s/86400) + 'd';
+}
+function _initials(pub) {
+  const c = findContactByPub(pub);
+  if (c?.name) return c.name.slice(0,2).toUpperCase();
+  return pub.slice(0,2).toUpperCase();
+}
+function _displayName(pub) {
+  if (!pub) return 'unknown';
+  const c = findContactByPub(pub);
+  if (c?.name) return c.name;
+  if (pub === _profile?.nostrPubHex) return 'me';
+  return pub.slice(0,8) + '...';
+}
+
+function renderFeed() {
+  const list = document.getElementById('feed-list');
+  const empty = document.getElementById('feed-empty');
+  if (!_feedItems.length) { empty.style.display='block'; list.innerHTML=''; return; }
+  empty.style.display = 'none';
+  list.innerHTML = _feedItems.slice(0,50).map(evt => `
+    <div class="feed-item">
+      <div class="feed-meta">
+        <div class="feed-avatar">${_initials(evt.pubkey)}</div>
+        <div class="feed-author">${_displayName(evt.pubkey)}</div>
+        <div class="feed-time">${_timeAgo(evt.created_at)}</div>
+      </div>
+      <div class="feed-content">${escHtml(evt.content)}</div>
+      <div class="feed-actions">
+        <span class="feed-action" onclick="replyTo('${evt.id}','${evt.pubkey}')">↩ REPLY</span>
+        <span class="feed-action" onclick="openDmFromPub('${evt.pubkey}')">✉ DM</span>
+        <span class="feed-action" style="opacity:.4">${evt.id.slice(0,8)}...</span>
+      </div>
+    </div>`).join('');
+}
+
+function renderGlobalFeed() {
+  const list = document.getElementById('global-list');
+  const empty = document.getElementById('global-empty');
+  if (!_globalItems.length) { empty.style.display='block'; list.innerHTML=''; return; }
+  empty.style.display = 'none';
+  list.innerHTML = _globalItems.slice(0,50).map(evt => `
+    <div class="feed-item">
+      <div class="feed-meta">
+        <div class="feed-avatar">${_initials(evt.pubkey)}</div>
+        <div class="feed-author">${_displayName(evt.pubkey)}</div>
+        <div class="feed-time">${_timeAgo(evt.created_at)}</div>
+      </div>
+      <div class="feed-content">${escHtml(evt.content)}</div>
+      <div class="feed-actions">
+        <span class="feed-action" onclick="openDmFromPub('${evt.pubkey}')">✉ DM</span>
+        <span class="feed-action" onclick="addContactFromPub('${evt.pubkey}')">+ CONTACT</span>
+        <span class="feed-action" style="opacity:.4">${evt.id.slice(0,8)}...</span>
+      </div>
+    </div>`).join('');
+}
+
+function setGlobalTag(tag) {
+  _globalTag = tag;
+  // Remove old global event IDs from the dedup set so relays can resend them
+  _globalItems.forEach(evt => _seenEvt.delete(evt.id));
+  _globalItems = [];
+  document.querySelectorAll('.gtag').forEach(el => {
+    el.classList.toggle('active', el.textContent === '#' + tag);
+  });
+  const empty = document.getElementById('global-empty');
+  empty.style.display = 'block';
+  empty.textContent = '// SCANNING MESH...';
+  document.getElementById('global-list').innerHTML = '';
+  relayUnsubscribe('global');
+  relaySubscribe('global', [{ kinds:[1], '#t':[tag], limit:30 }], onGlobalEvent);
+}
+
+function addContactFromPub(pubHex) {
+  if (contacts.find(c=>c.pubHex===pubHex)) { switchTab('dms'); return; }
+  contacts.push({ name: pubHex.slice(0,8), pubHex, npub: npubEncode(h2b(pubHex)), msgs:[], unread:0 });
+  saveContacts(); renderDmList(); restartSubscriptions();
+}
+
+function renderDmList() {
+  const list = document.getElementById('dm-list');
+  const empty = document.getElementById('dms-empty');
+  if (!contacts.length) { empty.style.display='block'; list.innerHTML=''; return; }
+  empty.style.display = 'none';
+  list.innerHTML = contacts.map((c,i) => {
+    const last = c.msgs?.[c.msgs.length-1];
+    return `<div class="dm-item" onclick="openDmConv(${i})">
+      <div class="dm-avatar">${(c.name||'??').slice(0,2).toUpperCase()}</div>
+      <div class="dm-info">
+        <div class="dm-name">${escHtml(c.name||'Unknown')}</div>
+        <div class="dm-preview">${last ? escHtml(last.text.slice(0,40)) : '// no messages'}</div>
+      </div>
+      <div class="dm-meta">
+        <div class="dm-time">${last ? _timeAgo(last.ts) : ''}</div>
+        ${c.unread ? `<span class="badge">${c.unread}</span>` : ''}
+      </div>
+      <span class="dm-delete" onclick="event.stopPropagation();deleteContact(${i})">×</span>
+    </div>`;
+  }).join('');
+}
+
+function deleteContact(idx) {
+  contacts.splice(idx, 1);
+  saveContacts(); renderDmList(); restartSubscriptions();
+}
+
+function updateDmBadge() {
+  const total = contacts.reduce((s,c)=>s+(c.unread||0),0);
+  const badge = document.getElementById('dm-badge');
+  badge.style.display = total > 0 ? 'inline-block' : 'none';
+  badge.textContent = total;
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+// ── DM Conv ───────────────────────────────────────
+function openDmConv(idx) {
+  _currentDmIdx = idx;
+  const c = contacts[idx];
+  c.unread = 0; updateDmBadge(); saveContacts();
+  document.getElementById('conv-name').textContent = c.name || 'Unknown';
+  document.getElementById('conv-npub').textContent = c.npub || c.pubHex;
+  const msgs = document.getElementById('messages');
+  msgs.innerHTML = '';
+  (c.msgs || []).forEach(appendDmMsg);
+  document.getElementById('dm-conv-view').style.display = 'flex';
+  msgs.scrollTop = msgs.scrollHeight;
+}
+function closeDmConv() {
+  _currentDmIdx = null;
+  document.getElementById('dm-conv-view').style.display = 'none';
+}
+function appendDmMsg(msg) {
+  const msgs = document.getElementById('messages');
+  const d = document.createElement('div');
+  d.className = 'msg ' + msg.from;
+  d.innerHTML = `<div class="msg-bubble">${escHtml(msg.text)}</div><div class="msg-time">${msg.time}</div>`;
+  msgs.appendChild(d);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+function handleDmKey(e) { if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); sendDm(); } }
+function autoResize(el) { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,80)+'px'; }
+
+async function sendDm() {
+  if (_currentDmIdx === null) return;
+  const input = document.getElementById('dm-input');
+  const text = input.value.trim(); if (!text) return;
+  input.value = ''; input.style.height = 'auto';
+  const contact = contacts[_currentDmIdx];
+  const time = new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  const msg = { from:'me', text, time, ts: Math.floor(Date.now()/1000) };
+  appendDmMsg(msg);
+  try {
+    const encrypt = await nip04Encrypt(h2b(_profile.nostrPrivHex), contact.pubHex);
+    const encContent = await encrypt(text);
+    const evt = await makeEvent(_profile.nostrPrivHex, 4, encContent, [['p', contact.pubHex]]);
+    await relayPublish(evt);
+    msg.evtId = evt.id;
+    contact.msgs = contact.msgs || [];
+    contact.msgs.push(msg);
+    saveContacts(); renderDmList();
+  } catch(e) {
+    appendDmMsg({ from:'them', text:'// send failed: ' + e.message, time, ts: Math.floor(Date.now()/1000) });
+  }
+}
+
+function openDmFromPub(pubHex) {
+  let idx = contacts.findIndex(c => c.pubHex === pubHex);
+  if (idx === -1) {
+    contacts.push({ name: pubHex.slice(0,8), pubHex, npub: npubEncode(h2b(pubHex)), msgs: [] });
+    saveContacts(); idx = contacts.length - 1;
+  }
+  switchTab('dms');
+  openDmConv(idx);
+}
+
+// ── Compose ───────────────────────────────────────
+function openCompose() { document.getElementById('compose-overlay').style.display='flex'; }
+function closeCompose() { document.getElementById('compose-overlay').style.display='none'; document.getElementById('compose-text').value=''; }
+function updateCharCount() { document.getElementById('char-count').textContent = document.getElementById('compose-text').value.length; }
+async function publishPost() {
+  const text = document.getElementById('compose-text').value.trim();
+  if (!text || text.length > 280) return;
+  const btn = document.getElementById('compose-btn');
+  btn.disabled = true; btn.textContent = 'BROADCASTING...';
+  try {
+    const evt = await makeEvent(_profile.nostrPrivHex, 1, text);
+    await relayPublish(evt);
+    onFeedEvent(evt);
+    closeCompose();
+  } catch(e) { alert('// broadcast failed: ' + e.message); }
+  finally { btn.disabled=false; btn.textContent='⚡ BROADCAST →'; }
+}
+function replyTo(eventId, pubHex) {
+  openCompose();
+  document.getElementById('compose-text').value = '';
+}
+
+// ── Profile ───────────────────────────────────────
+function openProfile() {
+  document.getElementById('my-npub').textContent = _profile.npub;
+  document.getElementById('my-pubhex').textContent = _profile.nostrPubHex;
+  document.getElementById('my-bch-addr').textContent = _profile.bchPrivRef ? '// same BIP39 seed → see 00 Chat' : '—';
+  document.getElementById('profile-overlay').style.display='flex';
+}
+function closeProfile() { document.getElementById('profile-overlay').style.display='none'; }
+
+// ── Add Contact ───────────────────────────────────
+function openAddContact() { document.getElementById('add-contact-overlay').style.display='flex'; document.getElementById('ac-error').textContent=''; }
+function closeAddContact() { document.getElementById('add-contact-overlay').style.display='none'; }
+function saveContact() {
+  const raw = document.getElementById('ac-npub').value.trim();
+  const name = document.getElementById('ac-name').value.trim() || 'anon';
+  let pubHex, npub;
+  try {
+    const bytes = npubDecode(raw);
+    pubHex = b2h(bytes);
+    npub = npubEncode(bytes);
+  } catch { document.getElementById('ac-error').textContent='// invalid npub or pubkey'; return; }
+  if (contacts.find(c=>c.pubHex===pubHex)) { document.getElementById('ac-error').textContent='// already added'; return; }
+  contacts.push({ name, pubHex, npub, msgs:[], unread:0 });
+  saveContacts(); renderDmList(); closeAddContact();
+  restartSubscriptions();
+}
+
+// ── Tabs ──────────────────────────────────────────
+function switchTab(tab) {
+  ['feed','global','dms','relays'].forEach(t => {
+    document.getElementById('tab-'+t).classList.toggle('active', t===tab);
+    const c = document.getElementById('tab-content-'+t);
+    c.style.display = 'none';
+  });
+  const content = document.getElementById('tab-content-'+tab);
+  if (tab === 'feed') { content.style.display='flex'; content.style.flexDirection='column'; }
+  else content.style.display = 'block';
+}
+
+// ── Copy util ─────────────────────────────────────
+function copyText(id, btn) {
+  const txt = document.getElementById(id).textContent;
+  navigator.clipboard.writeText(txt).then(() => { btn.textContent='COPIED ✓'; setTimeout(()=>btn.textContent=btn.dataset.orig||'COPY',1500); });
+  if (!btn.dataset.orig) btn.dataset.orig = btn.textContent;
+}
+
+// ── Auth ──────────────────────────────────────────
+async function meshImport() {
+  const seed = document.getElementById('import-seed').value.trim();
+  const pass = document.getElementById('import-pass').value;
+  const pass2 = document.getElementById('import-pass2').value;
+  const err = document.getElementById('import-error');
+  if (!seed) { err.textContent = '// seed required'; return; }
+  if (pass.length < 8) { err.textContent = '// password min 8 chars'; return; }
+  if (pass !== pass2) { err.textContent = '// passwords don\'t match'; return; }
+  err.textContent = '// DERIVING KEYS...';
+  try {
+    let seed64;
+    if (/^[0-9a-f]{128}$/i.test(seed)) seed64 = h2b(seed);
+    else seed64 = await mnemonicToSeed(seed);
+    const nostrPriv = deriveNostrPriv(seed64);
+    const nostrPub  = secp256k1.getPublicKey(nostrPriv, true).slice(1); // x-only 32 bytes
+    const profile = {
+      nostrPrivHex: b2h(nostrPriv),
+      nostrPubHex:  b2h(nostrPub),
+      npub:         npubEncode(nostrPub),
+      bchPrivRef:   true, // same BIP39 seed used in 00 Chat
+    };
+    localStorage.setItem('00mesh_vault', await encryptVault(profile, pass));
+    await bootApp(profile, pass);
+  } catch(e) { err.textContent = '// error: ' + e.message; }
+}
+
+async function meshUnlock() {
+  const pass = document.getElementById('unlock-pass').value;
+  const err = document.getElementById('unlock-error');
+  try {
+    const profile = await decryptVault(localStorage.getItem('00mesh_vault'), pass);
+    // Shared session — all apps auto-unlock
+    localStorage.setItem('00_session_auth', JSON.stringify({ p: btoa(pass), ts: Date.now() }));
+    await bootApp(profile, pass);
+  } catch { err.textContent = '// wrong password'; }
+}
+
+function meshGenKey() {
+  const priv = rand(32);
+  const pub = secp256k1.getPublicKey(priv, true).slice(1);
+  document.getElementById('import-seed').value = b2h(priv);
+  document.getElementById('import-seed').style.fontSize = '9px';
+}
+
+function showMeshImport() {
+  document.getElementById('auth-unlock').style.display = 'none';
+  document.getElementById('auth-import').style.display = 'flex';
+}
+
+async function bootApp(profile, pass) {
+  _profile = profile;
+  _sessionPass = pass;
+  loadContacts();
+  document.getElementById('auth-import').style.display = 'none';
+  document.getElementById('auth-unlock').style.display = 'none';
+  const main = document.getElementById('main-view');
+  main.style.display = 'flex';
+  renderFeed(); renderDmList(); renderRelays(); updateDmBadge();
+  for (const url of RELAYS) _relayConnect(url);
+  setTimeout(startSubscriptions, 2000);
+  setInterval(updateClock, 1000); updateClock();
+}
+
+// ── Clock ─────────────────────────────────────────
+function updateClock() {
+  const el = document.getElementById('phone-clock');
+  if (el) el.textContent = new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+}
+
+// ── Boot ──────────────────────────────────────────
+window._meshBoot = async function() {
+  const vault = localStorage.getItem('00mesh_vault');
+  if (vault) {
+    // Auto-unlock from shared session (cross-app, 30 min TTL)
+    try {
+      const sess = JSON.parse(localStorage.getItem('00_session_auth') || '{}');
+      if (sess.p && sess.ts && Date.now() - sess.ts < 30 * 60 * 1000) {
+        const pass = atob(sess.p);
+        const profile = await decryptVault(vault, pass);
+        localStorage.setItem('00_session_auth', JSON.stringify({ p: sess.p, ts: Date.now() }));
+        await bootApp(profile, pass);
+        return;
+      }
+    } catch {}
+    document.getElementById('auth-unlock').style.display = 'flex';
+  } else {
+    // No mesh vault — try auto-create from wallet vault + session
+    try {
+      const sess = JSON.parse(localStorage.getItem('00_session_auth') || '{}');
+      const wv = localStorage.getItem('00wallet_vault');
+      if (sess.p && sess.ts && Date.now() - sess.ts < 30 * 60 * 1000 && wv) {
+        const pass = atob(sess.p);
+        const wp = await decryptVault(wv, pass);
+        const seed64 = wp.seedHex ? h2b(wp.seedHex) : await mnemonicToSeed(wp.bchPrivHex);
+        const nostrPriv = deriveNostrPriv(seed64);
+        const nostrPub = secp256k1.getPublicKey(nostrPriv, true).slice(1);
+        const profile = {
+          nostrPrivHex: b2h(nostrPriv),
+          nostrPubHex: b2h(nostrPub),
+          npub: npubEncode(nostrPub),
+          bchPrivRef: true,
+        };
+        localStorage.setItem('00mesh_vault', await encryptVault(profile, pass));
+        localStorage.setItem('00_session_auth', JSON.stringify({ p: sess.p, ts: Date.now() }));
+        await bootApp(profile, pass);
+        return;
+      }
+    } catch { /* wallet decrypt failed */ }
+    document.getElementById('auth-import').style.display = 'flex';
+  }
+};
+
+// ── Expose ────────────────────────────────────────
+Object.assign(window, {
+  meshImport, meshUnlock, meshGenKey, showMeshImport,
+  openProfile, closeProfile, openAddContact, closeAddContact, saveContact,
+  openCompose, closeCompose, publishPost, updateCharCount,
+  switchTab, openDmConv, closeDmConv, sendDm, handleDmKey, autoResize,
+  openDmFromPub, replyTo, copyText, setGlobalTag, addContactFromPub, deleteContact,
+});
+
+// ── Matrix rain ───────────────────────────────────
+const canvas = document.getElementById('rain');
+const ctx = canvas.getContext('2d');
+function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+resize(); window.addEventListener('resize', resize);
+const drops = [];
+for (let i=0;i<120;i++) drops.push({ x:Math.random()*1440, y:Math.random()*900, len:Math.random()*18+6, speed:Math.random()*7+5, op:Math.random()*.4+.1, w:Math.random()*.8+.2 });
+function drawRain() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  drops.forEach(d => {
+    ctx.beginPath(); ctx.moveTo(d.x,d.y); ctx.lineTo(d.x-1,d.y+d.len);
+    ctx.strokeStyle=`rgba(0,255,65,${d.op})`; ctx.lineWidth=d.w; ctx.stroke();
+    d.y+=d.speed; if(d.y>canvas.height){d.y=-d.len;d.x=Math.random()*canvas.width;}
+  });
+  requestAnimationFrame(drawRain);
+}
+drawRain();
+
+</script>
+<script src="/shell.js?v=263"></script>
+<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{});}</script>
+</body>
+</html>

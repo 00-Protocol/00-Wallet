@@ -1,0 +1,25 @@
+{
+  "name": "0penw0rld",
+  "short_name": "0penw0rld",
+  "description": "Decentralized ecosystem — no servers · no borders · no limits",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#020a03",
+  "theme_color": "#00ff41",
+  "orientation": "any",
+  "categories": ["finance", "utilities"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-180.png", "sizes": "180x180", "type": "image/png" }
+  ],
+  "shortcuts": [
+    { "name": "00 Pay",    "short_name": "Pay",    "url": "/pay.html",    "description": "BCH payment terminal + cross-chain" },
+    { "name": "00 Wallet", "short_name": "Wallet", "url": "/wallet.html", "description": "BCH HD wallet" },
+    { "name": "00 DEX",    "short_name": "DEX",    "url": "/dex.html",    "description": "Cauldron DEX" },
+    { "name": "00 Chat",   "short_name": "Chat",   "url": "/chat.html",   "description": "E2E encrypted messaging" }
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false
+}

@@ -1,0 +1,2454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#00ff41">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-name" content="0penw0rld">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <title>00 Joiner — 0penw0rld</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{--green:#00ff41;--green-dim:#00c832;--green-dark:#003d0f;--black:#020a03;--grey:#0a110a;--panel:#060e06;--red:#ff4040;--gold:#f0a500;--purple:#9d4edd;--cyan:#00f5ff}
+    html,body{width:100%;height:100%;background:var(--black);font-family:'Share Tech Mono',monospace;display:flex;align-items:center;justify-content:center;overflow:hidden}
+    #rain{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.12}
+    .scanlines{position:fixed;inset:0;z-index:1;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.12) 2px,rgba(0,0,0,.12) 4px)}
+    .vignette{position:fixed;inset:0;z-index:1;pointer-events:none;background:radial-gradient(ellipse at center,transparent 30%,rgba(0,0,0,.9) 100%)}
+    #loading{position:fixed;inset:0;z-index:100;background:var(--black);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px}
+    .loader-logo{font-family:'Orbitron',monospace;font-size:52px;font-weight:900;color:var(--green);text-shadow:0 0 20px var(--green),0 0 50px var(--green),0 0 100px rgba(0,255,65,.3);animation:logoPulse 1s ease-in-out infinite}
+    @keyframes logoPulse{0%,100%{text-shadow:0 0 20px var(--green),0 0 50px var(--green)}50%{text-shadow:0 0 30px var(--green),0 0 70px var(--green),0 0 140px rgba(0,255,65,.5)}}
+    .loader-bar-wrap{width:200px;height:2px;background:rgba(0,255,65,.1);border-radius:2px;overflow:hidden}
+    .loader-bar{height:100%;background:var(--green);box-shadow:0 0 8px var(--green);animation:loadBar 2.5s ease-in-out forwards}
+    @keyframes loadBar{from{width:0}to{width:100%}}
+    .loader-status{font-size:10px;color:rgba(0,255,65,.3);letter-spacing:2px;min-height:14px}
+    .blink{animation:blink .8s step-end infinite}
+    @keyframes blink{50%{opacity:0}}
+
+    .phone-wrap{position:relative;z-index:10;display:flex;align-items:center;justify-content:center}
+    .phone{width:375px;height:780px;background:var(--panel);border-radius:42px;border:2px solid rgba(0,255,65,.2);box-shadow:0 0 0 1px rgba(0,255,65,.05),0 0 40px rgba(0,255,65,.08),0 0 80px rgba(0,255,65,.04),inset 0 0 30px rgba(0,0,0,.5);display:flex;flex-direction:column;overflow:hidden;position:relative}
+    .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:120px;height:28px;background:var(--black);border-radius:0 0 18px 18px;z-index:50;display:flex;align-items:center;justify-content:center;gap:8px}
+    .notch-cam{width:8px;height:8px;border-radius:50%;background:#111;border:1px solid #222}
+    .notch-speaker{width:40px;height:4px;border-radius:2px;background:#111}
+    .status-bar{padding:10px 20px 4px;display:flex;align-items:center;justify-content:space-between;font-size:10px;color:rgba(0,255,65,.5);flex-shrink:0;margin-top:14px}
+    .app-header{padding:10px 20px 0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+    .app-title{font-family:'Orbitron',monospace;font-size:18px;font-weight:700;color:var(--green);text-shadow:0 0 10px rgba(0,255,65,.4)}
+    .app-title span{font-size:11px;color:rgba(0,255,65,.4);display:block;letter-spacing:2px}
+    .header-icon{font-size:18px;cursor:pointer;color:rgba(0,255,65,.6);transition:.15s}
+    .header-icon:hover{color:var(--green)}
+
+    /* Connection bars */
+    .conn-bar{display:flex;align-items:center;gap:8px;padding:5px 20px;border-bottom:1px solid rgba(0,255,65,.08);flex-shrink:0;font-size:9px;color:rgba(0,255,65,.4);letter-spacing:1px}
+    .conn-dot{width:5px;height:5px;border-radius:50%;background:rgba(0,255,65,.2);flex-shrink:0;transition:.3s}
+    .conn-dot.on{background:var(--green);box-shadow:0 0 4px var(--green)}
+    .conn-dot.err{background:var(--red)}
+
+    /* Tabs */
+    .tabs{display:flex;padding:0 16px;border-bottom:1px solid rgba(0,255,65,.1);flex-shrink:0}
+    .tab{flex:1;padding:10px;text-align:center;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(0,255,65,.3);cursor:pointer;border-bottom:2px solid transparent;transition:.2s}
+    .tab.active{color:var(--green);border-bottom-color:var(--green)}
+    .tab-pane{display:none;flex:1;overflow-y:auto;scrollbar-width:none;min-height:0;flex-direction:column}
+    .tab-pane::-webkit-scrollbar{display:none}
+    .tab-pane.active{display:flex}
+
+    /* Auth */
+    #auth-view{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px 24px;gap:16px}
+    .auth-logo{font-family:'Orbitron',monospace;font-size:28px;font-weight:900;color:var(--green);text-shadow:0 0 20px rgba(0,255,65,.5)}
+    .auth-sub{font-size:10px;color:rgba(0,255,65,.35);letter-spacing:3px;margin-top:-8px}
+    .auth-input{width:100%;background:rgba(0,255,65,.04);border:1px solid rgba(0,255,65,.2);border-radius:8px;padding:12px 14px;color:var(--green);font-family:'Share Tech Mono',monospace;font-size:12px;outline:none;transition:.2s}
+    .auth-input:focus{border-color:rgba(0,255,65,.5);box-shadow:0 0 8px rgba(0,255,65,.1)}
+    .auth-input::placeholder{color:rgba(0,255,65,.2)}
+    .auth-btn{width:100%;padding:14px;background:rgba(0,255,65,.1);border:1px solid rgba(0,255,65,.4);border-radius:8px;color:var(--green);font-family:'Share Tech Mono',monospace;font-size:13px;letter-spacing:3px;cursor:pointer;transition:.2s}
+    .auth-btn:hover{background:rgba(0,255,65,.18);box-shadow:0 0 16px rgba(0,255,65,.2)}
+    .auth-error{font-size:10px;color:#ff4040;letter-spacing:1px;min-height:14px}
+
+    /* Pool tab */
+    .pool-hero{padding:20px;text-align:center;border-bottom:1px solid rgba(0,255,65,.07)}
+    .pool-balance{font-family:'Orbitron',monospace;font-size:22px;font-weight:700;color:var(--green);text-shadow:0 0 15px rgba(0,255,65,.3)}
+    .pool-balance-label{font-size:9px;color:rgba(0,255,65,.35);letter-spacing:2px;margin-top:4px}
+    .pool-actions{display:flex;gap:10px;padding:14px 20px;border-bottom:1px solid rgba(0,255,65,.07)}
+    .pool-btn{flex:1;padding:10px;background:rgba(0,255,65,.06);border:1px solid rgba(0,255,65,.25);border-radius:8px;color:var(--green);font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:1px;cursor:pointer;transition:.2s;text-align:center}
+    .pool-btn:hover{background:rgba(0,255,65,.12);border-color:var(--green)}
+    .autojoin-btn{padding:10px 14px;background:rgba(0,255,65,.06);border:1px solid rgba(0,255,65,.25);border-radius:8px;color:rgba(0,255,65,.4);font-family:'Orbitron',monospace;font-size:14px;cursor:pointer;transition:.2s;line-height:1}
+    .autojoin-btn:hover{background:rgba(0,255,65,.12);border-color:var(--green);color:var(--green)}
+    .autojoin-btn.active{background:rgba(0,255,65,.15);border-color:var(--green);color:var(--green);box-shadow:0 0 12px rgba(0,255,65,.2);animation:pulse-glow 2s ease-in-out infinite}
+    @keyframes pulse-glow{0%,100%{box-shadow:0 0 8px rgba(0,255,65,.15)}50%{box-shadow:0 0 16px rgba(0,255,65,.35)}}
+    .autojoin-status{font-size:9px;color:rgba(0,255,65,.4);letter-spacing:1px;text-align:center;padding:6px 20px;border-bottom:1px solid rgba(0,255,65,.05)}
+
+    .pool-item{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid rgba(0,255,65,.05);cursor:pointer;transition:.15s}
+    .pool-item:hover{background:rgba(0,255,65,.03)}
+    .pool-icon{width:40px;height:40px;border-radius:50%;background:rgba(0,255,65,.08);border:1px solid rgba(0,255,65,.2);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+    .pool-info{flex:1;min-width:0}
+    .pool-amount{font-size:13px;color:var(--green);font-family:'Orbitron',monospace}
+    .pool-detail{font-size:10px;color:rgba(0,255,65,.35);margin-top:2px;letter-spacing:1px}
+    .pool-peers{font-size:10px;color:rgba(0,255,65,.5);flex-shrink:0}
+
+    .empty-state{padding:40px 20px;text-align:center;font-size:11px;color:rgba(0,255,65,.25);letter-spacing:2px;line-height:2.5}
+
+    /* Mix progress tab */
+    .mix-phases{padding:16px 20px;display:flex;flex-direction:column;gap:12px}
+    .phase-item{display:flex;align-items:center;gap:12px;padding:10px 14px;background:rgba(0,255,65,.02);border:1px solid rgba(0,255,65,.08);border-radius:8px;transition:.3s}
+    .phase-item.active{border-color:rgba(0,255,65,.4);background:rgba(0,255,65,.06)}
+    .phase-item.done{border-color:rgba(0,255,65,.15);opacity:.6}
+    .phase-item.error{border-color:rgba(255,64,64,.3);background:rgba(255,64,64,.04)}
+    .phase-num{width:28px;height:28px;border-radius:50%;border:1px solid rgba(0,255,65,.2);display:flex;align-items:center;justify-content:center;font-size:11px;color:rgba(0,255,65,.4);flex-shrink:0;font-family:'Orbitron',monospace}
+    .phase-item.active .phase-num{border-color:var(--green);color:var(--green);box-shadow:0 0 8px rgba(0,255,65,.2)}
+    .phase-item.done .phase-num{background:rgba(0,255,65,.1);color:var(--green)}
+    .phase-info{flex:1}
+    .phase-title{font-size:11px;color:rgba(0,255,65,.6);letter-spacing:1px}
+    .phase-item.active .phase-title{color:var(--green)}
+    .phase-status{font-size:9px;color:rgba(0,255,65,.3);margin-top:2px;letter-spacing:1px}
+    .phase-item.active .phase-status{color:rgba(0,255,65,.5)}
+    .spinner{width:16px;height:16px;border:2px solid rgba(0,255,65,.1);border-top-color:var(--green);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    .mix-result{margin:0 20px;padding:16px;background:rgba(0,255,65,.04);border:1px solid rgba(0,255,65,.2);border-radius:8px;text-align:center}
+    .mix-result-title{font-family:'Orbitron',monospace;font-size:14px;color:var(--green);letter-spacing:2px}
+    .mix-result-txid{font-size:9px;color:rgba(0,255,65,.5);word-break:break-all;margin-top:8px;line-height:1.6}
+    .mix-result-btn{margin-top:12px;padding:10px 20px;background:rgba(0,255,65,.08);border:1px solid rgba(0,255,65,.3);border-radius:6px;color:var(--green);font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:1px;cursor:pointer;transition:.15s}
+    .mix-result-btn:hover{background:rgba(0,255,65,.15)}
+
+    /* History tab */
+    .hist-item{padding:12px 16px;border-bottom:1px solid rgba(0,255,65,.05)}
+    .hist-top{display:flex;align-items:center;justify-content:space-between}
+    .hist-amount{font-size:13px;color:var(--green);font-family:'Orbitron',monospace}
+    .hist-time{font-size:9px;color:rgba(0,255,65,.25)}
+    .hist-detail{font-size:9px;color:rgba(0,255,65,.35);margin-top:4px;letter-spacing:1px}
+    .hist-txid{font-size:8px;color:rgba(0,255,65,.25);margin-top:2px;word-break:break-all}
+    .hist-badge{font-size:9px;padding:2px 8px;border-radius:4px;letter-spacing:1px}
+    .hist-badge.ok{color:var(--green);border:1px solid rgba(0,255,65,.2)}
+    .hist-badge.fail{color:var(--red);border:1px solid rgba(255,64,64,.2)}
+
+    /* Create pool overlay */
+    .overlay{position:absolute;inset:0;z-index:30;background:rgba(2,10,3,.96);border-radius:42px;display:none;flex-direction:column;align-items:center;justify-content:center;padding:28px 20px;gap:14px;overflow-y:auto}
+    .overlay.open{display:flex}
+    .overlay-title{font-family:'Orbitron',monospace;font-size:14px;font-weight:700;color:var(--green);letter-spacing:3px;text-align:center}
+    .overlay-sub{font-size:10px;color:rgba(0,255,65,.35);letter-spacing:2px;text-align:center}
+    .form-lbl{font-size:9px;color:rgba(0,255,65,.4);letter-spacing:2px;align-self:flex-start;width:100%}
+    .form-input{width:100%;background:rgba(0,255,65,.04);border:1px solid rgba(0,255,65,.2);border-radius:8px;padding:11px 14px;color:var(--green);font-family:'Share Tech Mono',monospace;font-size:11px;outline:none;transition:.2s}
+    .form-input:focus{border-color:rgba(0,255,65,.5)}
+    .form-input::placeholder{color:rgba(0,255,65,.2)}
+    .denom-row{display:flex;gap:6px;width:100%}
+    .denom-opt{flex:1;padding:10px;border:1px solid rgba(0,255,65,.2);border-radius:6px;color:rgba(0,255,65,.4);font-size:11px;text-align:center;cursor:pointer;transition:.15s;font-family:'Share Tech Mono',monospace}
+    .denom-opt.active{border-color:var(--green);color:var(--green);background:rgba(0,255,65,.06)}
+    .denom-opt:hover{border-color:rgba(0,255,65,.4);color:rgba(0,255,65,.7)}
+
+    #main-view{min-height:0}
+    /* Desktop: skip loading, hide phone overlays */
+    @media (min-width: 900px) {
+      #loading { display: none !important; }
+      #rain, .scanlines, .vignette { display: none !important; }
+    }
+  </style>
+  <link rel="stylesheet" href="desktop.css">
+</head>
+<body>
+<canvas id="rain"></canvas>
+<div class="scanlines"></div>
+<div class="vignette"></div>
+
+<!-- Loading -->
+<div id="loading">
+  <div class="loader-logo">00</div>
+  <div class="loader-bar-wrap"><div class="loader-bar"></div></div>
+  <div class="loader-status">FUSION PROTOCOL<span class="blink">_</span></div>
+</div>
+
+<!-- ── Desktop Joiner View (hidden on mobile) ── -->
+<div id="fusion-desktop" style="display:none">
+  <div class="dt-inner">
+    <div class="dt-page-header">
+      <div class="dt-page-title-wrap">
+        <div class="dt-page-icon">⚗</div>
+        <div>
+          <div class="dt-page-title">Joiner</div>
+          <div class="dt-page-sub">CoinJoin · Privacy Mixing</div>
+        </div>
+      </div>
+    </div>
+
+
+    <div class="dt-tabs" id="dt-fus-tabs">
+      <button class="dt-tab active" onclick="dtFusTab('pool')">Pool</button>
+      <button class="dt-tab" onclick="dtFusTab('mix')">Mix</button>
+      <button class="dt-tab" onclick="dtFusTab('history')">History</button>
+    </div>
+
+    <!-- POOL pane -->
+    <div class="dt-pane active" id="dt-fus-p-pool">
+      <div class="dt-card" style="max-width:560px">
+        <div style="text-align:center;padding:16px 0;border-bottom:1px solid var(--dt-border);margin-bottom:16px">
+          <div style="font-size:28px;font-weight:800;color:var(--dt-text)" id="dt-fus-balance">0.00000000 <span style="font-size:14px;font-weight:600;color:var(--dt-text-secondary)">BCH</span></div>
+          <div style="font-size:12px;color:var(--dt-text-secondary);margin-top:4px">Available Balance</div>
+        </div>
+        <div style="display:flex;gap:10px;margin-bottom:16px">
+          <button class="dt-action-btn" onclick="dtFusOpenCreate()">+ Create Pool</button>
+          <button class="dt-action-btn-outline" onclick="if(window.refreshPools)window.refreshPools()">↻ Refresh</button>
+          <button class="dt-action-btn-outline" id="dt-autojoin-btn" onclick="if(window.toggleAutoJoin)window.toggleAutoJoin()">∞ Auto-Join</button>
+        </div>
+        <div id="dt-autojoin-status" style="font-size:12px;color:var(--dt-text-secondary);margin-bottom:12px;display:none"></div>
+        <!-- Desktop Create Pool inline form -->
+        <div id="dt-create-pool" style="display:none;padding:20px;border:1px solid var(--dt-border);border-radius:12px;background:var(--dt-surface);margin-bottom:16px">
+          <div style="font-size:15px;font-weight:700;color:var(--dt-text);margin-bottom:4px">Create Mix Pool</div>
+          <div style="font-size:12px;color:var(--dt-text-secondary);margin-bottom:16px">Combinatorial stealth CoinJoin · v2</div>
+          <div style="font-size:11px;color:var(--dt-text-secondary);margin-bottom:12px;letter-spacing:.5px">Min Participants</div>
+          <div style="display:flex;gap:8px;margin-bottom:16px">
+            <button class="dt-action-btn-outline dt-peer-opt" data-peers="3" onclick="dtFusSelectPeers(3)" style="flex:1;padding:10px">3</button>
+            <button class="dt-action-btn-outline dt-peer-opt" data-peers="4" onclick="dtFusSelectPeers(4)" style="flex:1;padding:10px">4</button>
+            <button class="dt-action-btn dt-peer-opt" data-peers="5" onclick="dtFusSelectPeers(5)" style="flex:1;padding:10px">5</button>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:4px">
+            <button class="dt-action-btn" onclick="dtFusCreatePool()" style="flex:1;white-space:nowrap">Announce Pool →</button>
+            <button class="dt-action-btn-outline" onclick="dtFusCloseCreate()" style="white-space:nowrap;padding:10px 24px">Cancel</button>
+          </div>
+        </div>
+      </div>
+      <div id="dt-pool-list" style="margin-top:16px"></div>
+    </div>
+
+    <!-- MIX pane -->
+    <div class="dt-pane" id="dt-fus-p-mix">
+      <div id="dt-mix-idle" style="text-align:center;padding:60px 20px">
+        <div style="font-size:48px;margin-bottom:16px">⚗</div>
+        <div style="font-size:16px;font-weight:600;color:var(--dt-text-secondary)">No Active Mix</div>
+        <div style="font-size:13px;color:var(--dt-text-secondary);margin-top:8px;opacity:.6">Join a pool to start mixing</div>
+      </div>
+      <div id="dt-mix-active" style="display:none;max-width:560px">
+        <div class="dt-card" style="text-align:center;margin-bottom:16px">
+          <div style="font-size:16px;font-weight:700;color:var(--dt-text)" id="dt-mix-denom">COMBINATORIAL MIX</div>
+          <div style="font-size:13px;color:var(--dt-text-secondary);margin-top:4px" id="dt-mix-peers">0/5 PARTICIPANTS</div>
+          <div style="font-size:11px;color:var(--dt-text-secondary);margin-top:2px;opacity:.6" id="dt-mix-io-info"></div>
+        </div>
+        <div class="dt-card dt-phase-card">
+          <div class="dt-phase-list" id="dt-mix-phases">
+            <div class="dt-phase-item" data-phase="1">
+              <div class="dt-phase-num">1</div>
+              <div class="dt-phase-label">Discovery<span style="display:block;font-size:11px;color:var(--dt-text-secondary);font-weight:400;margin-top:2px">Waiting for participants...</span></div>
+            </div>
+            <div class="dt-phase-item" data-phase="2">
+              <div class="dt-phase-num">2</div>
+              <div class="dt-phase-label">Input Registration<span style="display:block;font-size:11px;color:var(--dt-text-secondary);font-weight:400;margin-top:2px">Declare UTXOs</span></div>
+            </div>
+            <div class="dt-phase-item" data-phase="3">
+              <div class="dt-phase-num">3</div>
+              <div class="dt-phase-label">Blind Output<span style="display:block;font-size:11px;color:var(--dt-text-secondary);font-weight:400;margin-top:2px">Onion-encrypted output registration</span></div>
+            </div>
+            <div class="dt-phase-item" data-phase="4">
+              <div class="dt-phase-num">4</div>
+              <div class="dt-phase-label">TX Assembly<span style="display:block;font-size:11px;color:var(--dt-text-secondary);font-weight:400;margin-top:2px">Building CoinJoin transaction</span></div>
+            </div>
+            <div class="dt-phase-item" data-phase="5">
+              <div class="dt-phase-num">5</div>
+              <div class="dt-phase-label">Verify &amp; Sign<span style="display:block;font-size:11px;color:var(--dt-text-secondary);font-weight:400;margin-top:2px">Verify outputs, sign inputs</span></div>
+            </div>
+            <div class="dt-phase-item" data-phase="6">
+              <div class="dt-phase-num">6</div>
+              <div class="dt-phase-label">Broadcast<span style="display:block;font-size:11px;color:var(--dt-text-secondary);font-weight:400;margin-top:2px">Submit to network</span></div>
+            </div>
+          </div>
+        </div>
+        <div id="dt-mix-result" style="display:none;margin-top:16px">
+          <div class="dt-card" style="text-align:center;border-color:var(--dt-accent-border)">
+            <div style="font-size:16px;font-weight:700;color:var(--dt-accent);margin-bottom:8px">Mix Complete ✓</div>
+            <div id="dt-mix-txid" style="font-size:11px;color:var(--dt-text-secondary);font-family:monospace;word-break:break-all;margin-bottom:12px"></div>
+            <button class="dt-action-btn-outline" onclick="if(window.resetMix)window.resetMix()">New Mix</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTORY pane -->
+    <div class="dt-pane" id="dt-fus-p-history">
+      <div id="dt-history-list"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  if(!window.matchMedia('(min-width:900px)').matches) return;
+  var el=document.getElementById('fusion-desktop');if(!el)return;
+  el.style.display='';
+
+  /* ── Tab switching ─── */
+  var _tabs=['pool','mix','history'];
+  window.dtFusTab=function(t){
+    _tabs.forEach(function(x){
+      var p=document.getElementById('dt-fus-p-'+x);
+      if(p)p.classList.toggle('active',x===t);
+    });
+    var btns=document.querySelectorAll('#dt-fus-tabs .dt-tab');
+    btns.forEach(function(b){b.classList.toggle('active',b.textContent.toLowerCase()===t);});
+  };
+
+  /* ── Desktop Create Pool ─── */
+  var _dtPeers=5;
+  window.dtFusOpenCreate=function(){
+    document.getElementById('dt-create-pool').style.display='';
+  };
+  window.dtFusCloseCreate=function(){
+    document.getElementById('dt-create-pool').style.display='none';
+  };
+  window.dtFusSelectPeers=function(n){
+    _dtPeers=n;
+    var btns=document.querySelectorAll('.dt-peer-opt');
+    btns.forEach(function(b){
+      var p=parseInt(b.dataset.peers);
+      if(p===n){b.className='dt-action-btn dt-peer-opt';}
+      else{b.className='dt-action-btn-outline dt-peer-opt';}
+    });
+  };
+  window.dtFusCreatePool=function(){
+    // Sync peer count to mobile then call createPool
+    var mobileOpts=document.querySelectorAll('.denom-opt[data-peers]');
+    mobileOpts.forEach(function(el){
+      el.classList.remove('active');
+      if(parseInt(el.dataset.peers)===_dtPeers) el.classList.add('active');
+      if(parseInt(el.dataset.peers)===_dtPeers) el.click();
+    });
+    if(window.createPool) window.createPool();
+    dtFusCloseCreate();
+  };
+
+  /* ── Poll mobile DOM ─── */
+  setInterval(function(){
+    // Mirror balance
+    var mb=document.getElementById('my-balance');
+    var db=document.getElementById('dt-fus-balance');
+    if(mb&&db) db.innerHTML=mb.textContent+' <span style="font-size:14px;font-weight:600;color:var(--dt-text-secondary)">BCH</span>';
+
+    // Mirror pool list
+    var ml=document.getElementById('pool-list');
+    var dl=document.getElementById('dt-pool-list');
+    if(ml&&dl){
+      var items=ml.querySelectorAll('.pool-item');
+      if(!items.length){
+        var es=ml.querySelector('.empty-state');
+        dl.innerHTML='<div class="dt-empty"><div class="dt-empty-icon">⚗</div><div class="dt-empty-text">NO POOLS FOUND</div><div style="font-size:12px;color:var(--dt-text-secondary);opacity:.5;margin-top:6px">Create one or wait for peers</div></div>';
+      } else {
+        var html='';
+        items.forEach(function(it){
+          var oc=it.getAttribute('onclick')||'';
+          var nameEl=it.querySelector('.pool-amount');
+          var detEl=it.querySelector('.pool-detail');
+          var peersEl=it.querySelector('.pool-peers');
+          var name=nameEl?nameEl.textContent:'Mix Pool';
+          var detail=detEl?detEl.textContent:'';
+          var peers=peersEl?peersEl.textContent:'';
+          html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:var(--dt-surface);border:1px solid var(--dt-border);border-radius:12px;margin-bottom:8px">'
+            +'<div style="display:flex;align-items:center;gap:14px">'
+            +'<div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#0AC18E,#0AD18E);display:flex;align-items:center;justify-content:center;font-size:18px">⚗</div>'
+            +'<div>'
+            +'<div style="font-weight:700;font-size:13px;color:var(--dt-text)">'+name+'</div>'
+            +'<div style="font-size:11px;color:var(--dt-text-secondary);margin-top:2px">'+detail+'</div>'
+            +'</div>'
+            +'</div>'
+            +'<div style="display:flex;align-items:center;gap:12px">'
+            +'<span style="font-size:12px;font-weight:600;color:var(--dt-text-secondary)">'+peers+'</span>'
+            +(oc?'<button class="dt-action-btn" style="font-size:11px;padding:8px 20px;border-radius:8px" onclick="event.stopPropagation();'+oc.replace(/"/g,'&quot;')+'">Join</button>':'')
+            +'</div>'
+            +'</div>';
+        });
+        dl.innerHTML=html;
+      }
+    }
+
+    // Mirror mix state
+    var mi=document.getElementById('mix-idle');
+    var dmi=document.getElementById('dt-mix-idle');
+    var ma=document.getElementById('mix-active');
+    var dma=document.getElementById('dt-mix-active');
+    if(mi&&dmi&&ma&&dma){
+      var active=ma.style.display!=='none';
+      dmi.style.display=active?'none':'block';
+      dma.style.display=active?'block':'none';
+    }
+
+    // Mirror mix info
+    var md=document.getElementById('mix-denom');
+    var dmd=document.getElementById('dt-mix-denom');
+    if(md&&dmd) dmd.textContent=md.textContent;
+
+    var mp=document.getElementById('mix-peers');
+    var dmp=document.getElementById('dt-mix-peers');
+    if(mp&&dmp) dmp.textContent=mp.textContent;
+
+    var mio=document.getElementById('mix-io-info');
+    var dmio=document.getElementById('dt-mix-io-info');
+    if(mio&&dmio) dmio.textContent=mio.textContent;
+
+    // Mirror phase states
+    var phases=document.querySelectorAll('#mix-phases .phase-item');
+    var dPhases=document.querySelectorAll('#dt-mix-phases .dt-phase-item');
+    phases.forEach(function(p,i){
+      if(dPhases[i]){
+        dPhases[i].classList.toggle('done',p.classList.contains('done'));
+        dPhases[i].classList.toggle('active',p.classList.contains('active'));
+        dPhases[i].classList.toggle('error',p.classList.contains('error'));
+      }
+    });
+
+    // Mirror mix result
+    var mr=document.getElementById('mix-result');
+    var dmr=document.getElementById('dt-mix-result');
+    if(mr&&dmr) dmr.style.display=mr.style.display;
+
+    var mt=document.getElementById('mix-txid');
+    var dmt=document.getElementById('dt-mix-txid');
+    if(mt&&dmt) dmt.textContent=mt.textContent;
+
+    // Mirror history
+    var hl=document.getElementById('history-list');
+    var dhl=document.getElementById('dt-history-list');
+    if(hl&&dhl){
+      var hItems=hl.querySelectorAll('.history-item');
+      if(!hItems.length){
+        dhl.innerHTML='<div class="dt-empty"><div class="dt-empty-icon">📋</div><div class="dt-empty-text">No mix history yet</div></div>';
+      } else {
+        var html='';
+        hItems.forEach(function(it){
+          var amt=it.querySelector('.hist-amount,.history-amount');
+          var st=it.querySelector('.hist-status,.history-status');
+          var txid=it.querySelector('.hist-txid,.history-txid');
+          var time=it.querySelector('.hist-time,.history-time');
+          var isOk=st&&(st.textContent.toLowerCase().indexOf('ok')>=0||st.textContent.toLowerCase().indexOf('success')>=0||st.classList.contains('ok'));
+          html+='<div class="dt-row" style="cursor:default">'
+            +'<div class="dt-row-left"><div class="dt-row-title">'+(amt?amt.textContent:'Mix')+'</div>'
+            +'<div class="dt-row-sub" style="font-family:monospace;font-size:10px">'+(txid?txid.textContent:'')+'</div></div>'
+            +'<div class="dt-row-right"><span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px;border:1px solid;'
+            +(isOk?'color:var(--dt-accent)':'color:var(--dt-danger)')+'">'+(st?st.textContent:'—')+'</span>'
+            +(time?'<div style="font-size:10px;color:var(--dt-text-secondary);margin-top:4px">'+time.textContent+'</div>':'')
+            +'</div></div>';
+        });
+        dhl.innerHTML=html;
+      }
+    }
+
+    // Mirror autojoin
+    var as=document.getElementById('autojoin-status');
+    var das=document.getElementById('dt-autojoin-status');
+    if(as&&das){
+      das.style.display=as.style.display;
+      das.textContent=as.textContent;
+    }
+
+    // Connection status chips
+    var fd=document.getElementById('fulcrum-dot');
+    var fChip=document.getElementById('dt-status-fus-fulcrum');
+    var fDot=document.getElementById('dt-fus-dot-fulcrum');
+    var fSrv=document.getElementById('dt-status-fus-fulcrum-server');
+    if(fd&&fChip){
+      var fOn=fd.classList.contains('on');
+      fChip.classList.toggle('on',fOn);
+      fChip.classList.toggle('err',!fOn);
+      if(fDot){fDot.classList.toggle('on',fOn);fDot.classList.toggle('err',!fOn);}
+      var fl=document.getElementById('fulcrum-label');
+      if(fl&&fSrv){var ft=fl.textContent||'';var fm=ft.match(/:\s*(.+)/);fSrv.textContent=fm?fm[1].trim():'—';}
+    }
+    var nd=document.getElementById('nostr-dot');
+    var nChip=document.getElementById('dt-status-fus-nostr');
+    var nDot=document.getElementById('dt-fus-dot-nostr');
+    var nSrv=document.getElementById('dt-status-fus-nostr-server');
+    if(nd&&nChip){
+      var nOn=nd.classList.contains('on');
+      nChip.classList.toggle('on',nOn);
+      nChip.classList.toggle('err',!nOn);
+      if(nDot){nDot.classList.toggle('on',nOn);nDot.classList.toggle('err',!nOn);}
+      var nl=document.getElementById('nostr-label');
+      if(nl&&nSrv){var nt=nl.textContent||'';var nm=nt.match(/:\s*(.+)/);nSrv.textContent=nm?nm[1].trim():'—';}
+    }
+  },800);
+})();
+</script>
+
+<div class="phone-wrap">
+  <div class="phone">
+    <div class="notch"><div class="notch-cam"></div><div class="notch-speaker"></div><div class="notch-cam"></div></div>
+    <div class="status-bar"><span id="clock">00:00</span><div class="status-icons"><span>⚡</span><span>▮▮▮</span></div></div>
+
+    <div class="app-header">
+      <div class="app-title">00 Joiner<span>COINJOIN · NOSTR</span></div>
+      <div style="display:flex;gap:12px;align-items:center">
+        <span class="header-icon" id="btn-refresh" title="Refresh">↻</span>
+      </div>
+    </div>
+
+
+    <!-- Auth view -->
+    <div id="auth-view" style="display:none">
+      <div class="auth-logo">00 FUSION</div>
+      <div class="auth-sub">DECENTRALIZED COINJOIN</div>
+      <div class="auth-sub" style="color:rgba(0,255,65,.2);font-size:9px;margin-top:4px">Unlock your wallet to mix</div>
+      <input class="auth-input" type="password" id="auth-pass" placeholder="Password..." autocomplete="off">
+      <div class="auth-error" id="auth-err"></div>
+      <button class="auth-btn" onclick="tryUnlock()">UNLOCK →</button>
+      <div style="font-size:9px;color:rgba(0,255,65,.2);letter-spacing:1px;margin-top:8px">
+        No wallet yet? <a href="wallet.html" style="color:rgba(0,255,65,.5)">Create one in 00 Wallet</a>
+      </div>
+    </div>
+
+    <!-- Main view -->
+    <div id="main-view" style="display:none;flex:1;flex-direction:column;min-height:0">
+      <div class="tabs">
+        <div class="tab active" data-tab="pool">POOL</div>
+        <div class="tab" data-tab="mix">MIX</div>
+        <div class="tab" data-tab="history">HISTORY</div>
+      </div>
+
+      <!-- POOL tab -->
+      <div class="tab-pane active" id="tab-pool">
+        <div class="pool-hero">
+          <div class="pool-balance" id="my-balance">0.00000000</div>
+          <div class="pool-balance-label">AVAILABLE BALANCE (BCH)</div>
+        </div>
+        <div class="pool-actions">
+          <button class="pool-btn" onclick="openCreatePool()">+ CREATE POOL</button>
+          <button class="pool-btn" onclick="refreshPools()">↻ REFRESH</button>
+          <button class="autojoin-btn" id="autojoin-btn" onclick="toggleAutoJoin()">∞</button>
+        </div>
+        <div class="autojoin-status" id="autojoin-status" style="display:none"></div>
+        <div id="pool-list">
+          <div class="empty-state">
+            SCANNING FOR MIX POOLS...<br>
+            <span style="font-size:9px;color:rgba(0,255,65,.15)">pools are announced via Nostr relays</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- MIX tab -->
+      <div class="tab-pane" id="tab-mix">
+        <div id="mix-idle" style="padding:40px 20px;text-align:center">
+          <div style="font-size:40px;margin-bottom:12px">⚗</div>
+          <div style="font-size:12px;color:rgba(0,255,65,.4);letter-spacing:2px">NO ACTIVE MIX</div>
+          <div style="font-size:10px;color:rgba(0,255,65,.2);margin-top:8px;letter-spacing:1px">Join a pool to start mixing</div>
+        </div>
+        <div id="mix-active" style="display:none;flex:1;flex-direction:column">
+          <div style="padding:14px 20px;border-bottom:1px solid rgba(0,255,65,.07);text-align:center">
+            <div style="font-family:'Orbitron',monospace;font-size:14px;color:var(--green);letter-spacing:2px" id="mix-denom">COMBINATORIAL MIX</div>
+            <div style="font-size:9px;color:rgba(0,255,65,.3);letter-spacing:1px;margin-top:4px" id="mix-peers">0/5 PARTICIPANTS</div>
+            <div style="font-size:8px;color:rgba(157,78,221,.5);letter-spacing:1px;margin-top:3px" id="mix-io-info"></div>
+          </div>
+          <div class="mix-phases" id="mix-phases">
+            <div class="phase-item" data-phase="1">
+              <div class="phase-num">1</div>
+              <div class="phase-info"><div class="phase-title">DISCOVERY</div><div class="phase-status">Waiting for participants...</div></div>
+            </div>
+            <div class="phase-item" data-phase="2">
+              <div class="phase-num">2</div>
+              <div class="phase-info"><div class="phase-title">INPUT REGISTRATION</div><div class="phase-status">Declare UTXOs</div></div>
+            </div>
+            <div class="phase-item" data-phase="3">
+              <div class="phase-num">3</div>
+              <div class="phase-info"><div class="phase-title">BLIND OUTPUT</div><div class="phase-status">Onion-encrypted output registration</div></div>
+            </div>
+            <div class="phase-item" data-phase="4">
+              <div class="phase-num">4</div>
+              <div class="phase-info"><div class="phase-title">TX ASSEMBLY</div><div class="phase-status">Building CoinJoin transaction</div></div>
+            </div>
+            <div class="phase-item" data-phase="5">
+              <div class="phase-num">5</div>
+              <div class="phase-info"><div class="phase-title">VERIFY & SIGN</div><div class="phase-status">Verify outputs, sign inputs</div></div>
+            </div>
+            <div class="phase-item" data-phase="6">
+              <div class="phase-num">6</div>
+              <div class="phase-info"><div class="phase-title">BROADCAST</div><div class="phase-status">Submit to network</div></div>
+            </div>
+          </div>
+          <div id="mix-result" class="mix-result" style="display:none">
+            <div class="mix-result-title">MIX COMPLETE ✓</div>
+            <div class="mix-result-txid" id="mix-txid"></div>
+            <button class="mix-result-btn" onclick="resetMix()">NEW MIX</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- HISTORY tab -->
+      <div class="tab-pane" id="tab-history">
+        <div id="history-list">
+          <div class="empty-state">NO MIX HISTORY YET</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create pool overlay -->
+    <div class="overlay" id="create-overlay">
+      <div class="overlay-title">CREATE MIX POOL</div>
+      <div class="overlay-sub">combinatorial stealth coinjoin · v2</div>
+      <div style="padding:12px 0;font-size:9px;color:rgba(0,255,65,.3);letter-spacing:1px;text-align:center;line-height:2">
+        RANDOM INPUTS · RANDOM OUTPUTS<br>
+        ALL STEALTH · NO MARKER · NO DENOMINATION
+      </div>
+      <div class="form-lbl">MIN PARTICIPANTS</div>
+      <div class="denom-row">
+        <div class="denom-opt" data-peers="3">3</div>
+        <div class="denom-opt" data-peers="4">4</div>
+        <div class="denom-opt active" data-peers="5">5</div>
+      </div>
+      <button class="auth-btn" onclick="createPool()" style="margin-top:8px">ANNOUNCE POOL →</button>
+      <button class="auth-btn" onclick="closeCreatePool()" style="background:transparent;border-color:rgba(0,255,65,.15);color:rgba(0,255,65,.3);font-size:11px;padding:10px">CANCEL</button>
+    </div>
+
+  </div><!-- phone -->
+</div>
+
+<script>(function(){var v=localStorage.getItem('00wallet_vault');if(!v){window.location.href='/wallet.html';return;}try{var s=JSON.parse(localStorage.getItem('00_session_auth')||'{}');if(!s.ts||Date.now()-s.ts>30*60*1000){window.location.href='/wallet.html';}}catch(e){window.location.href='/wallet.html';}})();</script>
+<script src="shell.js"></script>
+<script src="/ws-bridge.js"></script>
+<script type="module">
+'use strict';
+
+import { secp256k1, schnorr } from 'https://esm.sh/@noble/curves@1.8.1/secp256k1';
+import { sha256 }    from 'https://esm.sh/@noble/hashes@1.7.1/sha256';
+import { ripemd160 } from 'https://esm.sh/@noble/hashes@1.7.1/ripemd160';
+import { hmac }      from 'https://esm.sh/@noble/hashes@1.7.1/hmac';
+import { sha512 }    from 'https://esm.sh/@noble/hashes@1.7.1/sha512';
+
+/* ──────────────────────────────────────────
+   CONFIG
+   ────────────────────────────────────────── */
+const _FV = JSON.parse(localStorage.getItem('00_ep_fulcrum') || 'null') || ['wss://bch.imaginary.cash:50004','wss://electroncash.de:50004','wss://bch.loping.net:50004'];
+const _RELAYS = JSON.parse(localStorage.getItem('00_ep_relays') || 'null') || ['wss://relay.damus.io','wss://nos.lol','wss://relay.nostr.band'];
+
+const NOSTR_KIND_POOL   = 22222;
+const NOSTR_KIND_JOIN   = 22223;
+const NOSTR_KIND_PROTO  = 22224;
+const PHASE_TIMEOUT     = 60000;
+const PEER_HEARTBEAT_MS = 20000;  // re-send join every 20s
+const PEER_TIMEOUT_MS   = 45000;  // prune peer after 45s silence
+let _heartbeatInterval  = null;
+
+/* ──────────────────────────────────────────
+   STATE
+   ────────────────────────────────────────── */
+let _profile = null;
+let _bchAddr = '';
+let _privKey = null;       // Uint8Array secp256k1 private key (BCH spending)
+let _acctPriv = null;      // Uint8Array account-level priv (m/44'/145'/0')
+let _acctChain = null;     // Uint8Array account-level chain code
+let _addrIndex = 1;        // next HD address index (0 = main wallet addr)
+let _utxos = [];
+let _balanceSats = 0;
+let _hdScannedAddrs = []; // all HD addresses with activity (for multi-addr balance)
+let _hdKeyMap = {};       // addr → Uint8Array privKey (for signing HD UTXOs)
+
+// Session identity (fresh per session — not linked to BCH addr)
+let _sessionPriv = null;   // Uint8Array(32) secp256k1 ephemeral key
+let _sessionPub = null;    // hex string, x-only 32 bytes
+
+// Nostr — multi-relay
+let _nostrSockets = [];   // [{ws, url, connected}]
+let _nostrConnected = false;
+let _seenEvents = new Set(); // dedup event IDs across relays
+
+// Fulcrum
+let _fulcrumWs = null;
+let _fulcrumConnected = false;
+let _fulcrumReqId = 1;
+let _fulcrumCallbacks = {};
+
+// Mix state
+let _activeMix = null;
+let _mixHistory = JSON.parse(localStorage.getItem('00_fusion_history') || '[]');
+let _phaseTimer = null;
+let _banList = JSON.parse(localStorage.getItem('00_fusion_bans') || '[]');
+
+// Session timestamp — ignore pools created before this
+let _sessionStartTs = Math.floor(Date.now() / 1000);
+
+// Auto-join
+let _autoJoin = false;
+let _autoJoinTimer = null;
+const MIN_MIX_SATS = 3000; // minimum balance to participate in a mix
+
+/* ──────────────────────────────────────────
+   UTILITIES
+   ────────────────────────────────────────── */
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+const b2h = b => [...b].map(x => x.toString(16).padStart(2,'0')).join('');
+const h2b = h => new Uint8Array(h.match(/.{2}/g).map(x => parseInt(x,16)));
+const rand = n => crypto.getRandomValues(new Uint8Array(n));
+const utf8 = s => new TextEncoder().encode(s);
+function concat(...arrs) {
+  const r = new Uint8Array(arrs.reduce((s, a) => s + a.length, 0));
+  let o = 0; for (const a of arrs) { r.set(a, o); o += a.length; } return r;
+}
+const u32LE = n => new Uint8Array([n & 0xff, (n >> 8) & 0xff, (n >> 16) & 0xff, (n >> 24) & 0xff]);
+function u64LE(n) {
+  const b = new Uint8Array(8); let v = BigInt(n);
+  for (let i = 0; i < 8; i++) { b[i] = Number(v & 0xffn); v >>= 8n; } return b;
+}
+function writeVarint(n) {
+  if (n < 0xfd) return new Uint8Array([n]);
+  if (n <= 0xffff) return new Uint8Array([0xfd, n & 0xff, (n >> 8) & 0xff]);
+  return new Uint8Array([0xfe, n & 0xff, (n >> 8) & 0xff, (n >> 16) & 0xff, (n >> 24) & 0xff]);
+}
+const dsha256 = d => sha256(sha256(d));
+function satsToBch(s) { return (s / 1e8).toFixed(8); }
+function bchToSats(b) { return Math.round(parseFloat(b) * 1e8); }
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// Split totalSats into n random amounts, each >= 546 (dust limit)
+function randomSplit(totalSats, n) {
+  const MIN_OUT = 546;
+  if (totalSats < MIN_OUT * n) return null;
+  if (n === 1) return [totalSats];
+  const pool = totalSats - MIN_OUT * n; // distributable surplus
+  const w = []; for (let i = 0; i < n; i++) w.push(Math.random() + 0.1);
+  const wSum = w.reduce((s, v) => s + v, 0);
+  const amounts = w.map(v => MIN_OUT + Math.floor(v / wSum * pool));
+  // fix rounding remainder
+  const used = amounts.reduce((s, v) => s + v, 0);
+  amounts[Math.floor(Math.random() * n)] += totalSats - used;
+  return amounts;
+}
+
+/* ──────────────────────────────────────────
+   BIP32 HD DERIVATION
+   ────────────────────────────────────────── */
+const N_SECP = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141n;
+function _bip32Child(priv, chain, idx, hard) {
+  const ib = new Uint8Array([idx>>>24,(idx>>>16)&0xff,(idx>>>8)&0xff,idx&0xff]);
+  const data = hard ? concat(new Uint8Array([0]),priv,ib) : concat(secp256k1.getPublicKey(priv,true),ib);
+  const I = hmac(sha512, chain, data);
+  const child = ((BigInt('0x'+b2h(I.slice(0,32)))+BigInt('0x'+b2h(priv)))%N_SECP).toString(16).padStart(64,'0');
+  return { priv: h2b(child), chain: I.slice(32) };
+}
+
+// Derive address at m/44'/145'/0'/{changeIdx}/{addrIdx} from account node
+function deriveFreshAddr(acctPriv, acctChain, changeIdx, addrIdx) {
+  const change = _bip32Child(acctPriv, acctChain, changeIdx, false);
+  const addr   = _bip32Child(change.priv, change.chain, addrIdx, false);
+  const pub33  = secp256k1.getPublicKey(addr.priv, true);
+  const h160   = ripemd160(sha256(pub33));
+  return pubHashToCashAddr(Array.from(h160));
+}
+
+/* ──────────────────────────────────────────
+   SELF-STEALTH ADDRESSES (fusion output)
+   ────────────────────────────────────────── */
+let _stealthScanPriv = null, _stealthScanPub = null;
+let _stealthSpendPriv = null, _stealthSpendPub = null;
+
+function _deriveSelfStealth(inputPriv, inputOutpoint, outputIdx) {
+  // Use the wallet's own input key for ECDH (recoverable via chain scan)
+  // ECDH: inputPriv × scan_pub  ===  scanPriv × inputPub (symmetric)
+  const shared = secp256k1.getSharedSecret(inputPriv, _stealthScanPub);
+  const sharedX = shared.slice(1, 33);
+  // Nonce = outpoint + output index (unique per output, deterministic, on-chain)
+  const nonce = concat(inputOutpoint, u32LE(outputIdx));
+  const c = sha256(concat(sha256(sharedX), nonce));
+  const cBig = BigInt('0x' + b2h(c)) % N_SECP;
+  // P = B_spend + c*G
+  const spendPoint = secp256k1.ProjectivePoint.fromHex(_stealthSpendPub);
+  const tweakPoint = secp256k1.ProjectivePoint.BASE.multiply(cBig);
+  const stealthPoint = spendPoint.add(tweakPoint);
+  const stealthPub = stealthPoint.toRawBytes(true);
+  const addr = pubHashToCashAddr(Array.from(ripemd160(sha256(stealthPub))));
+  // Spending key: b + c
+  const bBig = BigInt('0x' + b2h(_stealthSpendPriv));
+  const pBig = (bBig + cBig) % N_SECP;
+  const spendKey = h2b(pBig.toString(16).padStart(64, '0'));
+  return { addr, pub: stealthPub, priv: spendKey };
+}
+
+function _saveFusionStealthUtxo(addr, priv, pub) {
+  // Save stealth UTXO info so wallet.html can spend it (same format + key as wallet.html)
+  const existing = JSON.parse(localStorage.getItem('00stealth_utxos') || '[]');
+  existing.push({ addr, priv: b2h(priv), pub: b2h(pub), from: 'fusion', ts: Math.floor(Date.now() / 1000) });
+  localStorage.setItem('00stealth_utxos', JSON.stringify(existing));
+}
+
+/* ──────────────────────────────────────────
+   CASHADDR ENCODING
+   ────────────────────────────────────────── */
+const _caCharset = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l';
+function _caPolymod(v) {
+  const G = [0x98f2bc8e61n, 0x79b76d99e2n, 0xf33e5fb3c4n, 0xae2eabe2a8n, 0x1e4f43e470n];
+  let c = 1n;
+  for (const d of v) {
+    const c0 = c >> 35n;
+    c = ((c & 0x07ffffffffn) << 5n) ^ BigInt(d);
+    if (c0 & 1n) c ^= G[0]; if (c0 & 2n) c ^= G[1];
+    if (c0 & 4n) c ^= G[2]; if (c0 & 8n) c ^= G[3]; if (c0 & 16n) c ^= G[4];
+  }
+  return c ^ 1n;
+}
+function pubHashToCashAddr(hash20) {
+  const payload = new Uint8Array([0x00, ...hash20]);
+  const d5 = []; let acc = 0, bits = 0;
+  for (const b of payload) { acc = (acc<<8)|b; bits+=8; while(bits>=5){bits-=5;d5.push((acc>>bits)&31);} }
+  if (bits > 0) d5.push((acc<<(5-bits))&31);
+  const prefix = 'bitcoincash';
+  const pe = [...prefix.split('').map(c=>c.charCodeAt(0)&31), 0];
+  const mod = _caPolymod([...pe, ...d5, 0,0,0,0,0,0,0,0]);
+  const cs = []; for (let i=7;i>=0;i--) cs.push(Number((mod>>(BigInt(i)*5n))&31n));
+  return 'bitcoincash:' + [...d5,...cs].map(v=>_caCharset[v]).join('');
+}
+
+/* ──────────────────────────────────────────
+   BCH TX BUILDER
+   ────────────────────────────────────────── */
+function p2pkhScript(hash20) {
+  return concat(new Uint8Array([0x76, 0xa9, 0x14]), hash20, new Uint8Array([0x88, 0xac]));
+}
+function p2pkhAddrScript(cashAddr) { return p2pkhScript(cashAddrToHash20(cashAddr)); }
+function bchSighash(version, locktime, inputs, outputs, i, utxoScript, utxoValue) {
+  const prevouts = concat(...inputs.map(x => concat(x.txidLE, u32LE(x.vout))));
+  const seqs     = concat(...inputs.map(x => u32LE(x.sequence)));
+  const outsData = concat(...outputs.map(o => concat(u64LE(o.value), writeVarint(o.script.length), o.script)));
+  const inp = inputs[i];
+  return dsha256(concat(
+    u32LE(version), dsha256(prevouts), dsha256(seqs),
+    inp.txidLE, u32LE(inp.vout),
+    writeVarint(utxoScript.length), utxoScript,
+    u64LE(utxoValue), u32LE(inp.sequence),
+    dsha256(outsData), u32LE(locktime),
+    u32LE(0x41) // SIGHASH_ALL | SIGHASH_FORKID
+  ));
+}
+function serializeTx(version, locktime, inputs, outputs) {
+  return concat(
+    u32LE(version),
+    writeVarint(inputs.length),
+    ...inputs.flatMap(inp => [inp.txidLE, u32LE(inp.vout), writeVarint(inp.scriptSig.length), inp.scriptSig, u32LE(inp.sequence)]),
+    writeVarint(outputs.length),
+    ...outputs.flatMap(o => [u64LE(o.value), writeVarint(o.script.length), o.script]),
+    u32LE(locktime)
+  );
+}
+
+/* ──────────────────────────────────────────
+   NIP-01 NOSTR EVENT SIGNING
+   ────────────────────────────────────────── */
+async function makeEvent(privBytes, kind, content, tags = []) {
+  const pub = b2h(secp256k1.getPublicKey(privBytes, true).slice(1)); // x-only
+  const created_at = Math.floor(Date.now() / 1000);
+  const idHash = sha256(utf8(JSON.stringify([0, pub, created_at, kind, tags, content])));
+  const sig = b2h(await schnorr.sign(idHash, privBytes));
+  return { id: b2h(idHash), pubkey: pub, created_at, kind, tags, content, sig };
+}
+
+/* ──────────────────────────────────────────
+   NIP-04 ENCRYPTION (secp256k1 ECDH + AES-CBC)
+   ────────────────────────────────────────── */
+async function nip04Encrypt(myPriv, theirPubHex, msg) {
+  const shared = secp256k1.getSharedSecret(myPriv, h2b('02' + theirPubHex)).slice(1, 33);
+  const iv = rand(16);
+  const key = await crypto.subtle.importKey('raw', shared, { name: 'AES-CBC' }, false, ['encrypt']);
+  const ct = await crypto.subtle.encrypt({ name: 'AES-CBC', iv }, key, utf8(msg));
+  return btoa(String.fromCharCode(...new Uint8Array(ct))) + '?iv=' + btoa(String.fromCharCode(...iv));
+}
+
+async function nip04Decrypt(myPriv, senderPubHex, encContent) {
+  try {
+    const [ctB64, ivB64] = encContent.split('?iv=');
+    const ct = Uint8Array.from(atob(ctB64), c => c.charCodeAt(0));
+    const iv = Uint8Array.from(atob(ivB64), c => c.charCodeAt(0));
+    const shared = secp256k1.getSharedSecret(myPriv, h2b('02' + senderPubHex)).slice(1, 33);
+    const key = await crypto.subtle.importKey('raw', shared, { name: 'AES-CBC' }, false, ['decrypt']);
+    const pt = await crypto.subtle.decrypt({ name: 'AES-CBC', iv }, key, ct);
+    return new TextDecoder().decode(pt);
+  } catch { return null; }
+}
+
+/* ──────────────────────────────────────────
+   ONION ENCRYPTION (secp256k1 ECDH + AES-256-GCM)
+   Each layer: eph_pub(33) || nonce(12) || ciphertext+tag
+   ────────────────────────────────────────── */
+async function onionLayer(data, peelerPubHex) {
+  const eph = rand(32);
+  const ephPub = secp256k1.getPublicKey(eph, true); // 33 bytes compressed
+  const shared = secp256k1.getSharedSecret(eph, h2b('02' + peelerPubHex)).slice(1, 33);
+  const aesKey = sha256(shared);
+  const iv = rand(12);
+  const key = await crypto.subtle.importKey('raw', aesKey, { name: 'AES-GCM' }, false, ['encrypt']);
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv, tagLength: 128 }, key, data));
+  return concat(ephPub, iv, ct);
+}
+
+async function onionPeel(blob, myPriv) {
+  const ephPub = blob.slice(0, 33);
+  const iv = blob.slice(33, 45);
+  const ct = blob.slice(45);
+  const shared = secp256k1.getSharedSecret(myPriv, ephPub).slice(1, 33);
+  const aesKey = sha256(shared);
+  const key = await crypto.subtle.importKey('raw', aesKey, { name: 'AES-GCM' }, false, ['decrypt']);
+  return new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv, tagLength: 128 }, key, ct));
+}
+
+// Wrap output in layers: innermost = last peeler, outermost = first peeler
+// v2 payload format: "addr|value_sats"
+async function onionWrap(payload, peelerPubHexes) {
+  const raw = utf8(payload);
+  const padded = new Uint8Array(80); // v2: 80 bytes for addr|value
+  padded.set(raw);
+  padded[raw.length] = 0x01; // delimiter
+  let data = padded;
+  for (let i = peelerPubHexes.length - 1; i >= 0; i--) {
+    data = await onionLayer(data, peelerPubHexes[i]);
+  }
+  return data;
+}
+
+function onionUnpad(data) {
+  const idx = data.indexOf(0x01);
+  const str = new TextDecoder().decode(data.slice(0, idx > 0 ? idx : data.length));
+  // v2: parse "addr|value" format
+  const sep = str.lastIndexOf('|');
+  if (sep > 0) {
+    return { addr: str.slice(0, sep), value: parseInt(str.slice(sep + 1)) || 0 };
+  }
+  return { addr: str, value: 0 }; // v1 fallback
+}
+
+/* ──────────────────────────────────────────
+   CLOCK
+   ────────────────────────────────────────── */
+function updateClock() {
+  const d = new Date();
+  $('#clock').textContent = d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0');
+}
+setInterval(updateClock, 10000);
+updateClock();
+
+/* ──────────────────────────────────────────
+   TABS
+   ────────────────────────────────────────── */
+$$('.tab').forEach(t => t.onclick = () => {
+  $$('.tab').forEach(x => x.classList.remove('active'));
+  $$('.tab-pane').forEach(x => x.classList.remove('active'));
+  t.classList.add('active');
+  $(`#tab-${t.dataset.tab}`).classList.add('active');
+});
+
+/* ──────────────────────────────────────────
+   AES VAULT (same as wallet.html)
+   ────────────────────────────────────────── */
+async function deriveAesKey(password, salt) {
+  const enc = new TextEncoder();
+  const km = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 200000, hash: 'SHA-256' }, km, { name: 'AES-GCM', length: 256 }, false, ['encrypt','decrypt']);
+}
+
+async function decryptVault(enc, password) {
+  const { salt, iv, data } = JSON.parse(enc);
+  const key = await deriveAesKey(password, h2b(salt));
+  const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: h2b(iv) }, key, h2b(data));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+
+/* ──────────────────────────────────────────
+   AUTH
+   ────────────────────────────────────────── */
+async function tryUnlock(autoPass) {
+  const pass = autoPass || $('#auth-pass').value;
+  if (!pass) return;
+  const vault = localStorage.getItem('00wallet_vault');
+  if (!vault) { $('#auth-err').textContent = 'NO WALLET — create one in 00 Wallet first'; return; }
+  try {
+    _profile = await decryptVault(vault, pass);
+    // Share session across pages (30 min TTL)
+    localStorage.setItem('00_session_auth', JSON.stringify({ p: btoa(pass), ts: Date.now() }));
+    // Handle both vault formats (wallet.html camelCase / CLI snake_case)
+    const privHex = _profile.bchPrivHex || _profile.bch_priv_hex;
+    _privKey = privHex ? h2b(privHex) : null;
+    // Derive address from private key
+    const pub33 = secp256k1.getPublicKey(_privKey, true);
+    _bchAddr = pubHashToCashAddr(Array.from(ripemd160(sha256(pub33))));
+    // Load account-level node for HD derivation (fresh addresses per mix)
+    if (_profile.acctPrivHex && _profile.acctChainHex) {
+      _acctPriv = h2b(_profile.acctPrivHex);
+      _acctChain = h2b(_profile.acctChainHex);
+      _addrIndex = parseInt(localStorage.getItem('00_fusion_addr_idx') || '1');
+      console.log('[FUSION] HD derivation ready, next index:', _addrIndex);
+      // Derive stealth keys: m/44'/145'/0'/2/0 (scan) + m/44'/145'/0'/2/1 (spend)
+      const stChain = _bip32Child(_acctPriv, _acctChain, 2, false);
+      const scanChild = _bip32Child(stChain.priv, stChain.chain, 0, false);
+      const spendChild = _bip32Child(stChain.priv, stChain.chain, 1, false);
+      _stealthScanPriv = scanChild.priv;
+      _stealthScanPub = secp256k1.getPublicKey(scanChild.priv, true);
+      _stealthSpendPriv = spendChild.priv;
+      _stealthSpendPub = secp256k1.getPublicKey(spendChild.priv, true);
+      console.log('[FUSION] stealth keys derived — fusion outputs will use self-stealth addresses');
+    } else {
+      console.warn('[FUSION] no account node in vault — re-import wallet to enable HD addresses');
+    }
+    // Fresh session identity (ephemeral — not linked to BCH address)
+    _sessionPriv = rand(32);
+    _sessionPub = b2h(secp256k1.getPublicKey(_sessionPriv, true).slice(1));
+    console.log('[FUSION] session pub:', _sessionPub.slice(0, 16) + '...');
+    $('#auth-view').style.display = 'none';
+    $('#main-view').style.display = 'flex';
+    boot();
+  } catch (e) {
+    $('#auth-err').textContent = 'WRONG PASSWORD';
+  }
+}
+
+$('#auth-pass').addEventListener('keydown', e => { if (e.key === 'Enter') tryUnlock(); });
+
+/* ──────────────────────────────────────────
+   FULCRUM WEBSOCKET — SharedWorker or fallback
+   ────────────────────────────────────────── */
+let fulcrumConnect, fulcrumCall;
+
+if (window._wsSharedWorkerAvailable) {
+  fulcrumCall = (method, params) => window.fulcrumCall(method, params);
+  let _statusWired = false;
+  fulcrumConnect = () => {
+    if (_statusWired) return;
+    _statusWired = true;
+    window._wsOnStatus('bch', async (connected, server) => {
+      _fulcrumConnected = connected;
+      var fd=$('#fulcrum-dot'),fl=$('#fulcrum-label');
+      if (connected) {
+        const host = new URL(server).hostname;
+        if(fd) fd.classList.add('on');
+        if(fl) fl.textContent = 'FULCRUM: ' + host;
+        if (_acctPriv && _acctChain && _hdScannedAddrs.length === 0) {
+          if(fl) fl.textContent = 'SCANNING ADDRESSES...';
+          await scanHdAddrs();
+          if(fl) fl.textContent = 'FULCRUM: ' + host;
+        }
+        refreshBalance();
+      } else {
+        if(fd) fd.classList.remove('on');
+        if(fl) fl.textContent = 'FULCRUM: reconnecting…';
+      }
+    });
+  };
+} else {
+  fulcrumConnect = () => {
+    const url = _FV[Math.floor(Math.random() * _FV.length)];
+    var fl0=$('#fulcrum-label'); if(fl0) fl0.textContent = 'FULCRUM: connecting...';
+    _fulcrumWs = new WebSocket(url);
+
+    _fulcrumWs.onopen = async () => {
+      _fulcrumConnected = true;
+      var fd=$('#fulcrum-dot'),fl=$('#fulcrum-label');
+      if(fd) fd.classList.add('on');
+      if(fl) fl.textContent = 'FULCRUM: ' + new URL(url).hostname;
+      if (_acctPriv && _acctChain && _hdScannedAddrs.length === 0) {
+        const host = new URL(url).hostname;
+        if(fl) fl.textContent = 'SCANNING ADDRESSES...';
+        await scanHdAddrs();
+        if(fl) fl.textContent = 'FULCRUM: ' + host;
+      }
+      refreshBalance();
+    };
+
+    _fulcrumWs.onmessage = e => {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.id && _fulcrumCallbacks[msg.id]) {
+          _fulcrumCallbacks[msg.id](msg.result, msg.error);
+          delete _fulcrumCallbacks[msg.id];
+        }
+      } catch (err) {}
+    };
+
+    _fulcrumWs.onclose = () => {
+      _fulcrumConnected = false;
+      var fd=$('#fulcrum-dot'),fl=$('#fulcrum-label');
+      if(fd) fd.classList.remove('on');
+      if(fl) fl.textContent = 'FULCRUM: disconnected';
+      setTimeout(fulcrumConnect, 3000);
+    };
+
+    _fulcrumWs.onerror = () => _fulcrumWs.close();
+  };
+
+  fulcrumCall = (method, params) => {
+    return new Promise((resolve, reject) => {
+      const id = _fulcrumReqId++;
+      _fulcrumCallbacks[id] = (result, err) => err ? reject(err) : resolve(result);
+      _fulcrumWs.send(JSON.stringify({ jsonrpc: '2.0', id, method, params }));
+    });
+  };
+}
+
+let _refreshing = false;
+async function refreshBalance() {
+  if (_refreshing) return;
+  if (!_fulcrumConnected || !_bchAddr) return;
+  _refreshing = true;
+  try {
+    if (_hdScannedAddrs.length > 0) {
+      // Aggregate UTXOs across all HD addresses
+      _utxos = [];
+      for (const addr of _hdScannedAddrs) {
+        const sh = await addrToScriptHash(addr);
+        const us = await fulcrumCall('blockchain.scripthash.listunspent', [sh]);
+        if (us) { us.forEach(u => u._addr = addr); _utxos.push(...us); }
+      }
+    } else {
+      const sh = await addrToScriptHash(_bchAddr);
+      const utxos = await fulcrumCall('blockchain.scripthash.listunspent', [sh]);
+      _utxos = utxos || [];
+    }
+    _balanceSats = _utxos.reduce((s, u) => s + u.value, 0);
+    $('#my-balance').textContent = satsToBch(_balanceSats);
+  } catch (e) {
+    console.error('balance error:', e);
+  } finally {
+    _refreshing = false;
+  }
+}
+
+async function scanHdAddrs() {
+  _hdScannedAddrs = [_bchAddr];
+  _hdKeyMap = {};
+  _hdKeyMap[_bchAddr] = _privKey; // main address key
+
+  for (const changeIdx of [0, 1]) {
+    const chainNode = _bip32Child(_acctPriv, _acctChain, changeIdx, false);
+    // Pre-derive all addresses
+    const derived = [];
+    for (let i = 0; i < 50; i++) {
+      if (changeIdx === 0 && i === 0) { derived.push(null); continue; }
+      const child = _bip32Child(chainNode.priv, chainNode.chain, i, false);
+      const pub = secp256k1.getPublicKey(child.priv, true);
+      const addr = pubHashToCashAddr(Array.from(ripemd160(sha256(pub))));
+      derived.push({ priv: child.priv, addr });
+    }
+
+    // Batch query — 10 at a time
+    let gap = 0;
+    for (let batch = 0; batch < 50 && gap < 20; batch += 10) {
+      const chunk = derived.slice(batch, batch + 10).filter(Boolean);
+      if (!chunk.length) continue;
+      const results = await Promise.all(chunk.map(async d => {
+        const sh = await addrToScriptHash(d.addr);
+        const hist = await fulcrumCall('blockchain.scripthash.get_history', [sh]);
+        return { ...d, hasActivity: hist && hist.length > 0 };
+      }));
+      for (const r of results) {
+        if (r.hasActivity) {
+          _hdScannedAddrs.push(r.addr);
+          _hdKeyMap[r.addr] = r.priv;
+          gap = 0;
+        } else {
+          gap++;
+        }
+      }
+    }
+  }
+  // Also include stealth addresses (from wallet stealth receives + fusion self-stealth)
+  try {
+    const stealthUtxos = JSON.parse(localStorage.getItem('00stealth_utxos') || '[]');
+    for (const su of stealthUtxos) {
+      if (!su.addr || !su.priv) continue;
+      if (_hdScannedAddrs.includes(su.addr)) continue;
+      _hdScannedAddrs.push(su.addr);
+      _hdKeyMap[su.addr] = h2b(su.priv);
+    }
+    if (stealthUtxos.length > 0) console.log('[FUSION] added', stealthUtxos.length, 'stealth addresses to scan');
+  } catch (e) { console.warn('[FUSION] stealth load error:', e); }
+  console.log('[FUSION] HD scan:', _hdScannedAddrs.length, 'addresses (incl. stealth)');
+}
+
+/* ──────────────────────────────────────────
+   ADDRESS UTILS
+   ────────────────────────────────────────── */
+async function addrToScriptHash(addr) {
+  const raw = cashAddrToHash20(addr);
+  const script = new Uint8Array([0x76, 0xa9, 0x14, ...raw, 0x88, 0xac]);
+  const hash = await crypto.subtle.digest('SHA-256', script);
+  const bytes = new Uint8Array(hash);
+  return b2h(bytes.reverse());
+}
+
+function cashAddrToHash20(addr) {
+  const a = addr.replace(/^bitcoincash:/, '');
+  const CHARSET = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l';
+  const data = [];
+  for (const c of a.toLowerCase()) {
+    const v = CHARSET.indexOf(c);
+    if (v === -1) throw new Error('bad char');
+    data.push(v);
+  }
+  const payload = data.slice(0, -8);
+  const converted = [];
+  let acc = 0, bits = 0;
+  for (const v of payload) {
+    acc = (acc << 5) | v;
+    bits += 5;
+    while (bits >= 8) {
+      bits -= 8;
+      converted.push((acc >> bits) & 0xff);
+    }
+  }
+  return new Uint8Array(converted.slice(1, 21));
+}
+
+/* ──────────────────────────────────────────
+   NOSTR WEBSOCKET
+   ────────────────────────────────────────── */
+function nostrConnect() {
+  var nl=$('#nostr-label'); if(nl) nl.textContent = 'NOSTR: connecting...';
+  _nostrSockets = [];
+  for (const url of _RELAYS) _connectRelay(url);
+}
+
+function _connectRelay(url) {
+  const entry = { url, ws: null, connected: false };
+  _nostrSockets.push(entry);
+  const ws = new WebSocket(url);
+  entry.ws = ws;
+
+  ws.onopen = () => {
+    entry.connected = true;
+    _nostrConnected = true;
+    const names = _nostrSockets.filter(s => s.connected).map(s => new URL(s.url).hostname);
+    var nd=$('#nostr-dot'),nl=$('#nostr-label');
+    if(nd) nd.classList.add('on');
+    if(nl) nl.textContent = 'NOSTR: ' + names.join(', ');
+    _subscribeRelay(ws);
+  };
+
+  ws.onmessage = e => {
+    try {
+      const msg = JSON.parse(e.data);
+      if (msg[0] === 'EVENT' && msg[2]) {
+        const evId = msg[2].id;
+        if (_seenEvents.has(evId)) return; // dedup
+        _seenEvents.add(evId);
+        if (_seenEvents.size > 5000) { // cleanup
+          const arr = [..._seenEvents]; _seenEvents = new Set(arr.slice(-2500));
+        }
+        handleNostrEvent(msg[2]);
+      }
+    } catch (err) {}
+  };
+
+  ws.onclose = () => {
+    entry.connected = false;
+    const anyOn = _nostrSockets.some(s => s.connected);
+    _nostrConnected = anyOn;
+    if (anyOn) {
+      const names = _nostrSockets.filter(s => s.connected).map(s => new URL(s.url).hostname);
+      var nl2=$('#nostr-label'); if(nl2) nl2.textContent = 'NOSTR: ' + names.join(', ');
+    } else {
+      var nd=$('#nostr-dot'),nl3=$('#nostr-label');
+      if(nd) nd.classList.remove('on');
+      if(nl3) nl3.textContent = 'NOSTR: disconnected';
+    }
+    // Reconnect this relay
+    const idx = _nostrSockets.indexOf(entry);
+    if (idx !== -1) _nostrSockets.splice(idx, 1);
+    setTimeout(() => _connectRelay(url), 3000);
+  };
+
+  ws.onerror = () => ws.close();
+}
+
+function _subscribeRelay(ws) {
+  if (!ws || ws.readyState !== 1) return;
+  const now = Math.floor(Date.now() / 1000);
+  ws.send(JSON.stringify(['REQ', 'fusion-pools', {
+    kinds: [NOSTR_KIND_POOL],
+    '#t': ['0penw0rld-fusion'],
+    since: now - 300, // 5 min — pools expire fast
+  }]));
+  ws.send(JSON.stringify(['REQ', 'fusion-join', {
+    kinds: [NOSTR_KIND_JOIN],
+    '#t': ['0penw0rld-fusion'],
+    since: now - 300,
+  }]));
+  if (_sessionPub) {
+    ws.send(JSON.stringify(['REQ', 'fusion-proto', {
+      kinds: [NOSTR_KIND_PROTO],
+      '#p': [_sessionPub],
+      since: now - 600,
+    }]));
+  }
+}
+
+function nostrSubscribe() {
+  for (const s of _nostrSockets) _subscribeRelay(s.ws);
+}
+
+function nostrPublish(event) {
+  for (const s of _nostrSockets) {
+    if (s.ws && s.ws.readyState === 1) {
+      s.ws.send(JSON.stringify(['EVENT', event]));
+    }
+  }
+}
+
+/* ──────────────────────────────────────────
+   NOSTR EVENT HANDLING
+   ────────────────────────────────────────── */
+let _pools = [];
+const _expiredPoolIds = new Set();  // track expired pools to prevent resurrection
+
+function handleNostrEvent(ev) {
+  if (ev.kind === NOSTR_KIND_POOL) handlePoolAnnouncement(ev);
+  else if (ev.kind === NOSTR_KIND_JOIN) handlePoolJoin(ev);
+  else if (ev.kind === NOSTR_KIND_PROTO) handleProtoMessage(ev);
+}
+
+function handlePoolAnnouncement(ev) {
+  try {
+    const data = JSON.parse(ev.content);
+    if (!data.min_peers) return;
+    if (ev.created_at < _sessionStartTs) return;
+    if (_pools.find(p => p.id === ev.id)) return;
+    if (_expiredPoolIds.has(ev.id)) return;
+    _pools.push({
+      id: ev.id, pubkey: ev.pubkey,
+      min_peers: data.min_peers, peers: [ev.pubkey], created: ev.created_at,
+      peerSeen: { [ev.pubkey]: Date.now() },
+    });
+    renderPools();
+  } catch (e) {}
+}
+
+function handlePoolJoin(ev) {
+  try {
+    const data = JSON.parse(ev.content);
+    const pool = _pools.find(p => p.id === data.pool_id);
+    if (!pool) return;
+    if (!pool.peerSeen) pool.peerSeen = {};
+
+    // Handle leave
+    if (data.leave) {
+      pool.peers = pool.peers.filter(p => p !== ev.pubkey);
+      delete pool.peerSeen[ev.pubkey];
+      renderPools();
+      if (_activeMix && _activeMix.poolId === data.pool_id && _activeMix.phase <= 1) {
+        _activeMix.peers = _activeMix.peers.filter(p => p !== ev.pubkey);
+        updateMixPhase();
+      }
+      return;
+    }
+
+    // Update last-seen timestamp (heartbeat)
+    pool.peerSeen[ev.pubkey] = Date.now();
+
+    if (!pool.peers.includes(ev.pubkey)) {
+      pool.peers.push(ev.pubkey);
+      renderPools();
+    }
+    if (_activeMix && _activeMix.poolId === data.pool_id) {
+      if (!_activeMix.peers.includes(ev.pubkey)) _activeMix.peers.push(ev.pubkey);
+      updateMixPhase();
+    }
+  } catch (e) {}
+}
+
+async function handleProtoMessage(ev) {
+  if (!_activeMix) return;
+  try {
+    // NIP-04 decrypt
+    const decrypted = await nip04Decrypt(_sessionPriv, ev.pubkey, ev.content);
+    if (!decrypted) return;
+    const data = JSON.parse(decrypted);
+    if (data.pool_id !== _activeMix.poolId) return;
+
+    _dispatchProtoMsg(ev.pubkey, data);
+  } catch (e) { console.warn('[FUSION] proto msg error:', e); }
+}
+
+const _msgBuffer = []; // buffer for early-arriving messages
+
+function _dispatchProtoMsg(pubkey, data) {
+  const step = data.step;
+  const phase = _activeMix ? _activeMix.phase : 0;
+
+  // Only buffer 'inputs' and 'onion' — other steps handle their own phase logic
+  const stepPhase = { inputs: 2, onion: 3 };
+  const needed = stepPhase[step] || 0;
+
+  // If message is for a future phase, buffer it
+  if (needed > 0 && phase < needed) {
+    console.log('[FUSION] buffered', step, 'from', pubkey.slice(0, 12), '(phase', phase, '< needed', needed + ')');
+    _msgBuffer.push({ pubkey, data });
+    return;
+  }
+
+  if (step === 'inputs')       handleInputsMsg(pubkey, data);
+  else if (step === 'onion')   handleOnionMsg(pubkey, data);
+  else if (step === 'outputs') handleOutputsMsg(pubkey, data);
+  else if (step === 'tx')      handleTxMsg(pubkey, data);
+  else if (step === 'sign')    handleSignMsg(pubkey, data);
+  else if (step === 'blame')   handleBlameMsg(pubkey, data);
+}
+
+/* ──────────────────────────────────────────
+   POOL UI
+   ────────────────────────────────────────── */
+function pruneStalePeers() {
+  const now = Date.now();
+  let changed = false;
+  for (const pool of _pools) {
+    if (!pool.peerSeen) continue;
+    for (const [pub, ts] of Object.entries(pool.peerSeen)) {
+      if (pub === _sessionPub) continue;
+      if (now - ts > PEER_TIMEOUT_MS) {
+        pool.peers = pool.peers.filter(p => p !== pub);
+        delete pool.peerSeen[pub];
+        changed = true;
+      }
+    }
+  }
+  if (changed && _activeMix && _activeMix.phase === 1) {
+    const pool = _pools.find(p => p.id === _activeMix.poolId);
+    if (pool) {
+      _activeMix.peers = _activeMix.peers.filter(p => pool.peers.includes(p) || p === _sessionPub);
+      updateMixPhase();
+    }
+  }
+  return changed;
+}
+
+function renderPools() {
+  const el = $('#pool-list');
+  // Only show pools with at least 1 peer, created after session start, not full
+  const recent = _pools.filter(p => p.created >= _sessionStartTs && p.peers.length > 0 && p.peers.length < p.min_peers);
+  if (recent.length === 0) {
+    el.innerHTML = '<div class="empty-state">NO POOLS FOUND<br><span style="font-size:9px;color:rgba(0,255,65,.15)">create one or wait for peers</span></div>';
+    return;
+  }
+  el.innerHTML = recent.map(p => `
+    <div class="pool-item" onclick="joinPool('${p.id}')">
+      <div class="pool-icon">⚗</div>
+      <div class="pool-info">
+        <div class="pool-amount" style="font-size:11px">COMBINATORIAL MIX</div>
+        <div class="pool-detail">MIN ${p.min_peers} PEERS · ${new Date(p.created * 1000).toLocaleTimeString()}</div>
+      </div>
+      <div class="pool-peers">${p.peers.length}/${p.min_peers} 👥</div>
+    </div>
+  `).join('');
+}
+
+function refreshPools() {
+  // Purge stale pools (>5min) + stale peers
+  const now = Math.floor(Date.now() / 1000);
+  _pools = _pools.filter(p => {
+    if ((now - p.created) >= 300) { _expiredPoolIds.add(p.id); return false; }
+    return true;
+  });
+  pruneStalePeers();
+  renderPools();
+  nostrSubscribe(); // re-subscribe to catch missed events (_expiredPoolIds blocks zombies)
+}
+
+/* ──────────────────────────────────────────
+   CREATE POOL
+   ────────────────────────────────────────── */
+let _selectedPeers = 5;
+
+$$('.denom-opt[data-peers]').forEach(el => el.onclick = () => {
+  $$('.denom-opt[data-peers]').forEach(x => x.classList.remove('active'));
+  el.classList.add('active');
+  _selectedPeers = parseInt(el.dataset.peers);
+});
+
+function openCreatePool() { $('#create-overlay').classList.add('open'); }
+function closeCreatePool() { $('#create-overlay').classList.remove('open'); }
+
+async function createPool() {
+  if (_balanceSats < MIN_MIX_SATS) {
+    alert('Insufficient balance (need at least ' + satsToBch(MIN_MIX_SATS) + ' BCH)');
+    return;
+  }
+
+  const content = JSON.stringify({ min_peers: _selectedPeers, v: 2 });
+  const ev = await makeEvent(_sessionPriv, NOSTR_KIND_POOL, content, [['t', '0penw0rld-fusion']]);
+
+  _pools.push({
+    id: ev.id, pubkey: ev.pubkey,
+    min_peers: _selectedPeers, peers: [ev.pubkey], created: ev.created_at,
+    peerSeen: { [ev.pubkey]: Date.now() },
+  });
+
+  nostrPublish(ev);
+  closeCreatePool();
+  renderPools();
+  joinPool(ev.id);
+}
+
+/* ──────────────────────────────────────────
+   JOIN POOL & MIX PROTOCOL
+   ────────────────────────────────────────── */
+async function joinPool(poolId) {
+  const pool = _pools.find(p => p.id === poolId);
+  if (!pool) return;
+
+  if (_balanceSats < MIN_MIX_SATS) {
+    alert('Insufficient balance (need at least ' + satsToBch(MIN_MIX_SATS) + ' BCH)');
+    return;
+  }
+
+  // Ensure we're in the peers list, filter banned peers
+  const peers = pool.peers.filter(p => !_banList.includes(p));
+  if (!peers.includes(_sessionPub)) peers.push(_sessionPub);
+
+  _activeMix = {
+    poolId,
+    minPeers: pool.min_peers,
+    peers,
+    phase: 1,
+    myInputs: [],
+    myOutputs: [],        // [{addr, value, stealth}]
+    peerInputs: {},       // pubkey → { inputs, output_count }
+    expectedOnions: 0,    // total onions expected from all peers
+    collectedOnions: [],  // base64 strings
+    blindOutputs: [],     // [{addr, value}]
+    allInputs: null,
+    allOutputs: null,
+    unsignedTxHex: null,
+    signatures: {},
+    mixOrder: [],
+  };
+
+  // Switch to mix tab
+  $$('.tab').forEach(x => x.classList.remove('active'));
+  $$('.tab-pane').forEach(x => x.classList.remove('active'));
+  $('[data-tab="mix"]').classList.add('active');
+  $('#tab-mix').classList.add('active');
+
+  $('#mix-idle').style.display = 'none';
+  $('#mix-active').style.display = 'flex';
+  $('#mix-denom').textContent = 'COMBINATORIAL MIX';
+  $('#mix-peers').textContent = peers.length + '/' + pool.min_peers + ' PARTICIPANTS';
+  $('#mix-io-info').textContent = '';
+  $('#mix-result').style.display = 'none';
+
+  setPhase(1);
+
+  // Publish signed join event
+  const joinEv = await makeEvent(_sessionPriv, NOSTR_KIND_JOIN,
+    JSON.stringify({ pool_id: poolId }),
+    [['t', '0penw0rld-fusion']]);
+  nostrPublish(joinEv);
+
+  // Also mark ourselves as seen locally (in case relay doesn't echo)
+  if (pool.peerSeen) pool.peerSeen[_sessionPub] = Date.now();
+
+  // Heartbeat — re-send join every 20s while in phase 1
+  if (_heartbeatInterval) clearInterval(_heartbeatInterval);
+  _heartbeatInterval = setInterval(async () => {
+    if (!_activeMix || _activeMix.phase !== 1) {
+      clearInterval(_heartbeatInterval); _heartbeatInterval = null;
+      return;
+    }
+    const hbEv = await makeEvent(_sessionPriv, NOSTR_KIND_JOIN,
+      JSON.stringify({ pool_id: _activeMix.poolId }),
+      [['t', '0penw0rld-fusion']]);
+    nostrPublish(hbEv);
+    // Update own timestamp locally
+    const p = _pools.find(x => x.id === _activeMix.poolId);
+    if (p && p.peerSeen) p.peerSeen[_sessionPub] = Date.now();
+  }, PEER_HEARTBEAT_MS);
+
+  console.log('[FUSION] joined pool', poolId.slice(0, 12) + '...');
+}
+
+/* ──────────────────────────────────────────
+   MIX PHASES
+   ────────────────────────────────────────── */
+function setPhase(n) {
+  if (!_activeMix) return;
+  _activeMix.phase = n;
+
+  // Replay buffered messages for this phase
+  const pending = _msgBuffer.splice(0);
+  for (const msg of pending) _dispatchProtoMsg(msg.pubkey, msg.data);
+
+  $$('.phase-item').forEach(el => {
+    const p = parseInt(el.dataset.phase);
+    el.classList.remove('active', 'done', 'error');
+    if (p < n) el.classList.add('done');
+    else if (p === n) el.classList.add('active');
+  });
+
+  // Update status text
+  const activeEl = $(`.phase-item[data-phase="${n}"]`);
+  if (activeEl) {
+    const statusEl = activeEl.querySelector('.phase-status');
+    const spinnerHtml = '<div class="spinner" style="display:inline-block;width:12px;height:12px;vertical-align:middle;margin-right:6px"></div>';
+    if (n === 1) statusEl.innerHTML = spinnerHtml + 'Waiting for ' + _activeMix.minPeers + ' participants...';
+    else if (n === 2) statusEl.innerHTML = spinnerHtml + 'Registering inputs...';
+    else if (n === 3) statusEl.innerHTML = spinnerHtml + 'Onion-encrypting outputs...';
+    else if (n === 4) statusEl.innerHTML = spinnerHtml + 'Assembling CoinJoin TX...';
+    else if (n === 5) statusEl.innerHTML = spinnerHtml + 'Verifying & signing...';
+    else if (n === 6) statusEl.innerHTML = spinnerHtml + 'Broadcasting...';
+  }
+
+  // Start timeout for phases that require peer responses (2=inputs, 3=onions, 5=signatures)
+  if ([2, 3, 5].includes(n)) startPhaseTimeout(n);
+  else clearPhaseTimeout();
+
+  updateMixPhase();
+}
+
+function updateMixPhase() {
+  if (!_activeMix) return;
+  const m = _activeMix;
+
+  $('#mix-peers').textContent = m.peers.length + '/' + m.minPeers + ' PARTICIPANTS';
+
+  // Phase 1: wait for enough peers
+  if (m.phase === 1 && m.peers.length >= m.minPeers) {
+    setPhase(2);
+    startInputRegistration();
+  }
+}
+
+/* ──────────────────────────────────────────
+   PHASE 2 — INPUT REGISTRATION
+   ────────────────────────────────────────── */
+async function startInputRegistration() {
+  const m = _activeMix;
+
+  // Sort peers → deterministic mix order
+  m.mixOrder = [...m.peers].sort();
+
+  // ── RANDOM UTXO SELECTION (1-5 inputs) ──
+  const usable = _utxos.filter(u => u.value >= 546);
+  if (usable.length === 0) { alert('No spendable UTXOs'); resetMix(); return; }
+  const maxIn = Math.min(5, usable.length);
+  const nInputs = 1 + Math.floor(Math.random() * maxIn);
+  // Shuffle and pick
+  const shuffled = [...usable].sort(() => Math.random() - 0.5);
+  const selected = shuffled.slice(0, nInputs);
+  const total = selected.reduce((s, u) => s + u.value, 0);
+  m.myInputs = selected;
+
+  // ── OUTPUT DECOMPOSITION (2-4 random stealth outputs) ──
+  const maxOut = Math.min(4, Math.floor(total / 600)); // at least 546+some per output
+  const nOutputs = Math.max(2, 2 + Math.floor(Math.random() * Math.min(3, maxOut - 1)));
+  // Calculate fee: my byte contribution (self-deducted, no assembler adjustment needed)
+  const myFee = nInputs * 148 + nOutputs * 34 + Math.ceil(10 / m.peers.length);
+  const outputTotal = total - myFee;
+  if (outputTotal < 546 * nOutputs) { alert('Balance too low for mix'); resetMix(); return; }
+
+  // Split into random amounts
+  const amounts = randomSplit(outputTotal, nOutputs);
+  if (!amounts) { alert('Cannot split balance'); resetMix(); return; }
+
+  // Derive stealth address for each output
+  // Use first input's key + outpoint for deterministic, chain-scannable derivation
+  const _refInput = selected[0];
+  const _refAddr = _refInput._addr || _bchAddr;
+  const _refPriv = _hdKeyMap[_refAddr] || _privKey;
+  const _refOutpoint = concat(h2b(_refInput.tx_hash).reverse(), u32LE(_refInput.tx_pos));
+  m.myOutputs = [];
+  for (let _oi = 0; _oi < amounts.length; _oi++) {
+    const amt = amounts[_oi];
+    if (_stealthSpendPub) {
+      const st = _deriveSelfStealth(_refPriv, _refOutpoint, _oi);
+      m.myOutputs.push({ addr: st.addr, value: amt, stealth: st });
+    } else if (_acctPriv && _acctChain) {
+      const addr = deriveFreshAddr(_acctPriv, _acctChain, 0, _addrIndex++);
+      localStorage.setItem('00_fusion_addr_idx', String(_addrIndex));
+      m.myOutputs.push({ addr, value: amt, stealth: null });
+    } else {
+      m.myOutputs.push({ addr: _bchAddr, value: amt, stealth: null });
+    }
+  }
+  console.log('[FUSION v2]', nInputs, 'inputs →', nOutputs, 'outputs, total', total, 'fee', myFee);
+
+  // Update UI with I/O info
+  const ioEl = $('#mix-io-info');
+  if (ioEl) ioEl.textContent = nInputs + ' INPUTS → ' + nOutputs + ' STEALTH OUTPUTS';
+
+  // Send inputs + output_count to each peer (NIP-04 encrypted)
+  const inputPayload = JSON.stringify({
+    pool_id: m.poolId, step: 'inputs',
+    inputs: selected.map(u => ({ txid: u.tx_hash, vout: u.tx_pos, value: u.value })),
+    output_count: nOutputs,
+  });
+
+  for (const peer of m.peers) {
+    if (peer === _sessionPub) continue;
+    const enc = await nip04Encrypt(_sessionPriv, peer, inputPayload);
+    const ev = await makeEvent(_sessionPriv, NOSTR_KIND_PROTO, enc, [
+      ['t', '0penw0rld-fusion'], ['p', peer], ['e', m.poolId],
+    ]);
+    nostrPublish(ev);
+  }
+  console.log('[FUSION v2] inputs registered:', selected.length, 'UTXOs');
+}
+
+function handleInputsMsg(pubkey, data) {
+  if (!_activeMix || _activeMix.phase !== 2) return;
+  _activeMix.peerInputs[pubkey] = data;
+  console.log('[FUSION v2] got inputs from', pubkey.slice(0, 12), '— outputs:', data.output_count);
+
+  const have = Object.keys(_activeMix.peerInputs).length + 1; // +1 self
+  if (have >= _activeMix.peers.length) {
+    // Calculate total expected onions = sum of all output counts
+    const m = _activeMix;
+    m.expectedOnions = m.myOutputs.length
+      + Object.values(m.peerInputs).reduce((s, d) => s + (d.output_count || 1), 0);
+    console.log('[FUSION v2] all inputs received, expecting', m.expectedOnions, 'total onions');
+    setPhase(3);
+    startBlindOutput();
+  }
+}
+
+/* ──────────────────────────────────────────
+   PHASE 3 — BLIND OUTPUT (MIX-NET ONION)
+   ────────────────────────────────────────── */
+async function startBlindOutput() {
+  const m = _activeMix;
+  const peelers = m.mixOrder;
+  console.log('[FUSION v2] mix order:', peelers.map(p => p.slice(0, 8)).join(' → '));
+  console.log('[FUSION v2] wrapping', m.myOutputs.length, 'outputs in onion layers...');
+
+  // Wrap EACH output in onion layers — v2: multiple onions per participant
+  const myOnions = [];
+  for (const out of m.myOutputs) {
+    const payload = out.addr + '|' + out.value;
+    const onion = await onionWrap(payload, peelers);
+    myOnions.push(btoa(String.fromCharCode(...onion)));
+  }
+
+  const firstPeeler = peelers[0];
+  if (firstPeeler === _sessionPub) {
+    // We are first peeler — collect our onions locally + wait for peers
+    m.collectedOnions = [...myOnions];
+    checkOnionsReady();
+  } else {
+    // Send all our onions to first peeler
+    for (const onionB64 of myOnions) {
+      const enc = await nip04Encrypt(_sessionPriv, firstPeeler, JSON.stringify({
+        pool_id: m.poolId, step: 'onion', onion: onionB64,
+      }));
+      const ev = await makeEvent(_sessionPriv, NOSTR_KIND_PROTO, enc, [
+        ['t', '0penw0rld-fusion'], ['p', firstPeeler], ['e', m.poolId],
+      ]);
+      nostrPublish(ev);
+    }
+  }
+}
+
+function handleOnionMsg(pubkey, data) {
+  if (!_activeMix || _activeMix.phase !== 3) return;
+  if (!_activeMix.collectedOnions) _activeMix.collectedOnions = [];
+  _activeMix.collectedOnions.push(data.onion);
+  console.log('[FUSION] got onion', _activeMix.collectedOnions.length, '/', _activeMix.peers.length);
+  checkOnionsReady();
+}
+
+function checkOnionsReady() {
+  const m = _activeMix;
+  if (!m || !m.collectedOnions) return;
+  console.log('[FUSION v2] onions:', m.collectedOnions.length, '/', m.expectedOnions);
+  if (m.collectedOnions.length < m.expectedOnions) return;
+  processOnions();
+}
+
+async function processOnions() {
+  const m = _activeMix;
+  const myIndex = m.mixOrder.indexOf(_sessionPub);
+
+  // Peel our layer from each onion
+  const peeled = [];
+  for (const onionB64 of m.collectedOnions) {
+    const blob = Uint8Array.from(atob(onionB64), c => c.charCodeAt(0));
+    try {
+      const inner = await onionPeel(blob, _sessionPriv);
+      peeled.push(inner);
+    } catch (e) {
+      console.error('[FUSION] onion peel failed:', e);
+      return; // Abort — blame protocol would go here
+    }
+  }
+
+  // Fisher-Yates shuffle
+  for (let i = peeled.length - 1; i > 0; i--) {
+    const j = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1);
+    [peeled[i], peeled[j]] = [peeled[j], peeled[i]];
+  }
+
+  const nextIndex = myIndex + 1;
+
+  if (nextIndex >= m.mixOrder.length) {
+    // LAST PEELER — we have plaintext outputs (v2: {addr, value} objects)
+    m.blindOutputs = peeled.map(p => onionUnpad(p));
+    console.log('[FUSION v2] blind outputs revealed:', m.blindOutputs.length,
+      m.blindOutputs.map(o => o.value + ' sats').join(', '));
+
+    // Broadcast blind outputs to all peers
+    for (const peer of m.peers) {
+      if (peer === _sessionPub) continue;
+      const enc = await nip04Encrypt(_sessionPriv, peer, JSON.stringify({
+        pool_id: m.poolId, step: 'outputs', outputs: m.blindOutputs,
+      }));
+      const ev = await makeEvent(_sessionPriv, NOSTR_KIND_PROTO, enc, [
+        ['t', '0penw0rld-fusion'], ['p', peer], ['e', m.poolId],
+      ]);
+      nostrPublish(ev);
+    }
+
+    setPhase(4);
+    startTxAssembly();
+  } else {
+    // Forward to next peeler
+    const nextPeeler = m.mixOrder[nextIndex];
+    m.collectedOnions = []; // Reset for potential next role
+    for (const inner of peeled) {
+      const innerB64 = btoa(String.fromCharCode(...inner));
+      const enc = await nip04Encrypt(_sessionPriv, nextPeeler, JSON.stringify({
+        pool_id: m.poolId, step: 'onion', onion: innerB64,
+      }));
+      const ev = await makeEvent(_sessionPriv, NOSTR_KIND_PROTO, enc, [
+        ['t', '0penw0rld-fusion'], ['p', nextPeeler], ['e', m.poolId],
+      ]);
+      nostrPublish(ev);
+    }
+    console.log('[FUSION] forwarded', peeled.length, 'onions to', nextPeeler.slice(0, 12) + '...');
+  }
+}
+
+function handleOutputsMsg(pubkey, data) {
+  if (!_activeMix) return;
+  _activeMix.blindOutputs = data.outputs;
+  console.log('[FUSION] received blind outputs from last peeler');
+  // If we're not last peeler but now have outputs, move to phase 4
+  if (_activeMix.phase === 3) {
+    setPhase(4);
+    startTxAssembly();
+  }
+}
+
+/* ──────────────────────────────────────────
+   PHASE 4 — TX ASSEMBLY
+   ────────────────────────────────────────── */
+async function startTxAssembly() {
+  const m = _activeMix;
+  const lastPeeler = m.mixOrder[m.mixOrder.length - 1];
+
+  // Only last peeler assembles the TX
+  if (_sessionPub !== lastPeeler) {
+    console.log('[FUSION v2] waiting for TX from assembler (last peeler:', lastPeeler.slice(0, 12) + ')');
+    return;
+  }
+  console.log('[FUSION v2] I am assembler — building TX...');
+  try {
+
+  // Collect ALL inputs
+  const allInputs = [];
+  for (const u of m.myInputs) {
+    allInputs.push({
+      txidLE: h2b(u.tx_hash).reverse(), txid: u.tx_hash,
+      vout: u.tx_pos, value: u.value, sequence: 0xffffffff, owner: _sessionPub,
+      _addr: u._addr,
+    });
+  }
+  for (const [pub, data] of Object.entries(m.peerInputs)) {
+    for (const inp of data.inputs) {
+      allInputs.push({
+        txidLE: h2b(inp.txid).reverse(), txid: inp.txid,
+        vout: inp.vout, value: inp.value, sequence: 0xffffffff, owner: pub,
+      });
+    }
+  }
+
+  // v2: ALL outputs come from blind outputs (addr+value) — no denom/change split
+  const allOutputs = m.blindOutputs
+    .filter(o => o.value >= 546)
+    .map(o => ({ value: o.value, script: p2pkhAddrScript(o.addr) }));
+
+  // Verify: fee = total_in - total_out (participants already deducted their share)
+  const totalIn  = allInputs.reduce((s, i) => s + i.value, 0);
+  const totalOut = allOutputs.reduce((s, o) => s + o.value, 0);
+  const fee = totalIn - totalOut;
+  const minFee = Math.max(10 + allInputs.length * 148 + allOutputs.length * 34, 300);
+
+  if (fee < Math.floor(minFee * 0.3)) {
+    console.error('[FUSION v2] FEE TOO LOW:', fee, '< min', minFee);
+    const el = $(`.phase-item[data-phase="4"] .phase-status`);
+    if (el) el.innerHTML = '❌ Fee too low — mix aborted';
+    return;
+  }
+  if (fee > minFee * 10) {
+    console.error('[FUSION v2] FEE SUSPICIOUSLY HIGH:', fee, 'vs expected ~' + minFee);
+    const el = $(`.phase-item[data-phase="4"] .phase-status`);
+    if (el) el.innerHTML = '❌ Excessive fee — mix aborted';
+    return;
+  }
+
+  m.allInputs = allInputs;
+  m.allOutputs = allOutputs;
+
+  // Serialize unsigned TX
+  const unsignedInputs = allInputs.map(inp => ({ ...inp, scriptSig: new Uint8Array(0) }));
+  m.unsignedTxHex = b2h(serializeTx(1, 0, unsignedInputs, allOutputs));
+
+  console.log('[FUSION v2] TX assembled:', allInputs.length, 'in,', allOutputs.length, 'out, fee:', fee, 'sats');
+
+  // Broadcast TX to all peers
+  const txPayload = JSON.stringify({
+    pool_id: m.poolId, step: 'tx', tx_hex: m.unsignedTxHex,
+    inputs: allInputs.map(i => ({ txid: i.txid, vout: i.vout, value: i.value, owner: i.owner })),
+    outputs: allOutputs.map(o => ({ value: o.value, script: b2h(o.script) })),
+  });
+  for (const peer of m.peers) {
+    if (peer === _sessionPub) continue;
+    const enc = await nip04Encrypt(_sessionPriv, peer, txPayload);
+    const ev = await makeEvent(_sessionPriv, NOSTR_KIND_PROTO, enc, [
+      ['t', '0penw0rld-fusion'], ['p', peer], ['e', m.poolId],
+    ]);
+    nostrPublish(ev);
+  }
+
+  setPhase(5);
+  startVerifySign();
+  } catch(e) {
+    console.error('[FUSION v2] TX ASSEMBLY ERROR:', e);
+    const el = $(`.phase-item[data-phase="4"] .phase-status`);
+    if (el) el.innerHTML = '❌ ERROR: ' + e.message;
+  }
+}
+
+function handleTxMsg(pubkey, data) {
+  if (!_activeMix) return;
+  const m = _activeMix;
+  console.log('[FUSION] received unsigned TX from assembler');
+
+  // Rebuild allInputs/allOutputs from the received data
+  m.allInputs = data.inputs.map(i => ({
+    txidLE: h2b(i.txid).reverse(), txid: i.txid,
+    vout: i.vout, value: i.value, sequence: 0xffffffff, owner: i.owner,
+  }));
+  m.allOutputs = data.outputs.map(o => ({ value: o.value, script: h2b(o.script) }));
+  m.unsignedTxHex = data.tx_hex;
+
+  if (m.phase <= 4) {
+    setPhase(5);
+    startVerifySign();
+  }
+}
+
+/* ──────────────────────────────────────────
+   PHASE 5 — VERIFY & SIGN
+   ────────────────────────────────────────── */
+async function startVerifySign() {
+  const m = _activeMix;
+  if (!m.allInputs || !m.allOutputs) {
+    console.log('[FUSION v2] waiting for TX data...');
+    return;
+  }
+
+  // v2: VERIFY ALL our outputs exist in the TX (addr + value match)
+  for (const out of m.myOutputs) {
+    const outScript = b2h(p2pkhAddrScript(out.addr));
+    const found = m.allOutputs.some(o => o.value === out.value && b2h(o.script) === outScript);
+    if (!found) {
+      console.error('[FUSION v2] OUTPUT MISSING:', out.addr.slice(12, 24), out.value, 'sats — ABORTING');
+      const assembler = m.mixOrder[m.mixOrder.length - 1];
+      if (!_banList.includes(assembler)) _banList.push(assembler);
+      localStorage.setItem('00_fusion_bans', JSON.stringify(_banList));
+      handlePhaseTimeout(5);
+      return;
+    }
+  }
+
+  // VERIFY: no inflation
+  const totalIn  = m.allInputs.reduce((s, i) => s + i.value, 0);
+  const totalOut = m.allOutputs.reduce((s, o) => s + o.value, 0);
+  if (totalOut > totalIn) {
+    console.error('[FUSION v2] INFLATION DETECTED — ABORTING');
+    return;
+  }
+
+  // VERIFY: fees are reasonable (cap at 5 sat/byte — generous for CoinJoin)
+  const fees = totalIn - totalOut;
+  const estTxBytes = 10 + m.allInputs.length * 148 + m.allOutputs.length * 34;
+  if (fees > estTxBytes * 5) {
+    console.error('[FUSION v2] EXCESSIVE FEES — ABORTING:', fees, 'sats (max', estTxBytes * 5, ')');
+    return;
+  }
+
+  // SIGN our inputs (per-UTXO key for HD wallets)
+  // Build txid:vout → addr lookup from our selected UTXOs
+  const myUtxoMap = {};
+  for (const u of m.myInputs) {
+    if (u._addr) myUtxoMap[u.tx_hash + ':' + u.tx_pos] = u._addr;
+  }
+
+  console.log('[FUSION] myUtxoMap:', Object.keys(myUtxoMap).length, 'entries, hdKeyMap:', Object.keys(_hdKeyMap).length, 'keys');
+
+  const sigs = [];
+  for (let i = 0; i < m.allInputs.length; i++) {
+    if (m.allInputs[i].owner !== _sessionPub) continue;
+    const inp = m.allInputs[i];
+    const inputAddr = inp._addr || myUtxoMap[inp.txid + ':' + inp.vout];
+    const priv = (inputAddr && _hdKeyMap[inputAddr]) ? _hdKeyMap[inputAddr] : _privKey;
+    console.log('[FUSION] sign input', i, '→ addr:', inputAddr?.slice(12, 24) || 'MAIN', 'hdKey:', !!(inputAddr && _hdKeyMap[inputAddr]));
+    const pub = secp256k1.getPublicKey(priv, true);
+    const script = p2pkhScript(ripemd160(sha256(pub)));
+    const sighash = bchSighash(1, 0, m.allInputs, m.allOutputs, i, script, inp.value);
+    const sig = secp256k1.sign(sighash, priv, { lowS: true });
+    const derSig = concat(sig.toDERRawBytes(), new Uint8Array([0x41]));
+    const scriptSig = concat(new Uint8Array([derSig.length]), derSig, new Uint8Array([pub.length]), pub);
+    sigs.push({ index: i, scriptSig: b2h(scriptSig) });
+  }
+
+  console.log('[FUSION] signed', sigs.length, 'inputs');
+
+  // Broadcast signatures to all peers
+  const sigPayload = JSON.stringify({ pool_id: m.poolId, step: 'sign', signatures: sigs });
+  for (const peer of m.peers) {
+    if (peer === _sessionPub) continue;
+    const enc = await nip04Encrypt(_sessionPriv, peer, sigPayload);
+    const ev = await makeEvent(_sessionPriv, NOSTR_KIND_PROTO, enc, [
+      ['t', '0penw0rld-fusion'], ['p', peer], ['e', m.poolId],
+    ]);
+    nostrPublish(ev);
+  }
+
+  m.signatures[_sessionPub] = sigs;
+  checkSignaturesReady();
+}
+
+function handleSignMsg(pubkey, data) {
+  if (!_activeMix) return;
+  _activeMix.signatures[pubkey] = data.signatures;
+  console.log('[FUSION] got sigs from', pubkey.slice(0, 12) + '...',
+    Object.keys(_activeMix.signatures).length, '/', _activeMix.peers.length);
+  checkSignaturesReady();
+}
+
+function checkSignaturesReady() {
+  const m = _activeMix;
+  if (!m || Object.keys(m.signatures).length < m.peers.length) return;
+  console.log('[FUSION] all signatures collected!');
+  setPhase(6);
+  startBroadcast();
+}
+
+/* ──────────────────────────────────────────
+   PHASE 6 — BROADCAST
+   ────────────────────────────────────────── */
+async function startBroadcast() {
+  const m = _activeMix;
+
+  // Assemble fully-signed TX
+  const signedInputs = m.allInputs.map((inp, i) => {
+    for (const sigs of Object.values(m.signatures)) {
+      const s = sigs.find(s => s.index === i);
+      if (s) return { ...inp, scriptSig: h2b(s.scriptSig) };
+    }
+    console.error('[FUSION] missing signature for input', i);
+    return { ...inp, scriptSig: new Uint8Array(0) };
+  });
+
+  const txHex = b2h(serializeTx(1, 0, signedInputs, m.allOutputs));
+  console.log('[FUSION] broadcasting TX, size:', txHex.length / 2, 'bytes');
+  clearPhaseTimeout();
+
+  try {
+    const txid = await fulcrumCall('blockchain.transaction.broadcast', [txHex]);
+
+    $('#mix-result').style.display = 'block';
+    $('#mix-txid').textContent = 'TX: ' + txid;
+    $(`.phase-item[data-phase="6"]`).classList.remove('active');
+    $(`.phase-item[data-phase="6"]`).classList.add('done');
+    $(`.phase-item[data-phase="6"] .phase-status`).textContent = 'DONE';
+
+    // v2: compute total mixed amount for history
+    const myTotal = m.myOutputs.reduce((s, o) => s + o.value, 0);
+    _mixHistory.unshift({ txid, amount: satsToBch(myTotal), peers: m.peers.length, outputs: m.myOutputs.length, time: Date.now(), status: 'ok' });
+    localStorage.setItem('00_fusion_history', JSON.stringify(_mixHistory.slice(0, 50)));
+
+    // v2: Register ALL stealth UTXOs so wallet.html can spend them
+    for (const out of m.myOutputs) {
+      if (out.stealth) {
+        _saveFusionStealthUtxo(out.stealth.addr, out.stealth.priv, out.stealth.pub);
+        if (!_hdScannedAddrs.includes(out.stealth.addr)) {
+          _hdScannedAddrs.push(out.stealth.addr);
+          _hdKeyMap[out.stealth.addr] = out.stealth.priv;
+        }
+      }
+    }
+    console.log('[FUSION v2] saved', m.myOutputs.filter(o => o.stealth).length, 'stealth UTXOs');
+
+    renderHistory();
+    // Small delay for tx propagation to Fulcrum before querying
+    setTimeout(refreshBalance, 2000);
+    console.log('[FUSION] MIX COMPLETE! txid:', txid);
+
+    // Auto-join: schedule next round
+    if (_autoJoin) {
+      resetMix();
+      autoJoinScheduleNext();
+    }
+  } catch (e) {
+    console.error('[FUSION v2] broadcast failed:', e);
+    $(`.phase-item[data-phase="6"]`).classList.add('error');
+    $(`.phase-item[data-phase="6"] .phase-status`).textContent = 'FAILED: ' + (e.message || e);
+    _mixHistory.unshift({ txid: 'FAILED', amount: '0', peers: m.peers.length, outputs: 0, time: Date.now(), status: 'fail' });
+    localStorage.setItem('00_fusion_history', JSON.stringify(_mixHistory.slice(0, 50)));
+    renderHistory();
+
+    // Auto-join: retry after failure
+    if (_autoJoin) {
+      resetMix();
+      autoJoinScheduleNext();
+    }
+  }
+}
+
+/* ──────────────────────────────────────────
+   BLAME PROTOCOL
+   ────────────────────────────────────────── */
+function startPhaseTimeout(phase) {
+  clearPhaseTimeout();
+  _phaseTimer = setTimeout(() => handlePhaseTimeout(phase), PHASE_TIMEOUT);
+}
+
+function clearPhaseTimeout() {
+  if (_phaseTimer) { clearTimeout(_phaseTimer); _phaseTimer = null; }
+}
+
+async function handlePhaseTimeout(phase) {
+  if (!_activeMix || _activeMix.phase !== phase) return;
+  const m = _activeMix;
+  console.warn('[FUSION] TIMEOUT in phase', phase);
+
+  let blamedPeers = [];
+
+  if (phase === 2) {
+    // Who didn't send inputs?
+    const responded = new Set(Object.keys(m.peerInputs));
+    blamedPeers = m.peers.filter(p => p !== _sessionPub && !responded.has(p));
+  } else if (phase === 3) {
+    // Onion routing stalled — blame current peeler if we can identify
+    const myIdx = m.mixOrder.indexOf(_sessionPub);
+    if (myIdx === 0 && m.collectedOnions && m.collectedOnions.length < m.peers.length) {
+      // We're first peeler and didn't get all onions — blame peers who didn't send
+      blamedPeers = m.peers.filter(p => p !== _sessionPub);
+    }
+  } else if (phase === 5) {
+    // Who didn't sign?
+    const signed = new Set(Object.keys(m.signatures));
+    blamedPeers = m.peers.filter(p => !signed.has(p));
+  }
+
+  if (blamedPeers.length > 0) {
+    console.warn('[FUSION] BLAME:', blamedPeers.map(p => p.slice(0, 12)).join(', '));
+
+    // Ban blamed peers
+    for (const p of blamedPeers) {
+      if (!_banList.includes(p)) _banList.push(p);
+    }
+    localStorage.setItem('00_fusion_bans', JSON.stringify(_banList));
+
+    // Broadcast blame to remaining peers
+    const blamePayload = JSON.stringify({
+      pool_id: m.poolId, step: 'blame',
+      blamed: blamedPeers, reason: 'timeout_phase_' + phase,
+    });
+    for (const peer of m.peers) {
+      if (peer === _sessionPub || blamedPeers.includes(peer)) continue;
+      const enc = await nip04Encrypt(_sessionPriv, peer, blamePayload);
+      const ev = await makeEvent(_sessionPriv, NOSTR_KIND_PROTO, enc, [
+        ['t', '0penw0rld-fusion'], ['p', peer], ['e', m.poolId],
+      ]);
+      nostrPublish(ev);
+    }
+  }
+
+  // Mark phase as error in UI
+  const phaseEl = $(`.phase-item[data-phase="${phase}"]`);
+  if (phaseEl) {
+    phaseEl.classList.add('error');
+    phaseEl.querySelector('.phase-status').textContent =
+      blamedPeers.length > 0
+        ? 'TIMEOUT — blamed ' + blamedPeers.length + ' peer(s)'
+        : 'TIMEOUT — mix aborted';
+  }
+
+  // Log to history
+  _mixHistory.unshift({
+    txid: 'BLAME', amount: '0', peers: m.peers.length,
+    outputs: 0, time: Date.now(), status: 'fail',
+  });
+  localStorage.setItem('00_fusion_history', JSON.stringify(_mixHistory.slice(0, 50)));
+  renderHistory();
+
+  // Auto-join: retry after timeout/blame
+  if (_autoJoin) {
+    resetMix();
+    autoJoinScheduleNext();
+  }
+}
+
+function handleBlameMsg(pubkey, data) {
+  if (!_activeMix) return;
+  console.warn('[FUSION] received blame from', pubkey.slice(0, 12), ':', data.blamed?.length, 'peers');
+  // Add blamed peers to our ban list
+  for (const p of (data.blamed || [])) {
+    if (!_banList.includes(p)) _banList.push(p);
+  }
+  localStorage.setItem('00_fusion_bans', JSON.stringify(_banList));
+}
+
+/* ──────────────────────────────────────────
+   MIX UTILS
+   ────────────────────────────────────────── */
+function resetMix() {
+  clearPhaseTimeout();
+  if (_heartbeatInterval) { clearInterval(_heartbeatInterval); _heartbeatInterval = null; }
+  _activeMix = null;
+  $('#mix-idle').style.display = 'block';
+  $('#mix-active').style.display = 'none';
+  $$('.phase-item').forEach(el => el.classList.remove('active', 'done', 'error'));
+}
+
+/* ──────────────────────────────────────────
+   AUTO-JOIN
+   ────────────────────────────────────────── */
+function toggleAutoJoin() {
+  _autoJoin = !_autoJoin;
+  const btn = $('#autojoin-btn');
+  const status = $('#autojoin-status');
+  btn.classList.toggle('active', _autoJoin);
+  if (_autoJoin) {
+    status.style.display = 'block';
+    autoJoinStatus('STARTING...');
+    autoJoinNext();
+  } else {
+    status.style.display = 'none';
+    if (_autoJoinTimer) { clearTimeout(_autoJoinTimer); _autoJoinTimer = null; }
+  }
+}
+
+function autoJoinStatus(msg) {
+  const el = $('#autojoin-status');
+  if (el) el.textContent = '∞ ' + msg;
+}
+
+function autoJoinCanMix() {
+  return _balanceSats >= MIN_MIX_SATS;
+}
+
+function _findPool() {
+  if (!autoJoinCanMix()) return null;
+  return _pools
+    .filter(p => p.peers.length < p.min_peers && !p.peers.includes(_sessionPub) && p.created >= _sessionStartTs)
+    .sort((a, b) => b.peers.length - a.peers.length || b.created - a.created)[0] || null;
+}
+
+async function autoJoinNext() {
+  if (!_autoJoin) return;
+  if (_activeMix) {
+    autoJoinStatus('WAITING FOR CURRENT MIX...');
+    return;
+  }
+
+  await refreshBalance();
+  if (!autoJoinCanMix()) {
+    autoJoinStatus('DONE — BALANCE TOO LOW');
+    _autoJoin = false;
+    $('#autojoin-btn').classList.remove('active');
+    return;
+  }
+
+  // PHASE 1: Listen first — check for existing pools over 5-25s
+  const listenTime = 5000 + Math.floor(Math.random() * 20000);
+  const checks = Math.ceil(listenTime / 5000); // check every 5s
+  for (let i = 0; i < checks; i++) {
+    autoJoinStatus('SCANNING POOLS... (' + (checks - i) * 5 + 's)');
+    await new Promise(r => { _autoJoinTimer = setTimeout(r, 5000); });
+    _autoJoinTimer = null;
+    if (!_autoJoin) return;
+
+    const match = _findPool();
+    if (match) {
+      autoJoinStatus('JOINING POOL (' + match.peers.length + '/' + match.min_peers + ')');
+      joinPool(match.id);
+      return;
+    }
+  }
+
+  // PHASE 2: No pool found after listening — create one
+  if (!_autoJoin) return;
+  autoJoinStatus('CREATING POOL...');
+  const content = JSON.stringify({ min_peers: 5, v: 2 });
+  const ev = await makeEvent(_sessionPriv, NOSTR_KIND_POOL, content, [['t', '0penw0rld-fusion']]);
+  _pools.push({
+    id: ev.id, pubkey: ev.pubkey,
+    min_peers: 5, peers: [ev.pubkey], created: ev.created_at,
+    peerSeen: { [ev.pubkey]: Date.now() },
+  });
+  nostrPublish(ev);
+  renderPools();
+  joinPool(ev.id);
+
+  // PHASE 3: While in discovery, check for better pools or timeout
+  let _autoCheckCount = 0;
+  const _autoCheckInterval = setInterval(() => {
+    _autoCheckCount++;
+    if (!_autoJoin || !_activeMix || _activeMix.phase !== 1) {
+      clearInterval(_autoCheckInterval);
+      return;
+    }
+    const better = _findPool();
+    if (better && better.peers.length > 0 && better.id !== _activeMix.poolId) {
+      console.log('[AUTOJOIN] switching to pool:', better.peers.length + '/' + better.min_peers);
+      clearInterval(_autoCheckInterval);
+      resetMix();
+      autoJoinStatus('SWITCHING POOL (' + better.peers.length + '/' + better.min_peers + ')');
+      joinPool(better.id);
+      return;
+    }
+    if (_autoCheckCount >= 6) { // 60s timeout
+      console.log('[AUTOJOIN] pool timeout — retrying');
+      clearInterval(_autoCheckInterval);
+      resetMix();
+      autoJoinScheduleNext();
+    }
+  }, 10000);
+}
+
+function autoJoinScheduleNext() {
+  if (!_autoJoin) return;
+  const delay = 3000 + Math.floor(Math.random() * 5000); // 3-8s
+  autoJoinStatus('NEXT ROUND IN ' + Math.round(delay/1000) + 's...');
+  _autoJoinTimer = setTimeout(() => {
+    _autoJoinTimer = null;
+    autoJoinNext();
+  }, delay);
+}
+
+/* ──────────────────────────────────────────
+   HISTORY
+   ────────────────────────────────────────── */
+function renderHistory() {
+  const el = $('#history-list');
+  if (_mixHistory.length === 0) {
+    el.innerHTML = '<div class="empty-state">NO MIX HISTORY YET</div>';
+    return;
+  }
+  el.innerHTML = _mixHistory.map(h => {
+    const amt = h.amount || h.denom || '?'; // v2 uses amount, v1 used denom
+    const outs = h.outputs ? ` · ${h.outputs} outputs` : '';
+    return `<div class="hist-item">
+      <div class="hist-top">
+        <div class="hist-amount">${amt} BCH</div>
+        <span class="hist-badge ${h.status}">${h.status === 'ok' ? '✓ MIXED' : '✗ FAILED'}</span>
+      </div>
+      <div class="hist-detail">${h.peers} participants${outs} · ${new Date(h.time).toLocaleString()}</div>
+      <div class="hist-txid">${h.txid}</div>
+    </div>`;
+  }).join('');
+}
+
+/* ──────────────────────────────────────────
+   RAIN CANVAS
+   ────────────────────────────────────────── */
+function initRain() {
+  const c = document.getElementById('rain');
+  const ctx = c.getContext('2d');
+  c.width = window.innerWidth;
+  c.height = window.innerHeight;
+  const cols = Math.floor(c.width / 14);
+  const drops = Array(cols).fill(1);
+  const chars = '01';
+  function draw() {
+    ctx.fillStyle = 'rgba(0,0,0,.05)';
+    ctx.fillRect(0, 0, c.width, c.height);
+    ctx.fillStyle = '#00ff41';
+    ctx.font = '12px monospace';
+    for (let i = 0; i < drops.length; i++) {
+      const t = chars[Math.floor(Math.random() * chars.length)];
+      ctx.fillText(t, i * 14, drops[i] * 14);
+      if (drops[i] * 14 > c.height && Math.random() > .975) drops[i] = 0;
+      drops[i]++;
+    }
+  }
+  setInterval(draw, 50);
+}
+
+/* ──────────────────────────────────────────
+   REFRESH
+   ────────────────────────────────────────── */
+$('#btn-refresh').onclick = () => {
+  refreshBalance();
+  refreshPools();
+};
+
+/* ──────────────────────────────────────────
+   PEER LIVENESS — prune stale peers every 15s
+   ────────────────────────────────────────── */
+setInterval(() => {
+  if (pruneStalePeers()) renderPools();
+}, 15000);
+
+/* ──────────────────────────────────────────
+   LEAVE ON PAGE CLOSE — best-effort leave event
+   ────────────────────────────────────────── */
+window.addEventListener('beforeunload', () => {
+  if (!_activeMix) return;
+  try {
+    // Sync event (schnorr.sign is sync in noble-curves)
+    const pub = b2h(secp256k1.getPublicKey(_sessionPriv, true).slice(1));
+    const created_at = Math.floor(Date.now() / 1000);
+    const content = JSON.stringify({ pool_id: _activeMix.poolId, leave: true });
+    const tags = [['t', '0penw0rld-fusion']];
+    const idHash = sha256(utf8(JSON.stringify([0, pub, created_at, NOSTR_KIND_JOIN, tags, content])));
+    const sig = b2h(schnorr.sign(idHash, _sessionPriv));
+    const ev = { id: b2h(idHash), pubkey: pub, created_at, kind: NOSTR_KIND_JOIN, tags, content, sig };
+    nostrPublish(ev);
+  } catch(e) {}
+});
+
+/* ──────────────────────────────────────────
+   BOOT
+   ────────────────────────────────────────── */
+async function boot() {
+  fulcrumConnect();
+  nostrConnect();
+  renderPools();
+  renderHistory();
+}
+
+/* ──────────────────────────────────────────
+   INIT
+   ────────────────────────────────────────── */
+window.addEventListener('load', () => {
+  initRain();
+  renderHistory();
+  setTimeout(async () => {
+    document.getElementById('loading').style.display = 'none';
+    // Auto-unlock from shared session (cross-page, 30 min TTL)
+    try {
+      const sess = JSON.parse(localStorage.getItem('00_session_auth') || '{}');
+      if (sess.p && sess.ts && Date.now() - sess.ts < 30 * 60 * 1000 && localStorage.getItem('00wallet_vault')) {
+        await tryUnlock(atob(sess.p));
+        // Refresh TTL
+        localStorage.setItem('00_session_auth', JSON.stringify({ p: sess.p, ts: Date.now() }));
+        return; // auto-unlocked — skip password prompt
+      }
+    } catch { /* session invalid — show prompt */ }
+    $('#auth-view').style.display = 'flex';
+  }, 2500);
+});
+
+/* ──────────────────────────────────────────
+   EXPOSE GLOBALS (needed for onclick= in HTML)
+   ────────────────────────────────────────── */
+window.tryUnlock = tryUnlock;
+window.openCreatePool = openCreatePool;
+window.closeCreatePool = closeCreatePool;
+window.createPool = createPool;
+window.joinPool = joinPool;
+window.refreshPools = refreshPools;
+window.resetMix = resetMix;
+window.toggleAutoJoin = toggleAutoJoin;
+</script>
+</body>
+</html>
