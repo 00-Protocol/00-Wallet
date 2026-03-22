@@ -7,13 +7,13 @@ source:
   description: |
     Where to fetch BCH block data from.
     Fulcrum: uses public Fulcrum electrum servers — no node needed, quick setup.
-    BCHN Node: fetches from your local BCHN node via JSON-RPC — full data sovereignty.
+    Local Node: fetches from your local BCHN node via JSON-RPC — full data sovereignty.
   values:
     - fulcrum
-    - node
+    - local-node
   value-names:
     fulcrum: "Fulcrum (Public Servers)"
-    node: "BCHN Node (Local)"
+    local-node: "Local Node (BCHN)"
   default: fulcrum
 
 fulcrum_url:

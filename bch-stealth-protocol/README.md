@@ -144,8 +144,8 @@ Raw hex keys:     scan_key  = SHA256("bch-stealth-scan:"  || raw_key)
                      │  - blockchain.transaction.get()  │
                      │  - Default for quick setup       │
                      │                                  │
-                     │  Mode B: BCHN (JSON-RPC)         │
-                     │  - Local node, full sovereignty  │
+                     │  Mode B: Local Node (BCHN RPC)   │
+                     │  - Local BCHN, full sovereignty  │
                      │  - getblock(hash, 2)             │
                      │  - For self-hosters (Start9)     │
                      └──────────────┬──────────────────┘
@@ -204,33 +204,38 @@ pubkey[0]:  0x02 or 0x03 (compressed point on secp256k1)
 
 **Binary wire format:**
 
-Stream entry (69 bytes):
+Stream entry (69 bytes, `scan --format binary` stdout):
 ```
-┌──────────┬──────────────┬──────────┐
-│ pubkey   │  prevTxid    │ prevVout │
-│ 33 bytes │  32 bytes    │  4 bytes │
-│ 02/03... │  big-endian  │  LE u32  │
-└──────────┴──────────────┴──────────┘
-```
-
-File entry (73 bytes, in block cache):
-```
-┌──────────┬──────────┬──────────────┬──────────┐
-│ height   │ pubkey   │  prevTxid    │ prevVout │
-│  4 bytes │ 33 bytes │  32 bytes    │  4 bytes │
-│  LE u32  │ 02/03... │  big-endian  │  LE u32  │
-└──────────┴──────────┴──────────────┴──────────┘
+┌──────────┬─────────────────┬──────────────┐
+│ pubkey   │ outpoint_txid   │ outpoint_vout│
+│ 33 bytes │    32 bytes     │   4 bytes    │
+│ 02/03... │   big-endian    │   LE u32     │
+└──────────┴─────────────────┴──────────────┘
 ```
 
-Block file header (8 bytes):
+File entry (106 bytes, stored in `.bin` block cache):
+```
+┌──────────┬──────────┬─────┬──────────┬─────────────────┬──────────────┐
+│ height   │  txid    │ vin │  pubkey  │ outpoint_txid   │ outpoint_vout│
+│  4 bytes │ 32 bytes │  1  │ 33 bytes │    32 bytes     │   4 bytes    │
+│  LE u32  │  big-end │ u8  │ 02/03..  │   big-endian    │   LE u32     │
+└──────────┴──────────┴─────┴──────────┴─────────────────┴──────────────┘
+ total: 106 bytes/entry
+```
+
+Block file header (8 bytes, precedes each block's entries):
 ```
 ┌──────────┬──────────┐
 │ height   │  count   │
 │  4 bytes │  4 bytes │
 │  LE u32  │  LE u32  │
 └──────────┴──────────┘
-followed by count × 73-byte entries
+followed by count × 106-byte entries
+File is seekable: read header → skip count×106 → next block header
 ```
+
+> Stream drops `height`, `txid`, and `vin` — only the data needed for ECDH scanning.
+> Full file format retains all fields for seekable indexed access.
 
 **Library usage:**
 ```js
@@ -338,7 +343,7 @@ Build targets:
 const { createScanner } = require('bch-pubkey-indexer');
 
 const scanner = createScanner({
-  source: 'fulcrum',
+  source: 'fulcrum',       // 'fulcrum' (default) or 'local-node'
   cacheDir: './cache'
 });
 

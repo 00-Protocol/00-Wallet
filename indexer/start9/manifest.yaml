@@ -13,9 +13,8 @@ upstream-repo: "https://github.com/CyberAshven/00-Wallet"
 support-site: "https://github.com/CyberAshven/00-Wallet/issues"
 marketing-site: "https://0penw0rld.com/indexer.html"
 build: ["make"]
-# Current stable: 0.3.5.x  |  Alpha: 0.4.0-alpha.21
-# Set to 0.3.5.0 for broad compatibility; bump to 0.4.0.0 once alpha stabilizes
-min-os-version: "0.3.5.0"
+# Targeting SDK 0.4.0 (beta series). Compatible with 0.4.0-alpha builds.
+min-os-version: "0.4.0.0"
 description:
   short: "Zero-knowledge BCH pubkey indexer for stealth address scanning"
   long: |
@@ -73,7 +72,7 @@ dependencies:
     version: ">=27.0.0 <30.0.0"
     requirement:
       type: "opt-in"
-      how: "Set source to 'node' in the Indexer config to use your local BCHN node"
+      how: "Set source to 'Local Node' in the Indexer config to use your local BCHN node"
     description: |
       When source is set to 'node', the indexer fetches block data directly from
       your BCHN node via JSON-RPC instead of public Fulcrum servers. This gives
