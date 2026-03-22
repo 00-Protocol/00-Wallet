@@ -1,0 +1,38 @@
+{
+  "name": "bch-pubkey-indexer",
+  "version": "1.0.0",
+  "description": "Zero-knowledge P2PKH pubkey indexer for BCH privacy protocols",
+  "main": "pubkey-indexer.js",
+  "bin": {
+    "pubkey-indexer": "./pubkey-indexer.js"
+  },
+  "scripts": {
+    "start": "node pubkey-indexer.js serve",
+    "build:linux":   "pkg pubkey-indexer.js --target node18-linux-x64   --output dist/pubkey-indexer-linux",
+    "build:mac":     "pkg pubkey-indexer.js --target node18-macos-x64   --output dist/pubkey-indexer-mac",
+    "build:mac-arm": "pkg pubkey-indexer.js --target node18-macos-arm64 --output dist/pubkey-indexer-mac-arm64",
+    "build:win":     "pkg pubkey-indexer.js --target node18-win-x64     --output dist/pubkey-indexer-win.exe",
+    "build:all":     "npm run build:linux && npm run build:mac && npm run build:mac-arm && npm run build:win"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "pkg": "^5.8.1"
+  },
+  "pkg": {
+    "assets": [],
+    "targets": [
+      "node18-linux-x64",
+      "node18-macos-x64",
+      "node18-macos-arm64",
+      "node18-win-x64"
+    ]
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CyberAshven/00-Wallet"
+  },
+  "keywords": ["bch", "bitcoin-cash", "stealth", "privacy", "pubkey", "indexer", "ecdh"]
+}

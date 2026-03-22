@@ -1,0 +1,142 @@
+id: bch-pubkey-indexer
+title: "BCH Pubkey Indexer"
+version: 1.0.0.0
+release-notes: |
+  Initial release.
+  Zero-knowledge P2PKH pubkey indexer for BCH privacy protocols.
+  Enables stealth address scanning (00 Protocol), RPA, and more.
+  Serves all input pubkeys for any BCH block range via HTTP API on port 3847.
+  Tor .onion address auto-generated for remote wallet access.
+license: MIT
+wrapper-repo: "https://github.com/CyberAshven/00-Wallet"
+upstream-repo: "https://github.com/CyberAshven/00-Wallet"
+support-site: "https://github.com/CyberAshven/00-Wallet/issues"
+marketing-site: "https://0penw0rld.com/indexer.html"
+build: ["make"]
+# Current stable: 0.3.5.x  |  Alpha: 0.4.0-alpha.21
+# Set to 0.3.5.0 for broad compatibility; bump to 0.4.0.0 once alpha stabilizes
+min-os-version: "0.3.5.0"
+description:
+  short: "Zero-knowledge BCH pubkey indexer for stealth address scanning"
+  long: |
+    The BCH Pubkey Indexer serves ALL compressed public keys from P2PKH
+    transaction inputs for any Bitcoin Cash block range.
+
+    It is the scanning backbone of the 00 Protocol (beaconless ECDH stealth
+    addresses), Reusable Payment Addresses (RPA), and other ECDH-based BCH
+    privacy protocols.
+
+    Privacy model: the server serves all pubkeys for a block range — it has no
+    information about who you are, what you're scanning for, or which keys are
+    yours. This is equivalent to downloading full blocks but ~90% less data.
+
+    Two source modes:
+      • Fulcrum (default) — uses public Fulcrum electrum servers, no node needed
+      • BCHN Node (optional) — connects to your local BCHN instance for full sovereignty
+
+    Features:
+      • HTTP/JSON API on port 3847 (browser wallets, 00-Wallet)
+      • Tor .onion address for remote wallet access
+      • Permanent block cache (confirmed blocks never change)
+      • Supports 00 Protocol stealth, RPA, and Confidential Transactions scanning
+assets:
+  license: LICENSE
+  icon: icon.png
+  instructions: instructions.md
+main:
+  type: docker
+  image: main
+  entrypoint: docker_entrypoint.sh
+  args: []
+  mounts:
+    main: /data
+  sigterm-timeout: 30s
+health-checks:
+  api:
+    name: HTTP API
+    success-message: "The BCH Pubkey Indexer API is ready for connections"
+    type: docker
+    image: main
+    system: false
+    entrypoint: check-health.sh
+    inject: true
+    args: []
+    mounts: {}
+    io-format: json
+config:
+  get:
+    type: script
+  set:
+    type: script
+dependencies:
+  bchn:
+    version: ">=27.0.0 <30.0.0"
+    requirement:
+      type: "opt-in"
+      how: "Set source to 'node' in the Indexer config to use your local BCHN node"
+    description: |
+      When source is set to 'node', the indexer fetches block data directly from
+      your BCHN node via JSON-RPC instead of public Fulcrum servers. This gives
+      full data sovereignty — no third-party servers involved.
+    config: ~
+volumes:
+  main:
+    type: data
+alerts:
+  install: |
+    The BCH Pubkey Indexer will begin syncing block data on first start.
+    Initial sync may take several hours depending on your chosen start height.
+    The API is available immediately but may return empty results for unsynced blocks.
+  start: ~
+  stop: ~
+  uninstall: |
+    Uninstalling will delete all cached block data. You will need to re-sync
+    from scratch if you reinstall.
+  restore: ~
+interfaces:
+  main:
+    name: "Pubkey Indexer API"
+    description: "HTTP API for querying P2PKH input pubkeys by block range"
+    tor-config:
+      port-mapping:
+        80: "3847"
+    lan-config:
+      443:
+        ssl: true
+        internal: 3847
+    ui: false
+    protocols:
+      - tcp
+      - http
+backup:
+  create:
+    type: docker
+    image: compat
+    system: true
+    entrypoint: compat
+    args:
+      - duplicity
+      - create
+      - /mnt/backup
+      - /data
+    mounts:
+      BACKUP: /mnt/backup
+      main: /data
+    io-format: yaml
+  restore:
+    type: docker
+    image: compat
+    system: true
+    entrypoint: compat
+    args:
+      - duplicity
+      - restore
+      - /mnt/backup
+      - /data
+    mounts:
+      BACKUP: /mnt/backup
+      main: /data
+    io-format: yaml
+migrations:
+  from: {}
+  to: {}

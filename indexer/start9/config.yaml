@@ -1,0 +1,64 @@
+# BCH Pubkey Indexer — Start9 Config Schema
+# StartOS renders this as a UI form. Users edit settings through the GUI.
+
+source:
+  type: enum
+  name: "Data Source"
+  description: |
+    Where to fetch BCH block data from.
+    Fulcrum: uses public Fulcrum electrum servers — no node needed, quick setup.
+    BCHN Node: fetches from your local BCHN node via JSON-RPC — full data sovereignty.
+  values:
+    - fulcrum
+    - node
+  value-names:
+    fulcrum: "Fulcrum (Public Servers)"
+    node: "BCHN Node (Local)"
+  default: fulcrum
+
+fulcrum_url:
+  type: string
+  name: "Custom Fulcrum URL"
+  description: |
+    Override the default Fulcrum server (wss://...). Leave blank to rotate
+    between public servers automatically.
+  nullable: true
+  default: ~
+  pattern: "^wss?://.+"
+  pattern-description: "Must start with wss:// or ws://"
+
+rpc_url:
+  type: string
+  name: "BCHN RPC URL"
+  description: |
+    JSON-RPC endpoint for your BCHN node. Only used when Source is set to
+    BCHN Node. On Start9, BCHN is auto-discovered at http://bchn:8332 if installed.
+  nullable: true
+  default: "http://bchn:8332"
+
+rpc_user:
+  type: string
+  name: "BCHN RPC Username"
+  description: "RPC username for BCHN authentication"
+  nullable: true
+  default: "rpc"
+
+rpc_pass:
+  type: string
+  name: "BCHN RPC Password"
+  description: "RPC password for BCHN authentication"
+  nullable: true
+  masked: true
+  default: ~
+
+max_range:
+  type: number
+  name: "Max Block Range Per Request"
+  description: |
+    Maximum number of blocks that can be requested in a single API call.
+    Higher values allow faster bulk scanning but use more memory per request.
+  nullable: false
+  range: "[10, 500)"
+  integral: true
+  default: 100
+  units: blocks

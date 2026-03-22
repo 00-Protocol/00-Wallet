@@ -6,40 +6,113 @@ Self-custody crypto wallet & privacy suite — no servers, no accounts, runs in 
 
 ---
 
-## Features
+## Repository Structure
+
+```
+00-Wallet/
+├── landing/                    # 00-Wallet PWA (22 modules, live at 0penw0rld.com)
+├── indexer/                    # BCH P2PKH Pubkey Indexer (standalone service)
+│   ├── pubkey-indexer.js       # Core: Fulcrum+BCHN sources, HTTP API, CLI, library export
+│   ├── package.json
+│   ├── start9/                 # Start9 OS package (produces .s9pk)
+│   │   ├── Dockerfile
+│   │   ├── manifest.yaml
+│   │   ├── config.yaml
+│   │   ├── docker_entrypoint.sh
+│   │   ├── check-health.sh
+│   │   └── instructions.md
+│   └── scripts/                # Desktop binary build scripts (Linux / Mac / Windows)
+│       ├── build-linux.sh
+│       ├── build-mac.sh
+│       ├── build-windows.sh
+│       └── build-all.sh
+└── bch-stealth-protocol/       # BCH Stealth Protocol spec (Stealth + Fusion + Onion)
+    └── README.md
+```
+
+---
+
+## BCH Stealth Protocol
+
+> **Stealth + Fusion + Onion — one pipeline, maximum privacy.**
+> See [`bch-stealth-protocol/README.md`](./bch-stealth-protocol/README.md) for the full spec.
+
+The unified privacy pipeline for BCH:
+
+```
+Receive BCH → Onion routing → CoinJoin mixing → Stealth address output
+```
+
+**Auto Stealth Mode**: one toggle, all three activated automatically on every receive.
+No other BCH wallet offers this full pipeline.
+
+---
+
+## Pubkey Indexer
+
+Zero-knowledge scanning infrastructure for BCH privacy protocols.
+
+Serves all P2PKH input pubkeys for any BCH block range. Wallets download the full
+set and filter locally — the server never learns your scan key.
+
+**Self-host on Start9:**
+```bash
+cd indexer/start9
+make          # builds Docker image + .s9pk
+start-sdk pack && start-sdk verify
+```
+
+**Run locally:**
+```bash
+cd indexer && npm install
+node pubkey-indexer.js serve          # HTTP API on :3847
+node pubkey-indexer.js scan --from 943000
+```
+
+**Desktop binary (cross-platform):**
+```bash
+cd indexer && bash scripts/build-all.sh
+# outputs: dist/pubkey-indexer-linux, -mac, -mac-arm64, -win.exe
+```
+
+**API:** `GET /api/pubkeys?from=943000&to=943100`
+
+---
+
+## 00 Wallet Features
 
 ### Wallet
 BIP44 HD wallet (`m/44'/145'/0'`) supporting BCH, Stealth BCH, BTC, ETH, XMR, USDC, USDT. Seed backup, multiple profiles, Ledger hardware support, UTXO coin control, gap-limit scanning.
 
-### Chat
-Split-knowledge encrypted messaging. Messages are XOR-split into two halves — one embedded on-chain via OP_RETURN, one sent through Nostr ephemeral events. Each half is encrypted with X25519 ECDH + AES-256-GCM. Neither the blockchain nor the relay can read the message alone.
-
-### Stealth BCH
-ECDH stealth payments — one-time addresses derived from X25519 key exchange so every payment is unlinkable on-chain. Combined with 6-phase CoinJoin mixing coordinated over Nostr.
+### Stealth BCH (00 Protocol)
+Beaconless ECDH stealth addresses — every payment goes to a unique one-time address, unlinkable on-chain. No OP_RETURN. Receiver scans via Pubkey Indexer. Combined with CoinJoin mixing.
 
 ### Onion Payments
-Multi-hop stealth payments using HTLC contracts and onion-routed paths. Payments are relayed through intermediary nodes — no direct link between sender and recipient. Coordinated via Nostr.
+Multi-hop HTLC routing over BCH, Nostr-coordinated. Funds route through relay nodes — no direct sender/receiver link. Per-hop CLTV and fee configuration.
+
+### Fusion (CoinJoin)
+CashFusion-style 6-phase CoinJoin over Nostr. No central coordinator. Onion-wrapped output registration. Configurable rounds (1–4).
 
 ### Swap
-Atomic cross-chain swaps (BCH ↔ BTC, BCH ↔ XMR) with on-chain HTLC contracts. Peer-to-peer OTC orderbook published on Nostr.
+Atomic cross-chain swaps (BCH ↔ BTC, BCH ↔ XMR) with HTLC contracts. Peer-to-peer OTC orderbook on Nostr.
 
-### DEX
-Cauldron DEX integration — on-chain BCH token swaps with liquidity pools.
-
-### Loan
-Moria Protocol integration — borrow MUSD stablecoins using BCH as collateral. On-chain, decentralized, no intermediary.
+### Chat
+Split-knowledge encrypted messaging. One half on-chain (OP_RETURN), one via Nostr. X25519 ECDH + AES-256-GCM per half. Neither layer can read it alone.
 
 ### Vault
-Stealth multisig vaults using MuSig2 — multi-party signing with key aggregation. Vault state synced over Nostr.
+Stealth multisig vaults with MuSig2 key aggregation. State synced over Nostr.
+
+### DEX
+Cauldron DEX — on-chain BCH token swaps.
+
+### Loan
+Moria Protocol — borrow MUSD stablecoins using BCH collateral.
 
 ### Mesh
-Nostr-based social network — posts, DMs, relay management, contact discovery.
+Full Nostr client — posts, DMs, relay management, contact discovery.
 
 ### Identity
-Sovereign decentralized ID — Nostr keypair as identity, publishable profile card with BCH address, stealth code, and vault pubkey.
-
-### Fusion
-CashFusion-style CoinJoin coordinated over Nostr. Multiple wallets combine inputs and outputs into a single transaction — breaks the tx graph with no central coordinator.
+Nostr keypair as sovereign DID, publishable profile card.
 
 ---
 
@@ -47,53 +120,23 @@ CashFusion-style CoinJoin coordinated over Nostr. Multiple wallets combine input
 
 - **Pure HTML/CSS/JS** — no framework, no build step, no bundler
 - **PWA** — installable, offline-first via Service Worker
-- **Desktop-first** — sidebar navigation at 900px+
 - **`@noble/curves`** — secp256k1, X25519, ed25519, Schnorr
 - **`@noble/hashes`** — SHA-256, RIPEMD-160, HMAC, PBKDF2, keccak
 - **Fulcrum ElectrumX** — blockchain queries over WebSocket
 - **Nostr relays** — coordination, notifications, social, sync
 - **Monero-ts** — XMR wallet scanning & atomic swap support
-- **WalletConnect v2** — optional ETH wallet connection
 
-All crypto dependencies loaded at runtime via [esm.sh](https://esm.sh) — zero server-side code.
+All crypto loaded at runtime via [esm.sh](https://esm.sh) — zero server-side code.
 
 ---
 
-## Run
+## Run the Wallet
 
-Open [0penw0rld.com](https://0penw0rld.com) in a browser. That's it.
+Open [0penw0rld.com](https://0penw0rld.com) in a browser.
 
-Or serve `landing/` locally:
+Or serve locally:
 ```bash
 npx serve landing
-```
-
----
-
-## Structure
-
-```
-landing/
-  index.html        Dashboard
-  wallet.html       Wallet + Unlock
-  pay.html          Payment Terminal
-  swap.html         Atomic Swaps
-  swap-xmr.html     XMR Swaps
-  dex.html          Cauldron DEX
-  loan.html         Moria Lending
-  chat.html         Encrypted Chat
-  onion.html        Onion Payments
-  vault.html        Stealth Multisig
-  id.html           Identity
-  mesh.html         Nostr Social
-  fusion.html       CoinJoin
-  config.html       Settings
-  docs.html         Documentation
-  desktop.css       Desktop layout
-  shell.js          Shared sidebar
-  sw.js             Service Worker
-  lib/              Monero WASM
-  icons/            Coin & PWA icons
 ```
 
 ---
