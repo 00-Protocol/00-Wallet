@@ -32,5 +32,15 @@ export const manifest = setupManifest({
     start: null,
     stop: null,
   },
-  dependencies: {},
+  dependencies: {
+    'bitcoin-cash-node': {
+      description:
+        'Required to fetch blockchain data via local JSON-RPC. The indexer authenticates using the BCHN cookie file.',
+      optional: false,
+      metadata: {
+        title: 'Bitcoin Cash Node',
+        icon: 'https://raw.githubusercontent.com/linkinparkrulz/bitcoin-cash-node-startos/master/icon.png',
+      },
+    },
+  },
 })
