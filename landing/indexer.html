@@ -47,8 +47,8 @@
 
 <header>
   <h1>P2PKH Pubkey Indexer API</h1>
-  <p>Zero-knowledge scanning infrastructure for BCH privacy protocols &bull; <a href="https://0penw0rld.com" style="color:var(--accent)">0penw0rld.com</a></p>
-  <p style="margin-top:4px;color:var(--muted)">Base URL: <code>https://0penw0rld.com/api</code></p>
+  <p>Zero-knowledge scanning infrastructure for BCH privacy protocols &bull; v2.0 &bull; <a href="https://0penw0rld.com" style="color:var(--accent)">0penw0rld.com</a></p>
+  <p style="margin-top:4px;color:var(--muted)">Base URL: <code>https://0penw0rld.com/api</code> &bull; Single file: <code>pubkey-indexer.js</code></p>
 </header>
 
 <h2>Overview</h2>
@@ -143,25 +143,45 @@
   <span class="path">/api/health</span>
 </div>
 
-<p>Returns server status and Fulcrum connection state.</p>
+<p>Returns server status, source mode, and connection state.</p>
 
 <pre><code>{
   "status": "ok",
-  "fulcrum": true,
+  "source": "fulcrum",
+  "connected": true,
   "cached": 42
 }</code></pre>
+
+<div class="endpoint">
+  <span class="method">GET</span>
+  <span class="path">/api/pubkeys?from={height}&to={height}&format=binary</span>
+</div>
+
+<p>Same as above but returns compact binary format (106 bytes per entry). Use <code>format=binary</code> query parameter.</p>
+
+<table>
+  <tr><th>Field</th><th>Size</th><th>Type</th><th>Description</th></tr>
+  <tr><td>height</td><td>4 bytes</td><td>uint32 LE</td><td>Block height</td></tr>
+  <tr><td>txid</td><td>32 bytes</td><td>raw</td><td>Transaction ID</td></tr>
+  <tr><td>vin</td><td>1 byte</td><td>uint8</td><td>Input index</td></tr>
+  <tr><td>pubkey</td><td>33 bytes</td><td>compressed secp256k1</td><td>Public key</td></tr>
+  <tr><td>outpoint</td><td>36 bytes</td><td>txid (32) + vout (4) LE</td><td>Previous output reference</td></tr>
+</table>
+
+<p>106 bytes/entry vs ~250 bytes JSON = <strong>~60% less data</strong> for bulk scanning.</p>
 
 <div class="endpoint">
   <span class="method">GET</span>
   <span class="path">/api/stats</span>
 </div>
 
-<p>Returns cache statistics: number of indexed blocks and height range.</p>
+<p>Returns cache statistics: number of indexed blocks, height range, and source mode.</p>
 
 <pre><code>{
   "cached_blocks": 42,
   "range": { "from": 943000, "to": 943042 },
-  "fulcrum": true
+  "source": "fulcrum",
+  "connected": true
 }</code></pre>
 
 <h2>Live Test</h2>
@@ -263,30 +283,63 @@ for (const entry of pubkeys) {
 
 <h2>Architecture</h2>
 
-<pre><code>                                    +-------------------+
-                                    |  Fulcrum Server   |
-                                    |  (BCH Electrum)   |
-                                    +--------+----------+
-                                             |
-                                             | WSS (Electrum protocol)
-                                             |
-+------------+    HTTPS/JSON    +------------+------------+
-|   Wallet   | <--------------> |   Pubkey Indexer       |
-|  (browser) |                  |   (Node.js, port 3847) |
-+------------+                  |                        |
-  |                             |  - Connects to Fulcrum |
-  | Local ECDH scan             |  - Fetches raw TXs     |
-  | (zero server knowledge)     |  - Extracts P2PKH pubs |
-  |                             |  - Caches per block    |
-  v                             +------------------------+
-  Stealth UTXOs found!                    |
-                                          | nginx reverse proxy
-                                          | /api/* -> :3847
-                                          |
-                                  +-------+--------+
-                                  |    nginx       |
-                                  | 0penw0rld.com  |
-                                  +----------------+</code></pre>
+<h3>Two Source Modes</h3>
+
+<table>
+  <tr><th>Mode</th><th>Source</th><th>Requirement</th><th>Best For</th></tr>
+  <tr>
+    <td><strong>Mode A: Fulcrum (WSS)</strong></td>
+    <td>Public Fulcrum/ElectrumX servers</td>
+    <td>No local node needed</td>
+    <td>Quick setup, public infrastructure</td>
+  </tr>
+  <tr>
+    <td><strong>Mode B: BCHN (JSON-RPC)</strong></td>
+    <td>Local BCHN full node</td>
+    <td><code>bitcoind</code> running locally</td>
+    <td>Full sovereignty, self-hosters</td>
+  </tr>
+</table>
+
+<h3>Three Output Targets</h3>
+
+<table>
+  <tr><th>Target</th><th>Command</th><th>Use Case</th></tr>
+  <tr>
+    <td><strong>HTTP/JSON API</strong></td>
+    <td><code>pubkey-indexer serve</code></td>
+    <td>Browser wallets (00-Wallet), remote clients</td>
+  </tr>
+  <tr>
+    <td><strong>CLI / stdout</strong></td>
+    <td><code>pubkey-indexer scan --from 943000</code></td>
+    <td>Piping, desktop apps, EC plugin</td>
+  </tr>
+  <tr>
+    <td><strong>Library import</strong></td>
+    <td><code>require('pubkey-indexer')</code></td>
+    <td>Direct integration in Node.js wallets</td>
+  </tr>
+</table>
+
+<pre><code>                 Source Layer                        Output Layer
+          +-------------------+              +--------------------+
+          |  Fulcrum (WSS)    |              | HTTP/JSON API      |
+          |  - Public servers |---+      +-->| port 3847          |
+          |  - No node needed |   |      |   +--------------------+
+          +-------------------+   |      |
+                                  +-->---+   +--------------------+
+          +-------------------+   |  P   |   | CLI / stdout       |
+          |  BCHN (JSON-RPC)  |   |  A   +-->| json or binary     |
+          |  - Local node     |---+  R   |   +--------------------+
+          |  - Full sovereignty|   S  |
+          +-------------------+   E   |   +--------------------+
+                                  R   +-->| Library (require)  |
+          +-------------------+   |       | async generators   |
+          |  Cache Layer      |<--+       +--------------------+
+          |  JSON + Binary    |
+          |  per block        |
+          +-------------------+</code></pre>
 
 <h2>Self-Host: How to Run Your Own Indexer</h2>
 
@@ -329,22 +382,52 @@ const FULCRUM_URLS = [
 ];</code></pre>
 
 <div class="ok">
-  <strong>No BCH node required.</strong> The indexer connects to public Fulcrum servers via WebSocket. You can also point it to your own Fulcrum instance for maximum sovereignty.
+  <strong>No BCH node required.</strong> The indexer connects to public Fulcrum servers via WebSocket. You can also use <code>--source node</code> to connect to your own BCHN full node for maximum sovereignty.
 </div>
 
 <h3>Step 3: Run</h3>
 
-<pre><code># Quick test
+<pre><code># HTTP API server (default)
 node pubkey-indexer.js
+node pubkey-indexer.js serve                    # same
+
+# With BCHN full node instead of Fulcrum
+node pubkey-indexer.js serve --source node --rpc http://localhost:8332
+
+# CLI scan mode (stream to stdout)
+node pubkey-indexer.js scan --from 943000       # JSON lines to stdout
+node pubkey-indexer.js scan --from 943000 --format binary  # compact binary
+
+# With config file
+node pubkey-indexer.js --config config.yaml
 
 # Verify it works
-# In another terminal:
 curl http://localhost:3847/api/health
-# {"status":"ok","fulcrum":true,"cached":0}
+# {"status":"ok","source":"fulcrum","connected":true,"cached":0}
 
 # Fetch some pubkeys
 curl "http://localhost:3847/api/pubkeys?from=943370&to=943372"
-# {"from":943370,"to":943372,"count":660,"pubkeys":[...]}</code></pre>
+# {"from":943370,"to":943372,"count":660,"pubkeys":[...]}
+
+# Fetch as binary
+curl "http://localhost:3847/api/pubkeys?from=943370&to=943372&format=binary" > block.bin</code></pre>
+
+<h3>CLI Options</h3>
+
+<pre><code>Options:
+  --mode serve|scan         Operation mode (default: serve)
+  --source fulcrum|node     Data source (default: fulcrum)
+  --format json|binary      Output format for scan mode (default: json)
+  --from &lt;height&gt;           Start block for scan mode
+  --to &lt;height&gt;             End block (default: chain tip)
+  --port &lt;port&gt;             HTTP port for serve mode (default: 3847)
+  --cache-dir &lt;path&gt;        Cache directory (default: ./cache/pubkeys)
+  --max-range &lt;n&gt;           Max blocks per HTTP request (default: 100)
+  --rpc &lt;url&gt;               BCHN RPC URL (default: http://localhost:8332)
+  --rpc-user &lt;user&gt;         BCHN RPC username
+  --rpc-pass &lt;pass&gt;         BCHN RPC password
+  --config &lt;file&gt;           Load config from YAML file
+  --help                    Show help</code></pre>
 
 <h3>Step 4: Run as Service (production)</h3>
 
@@ -427,18 +510,72 @@ async function fetchPubkeys(from, to) {
   <strong>The more operators run indexers, the better.</strong> Each indexer serves identical data (blocks are immutable). There's no coordination needed between operators. Wallets can query any indexer and get the same results. This is infrastructure-level decentralization — like running a Fulcrum server benefits all Electrum wallets.
 </div>
 
+<h2>Docker</h2>
+
+<pre><code># Build
+docker build -f Dockerfile.indexer -t pubkey-indexer .
+
+# Run (Fulcrum mode, default)
+docker run -d -p 3847:3847 -v ./cache:/app/cache pubkey-indexer
+
+# Run (BCHN mode)
+docker run -d -p 3847:3847 -v ./cache:/app/cache \
+  pubkey-indexer node pubkey-indexer.js --source node --rpc http://host.docker.internal:8332</code></pre>
+
+<h3>Dockerfile</h3>
+
+<pre><code>FROM node:18-alpine
+WORKDIR /app
+COPY pubkey-indexer.js .
+RUN npm install ws
+EXPOSE 3847
+CMD ["node", "pubkey-indexer.js", "--mode", "serve"]</code></pre>
+
+<h2>Library Mode</h2>
+
+<p>For direct integration in Electron Cash plugins or any Node.js wallet:</p>
+
+<pre><code>const { createScanner } = require('./pubkey-indexer');
+
+const scanner = createScanner({
+  source: 'fulcrum',      // or 'node'
+  cacheDir: './cache',
+});
+
+await scanner.connect();
+
+// Get all pubkeys for a block range
+const entries = await scanner.getPubkeys(943000, 943100);
+
+// Or stream block by block (async generator)
+for await (const entry of scanner.pubkeys(943000, 943100)) {
+  // entry = { height, txid, vin, pubkey, outpoint }
+  const shared = secp256k1.getSharedSecret(scanPriv, h2b(entry.pubkey));
+  // ... ECDH check ...
+}
+
+// Get chain tip
+const tip = await scanner.getTip();</code></pre>
+
+<div class="ok">
+  <strong>No HTTP overhead. No JSON parsing.</strong> Direct iteration over cached binary data. This is what an Electron Cash plugin would use.
+</div>
+
 <h2>Source Code</h2>
 
-<p>The indexer is a single Node.js file: <code>pubkey-indexer.js</code> (~200 lines)</p>
+<p>The indexer is a single Node.js file: <code>pubkey-indexer.js</code> (~450 lines)</p>
 
 <ul>
-  <li>Connects to Fulcrum via WebSocket (wss://)</li>
-  <li>Fetches TXs via <code>blockchain.transaction.id_from_pos</code> + <code>blockchain.transaction.get</code></li>
-  <li>Parses raw TX hex to extract P2PKH input pubkeys (DER + Schnorr signatures supported)</li>
-  <li>Caches results as JSON files (one per block, immutable)</li>
-  <li>Serves via HTTP with CORS headers</li>
-  <li>Runs as systemd service (<code>pubkey-indexer.service</code>)</li>
-  <li>Single dependency: <code>ws</code> (WebSocket client)</li>
+  <li><strong>Source A:</strong> Fulcrum WSS — public servers, no node needed</li>
+  <li><strong>Source B:</strong> BCHN JSON-RPC — local node, full sovereignty</li>
+  <li>Parses raw TX hex to extract P2PKH input pubkeys (DER + Schnorr supported)</li>
+  <li>Dual cache: JSON files + compact binary (106 bytes/entry)</li>
+  <li>HTTP API with JSON and binary response formats</li>
+  <li>CLI scan mode with stdout streaming</li>
+  <li>Library export via <code>module.exports</code></li>
+  <li>Config via CLI flags or YAML file</li>
+  <li>Runs as systemd service or Docker container</li>
+  <li>Single dependency: <code>ws</code></li>
 </ul>
 
 <div style="margin-top:48px;padding-top:24px;border-top:1px solid var(--border);text-align:center;color:var(--muted);font-size:12px">
