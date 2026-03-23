@@ -6,7 +6,47 @@ on:
       - 'BCH-Pubkey-Indexer-v*'
 
 jobs:
-  build:
+  build-binaries:
+    name: Build platform binaries
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Build all platform binaries
+        working-directory: indexer
+        run: |
+          npm ci
+          npm run build:all
+
+      - name: Rename binaries to release names
+        working-directory: indexer/dist
+        run: |
+          mv pubkey-indexer-linux       BCH-Pubkey-Indexer-linux
+          mv pubkey-indexer-mac         BCH-Pubkey-Indexer-mac
+          mv pubkey-indexer-mac-arm64   BCH-Pubkey-Indexer-mac-arm64
+          mv pubkey-indexer-win.exe     BCH-Pubkey-Indexer-win.exe
+
+      - name: Upload binaries to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: |
+            indexer/dist/BCH-Pubkey-Indexer-linux
+            indexer/dist/BCH-Pubkey-Indexer-mac
+            indexer/dist/BCH-Pubkey-Indexer-mac-arm64
+            indexer/dist/BCH-Pubkey-Indexer-win.exe
+
+  build-s9pk:
+    name: Build Start9 package
     runs-on: ubuntu-latest
     permissions:
       contents: write
