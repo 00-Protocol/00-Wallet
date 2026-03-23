@@ -3,7 +3,7 @@ name: Build BCH Pubkey Indexer s9pk
 on:
   push:
     tags:
-      - 'indexer-v*'
+      - 'BCH-Pubkey-Indexer-v*'
 
 jobs:
   build:
@@ -12,29 +12,32 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Prepare StartOS SDK
+        uses: Start9Labs/sdk@v2.1
 
-      - uses: Start9Labs/sdk@v2.1
-
-      - name: Install dependencies
-        working-directory: indexer/start9
-        run: npm ci
-
-      - name: Compile TypeScript
-        working-directory: indexer/start9
-        run: npm run build
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Build s9pk
         working-directory: indexer/start9
-        run: make
+        run: |
+          cp ../pubkey-indexer.js .
+          start-cli init-key
+          npm ci
+          npm run build
+          make
+        shell: bash
 
-      - name: Compute sha256
+      - name: Generate sha256 checksum
         working-directory: indexer/start9
-        run: sha256sum bch-pubkey-indexer.s9pk > bch-pubkey-indexer.s9pk.sha256
+        run: |
+          sha256sum bch-pubkey-indexer.s9pk > bch-pubkey-indexer.s9pk.sha256
+          echo "SHA256: $(cat bch-pubkey-indexer.s9pk.sha256)"
 
-      - name: Upload release assets
+      - name: Upload s9pk to release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.ref_name }}
           files: |
             indexer/start9/bch-pubkey-indexer.s9pk
             indexer/start9/bch-pubkey-indexer.s9pk.sha256
