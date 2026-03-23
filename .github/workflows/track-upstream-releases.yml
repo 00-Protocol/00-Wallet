@@ -1,0 +1,68 @@
+name: Track BCH Stealth Protocol releases
+
+on:
+  schedule:
+    - cron: '0 9 * * *'   # daily at 09:00 UTC
+  workflow_dispatch:
+
+jobs:
+  check-upstream:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+
+    steps:
+      - name: Get latest upstream release
+        id: upstream
+        run: |
+          RELEASE=$(curl -s https://api.github.com/repos/00-Protocol/BCH-Stealth-Protocol/releases/latest)
+          TAG=$(echo "$RELEASE" | jq -r .tag_name)
+          URL=$(echo "$RELEASE" | jq -r .html_url)
+          BODY=$(echo "$RELEASE" | jq -r .body)
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "url=$URL" >> $GITHUB_OUTPUT
+          echo "body<<EOF" >> $GITHUB_OUTPUT
+          echo "$BODY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Check if already tracked
+        id: check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tag = '${{ steps.upstream.outputs.tag }}'
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: 'upstream-release',
+              state: 'all',
+            })
+            const exists = issues.data.some(i => i.title.includes(tag))
+            core.setOutput('exists', exists ? 'true' : 'false')
+
+      - name: Open tracking issue for new release
+        if: steps.check.outputs.exists == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tag = '${{ steps.upstream.outputs.tag }}'
+            const url = '${{ steps.upstream.outputs.url }}'
+            const body = `${{ steps.upstream.outputs.body }}`
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Upstream release: BCH-Stealth-Protocol ${tag}`,
+              labels: ['upstream-release'],
+              body: [
+                `A new release of [BCH-Stealth-Protocol](https://github.com/00-Protocol/BCH-Stealth-Protocol) is available.`,
+                ``,
+                `**Tag:** \`${tag}\``,
+                `**Release:** ${url}`,
+                ``,
+                `### Release notes`,
+                body,
+                ``,
+                `---`,
+                `_This issue was opened automatically by the upstream release tracker._`,
+              ].join('\n'),
+            })
