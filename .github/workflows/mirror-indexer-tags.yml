@@ -1,0 +1,53 @@
+name: Mirror indexer tags from BCH-Stealth-Protocol
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'   # every 6 hours
+  workflow_dispatch:
+
+jobs:
+  mirror-tags:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Mirror indexer tags
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const upstream = await github.rest.repos.listTags({
+              owner: '00-Protocol',
+              repo: 'BCH-Stealth-Protocol',
+              per_page: 100,
+            });
+            const indexerTags = upstream.data.filter(t => t.name.startsWith('indexer-v'));
+
+            const existing = await github.rest.repos.listTags({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 100,
+            });
+            const existingNames = new Set(existing.data.map(t => t.name));
+
+            const main = await github.rest.repos.getBranch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              branch: 'main',
+            });
+            const mainSha = main.data.commit.sha;
+
+            for (const tag of indexerTags) {
+              if (!existingNames.has(tag.name)) {
+                console.log(`Mirroring tag ${tag.name} -> ${mainSha}`);
+                await github.rest.git.createRef({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  ref: `refs/tags/${tag.name}`,
+                  sha: mainSha,
+                });
+              } else {
+                console.log(`${tag.name} already exists, skipping`);
+              }
+            }
