@@ -16,8 +16,8 @@ window.CHAINS = Object.freeze({
   usdt: { name:'Tether',        ticker:'USDT', decimals:6,  color:'#26A17B', icon:'icons/usdt.png', apiType:'erc20', contract:'0xdAC17F958D2ee523a2206206994597C13D831ec7' },
   ltc:  { name:'Litecoin',      ticker:'LTC',  decimals:8,  color:'#BFBBBB', icon:'icons/ltc.png',  apiType:'ltc',   rpc:'https://litecoinspace.org/api' },
   bnb:  { name:'BNB',           ticker:'BNB',  decimals:18, color:'#F0B90B', icon:'icons/bnb.png',  apiType:'evm',   rpc:'https://bsc-rpc.publicnode.com' },
-  avax: { name:'Avalanche',     ticker:'AVAX', decimals:18, color:'#E84142', icon:'icons/avax.png', apiType:'evm',   rpc:'https://api.avax.network/ext/bc/C/rpc' },
-  sol:  { name:'Solana',        ticker:'SOL',  decimals:9,  color:'#9945FF', icon:'icons/sol.png',  apiType:'sol',   rpc:'https://api.mainnet-beta.solana.com' },
+  avax: { name:'Avalanche',     ticker:'AVAX', decimals:18, color:'#E84142', icon:'icons/avax.png', apiType:'evm',   rpc:'/avax-rpc/' },
+  sol:  { name:'Solana',        ticker:'SOL',  decimals:9,  color:'#9945FF', icon:'icons/sol.png',  apiType:'sol',   rpc:'/sol-rpc/' },
   trx:  { name:'TRON',          ticker:'TRX',  decimals:6,  color:'#FF0013', icon:'icons/trx.png',  apiType:'trx',   rpc:'https://api.trongrid.io' },
   xrp:  { name:'XRP',           ticker:'XRP',  decimals:6,  color:'#0085C0', icon:'icons/xrp.png',  apiType:'xrp',   rpc:'wss://xrplcluster.com' },
   xlm:  { name:'Stellar',       ticker:'XLM',  decimals:7,  color:'#14B6E7', icon:'icons/xlm.png',  apiType:'xlm',   rpc:'https://horizon.stellar.org' },
@@ -25,8 +25,10 @@ window.CHAINS = Object.freeze({
 
 /* ── Endpoint Resolution ── */
 function _ep(chain) {
+  // AVAX and SOL must use nginx proxy (CORS blocked on direct URLs)
+  if (chain === 'avax' || chain === 'sol') return CHAINS[chain]?.rpc || '';
   const ep = window._00ep || {};
-  const map = { eth:'eth_rpc', bnb:'bnb_rpc', avax:'avax_rpc', sol:'sol_rpc', trx:'trx_rpc', xrp:'xrp_rpc', xlm:'xlm_rpc', ltc:'ltc_rpc' };
+  const map = { eth:'eth_rpc', bnb:'bnb_rpc', trx:'trx_rpc', xrp:'xrp_rpc', xlm:'xlm_rpc', ltc:'ltc_rpc' };
   return (map[chain] && ep[map[chain]]) || CHAINS[chain]?.rpc || '';
 }
 

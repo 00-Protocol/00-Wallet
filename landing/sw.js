@@ -1,5 +1,5 @@
 // 0penw0rld Service Worker
-const CACHE = '0penw0rld-v486';
+const CACHE = '0penw0rld-v504';
 
 const APP_SHELL = [
   '/',
@@ -29,6 +29,9 @@ const APP_SHELL = [
   '/chains.js',
   '/ledger.js',
   '/wizardconnect.js',
+  '/v2.html',
+  '/app.js',
+  '/router.js',
   '/manifest.json',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
@@ -125,7 +128,7 @@ self.addEventListener('fetch', e => {
     );
   } else {
     // HTML files: stale-while-revalidate (serve cache, update in background)
-    const isHtml = url.endsWith('.html') || url.endsWith('/') || url.endsWith('shell.js') || url.endsWith('desktop.css');
+    const isHtml = url.endsWith('.html') || url.endsWith('/') || url.endsWith('shell.js') || url.endsWith('desktop.css') || url.includes('/core/') || url.includes('/views/') || url.includes('/services/') || url.endsWith('app.js') || url.endsWith('router.js') || url.endsWith('chains.js');
     if (isHtml) {
       e.respondWith(
         caches.match(e.request, { ignoreSearch: true }).then(cached => {

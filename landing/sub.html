@@ -343,7 +343,7 @@ import { sha512 }    from 'https://esm.sh/@noble/hashes@1.7.1/sha512';
    CONFIG
    ══════════════════════════════════════════ */
 let _FV = JSON.parse(localStorage.getItem('00_ep_fulcrum') || 'null') || ['wss://bch.imaginary.cash:50004','wss://electroncash.de:50004','wss://bch.loping.net:50004'];
-let _RELAYS = JSON.parse(localStorage.getItem('00_ep_relays') || 'null') || ['wss://relay.damus.io','wss://nos.lol','wss://relay.nostr.band'];
+let _RELAYS = JSON.parse(localStorage.getItem('00_ep_relays') || 'null') || ['wss://relay.damus.io','wss://nos.lol','wss://relay.primal.net'];
 const NOSTR_KIND_SUB_INVOICE = 22240;
 const NOSTR_KIND_SUB_CHAIN   = 22241;
 const FEE_RATE = 2; // sat/byte — conservative

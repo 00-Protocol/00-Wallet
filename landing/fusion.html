@@ -187,8 +187,8 @@
         </div>
         <div style="display:flex;gap:10px;margin-bottom:16px">
           <button class="dt-action-btn" onclick="dtFusOpenCreate()">+ Create Pool</button>
-          <button class="dt-action-btn-outline" onclick="if(window.refreshPools)window.refreshPools()">↻ Refresh</button>
-          <button class="dt-action-btn-outline" id="dt-autojoin-btn" onclick="if(window.toggleAutoJoin)window.toggleAutoJoin()">∞ Auto-Join</button>
+          <button class="dt-action-btn-outline" onclick="if(window.renderRelays)window.renderRelays()">↻ Refresh</button>
+          <button class="dt-action-btn-outline" id="dt-autojoin-btn" onclick="if(window.toggleAutoMix)window.toggleAutoMix()">∞ Auto-Mix</button>
         </div>
         <div id="dt-autojoin-status" style="font-size:12px;color:var(--dt-text-secondary);margin-bottom:12px;display:none"></div>
         <!-- Desktop Create Pool inline form -->
@@ -304,15 +304,14 @@
     });
   };
   window.dtFusCreatePool=function(){
-    // Sync peer count to mobile then call createPool
-    var mobileOpts=document.querySelectorAll('.denom-opt[data-peers]');
-    mobileOpts.forEach(function(el){
-      el.classList.remove('active');
-      if(parseInt(el.dataset.peers)===_dtPeers) el.classList.add('active');
-      if(parseInt(el.dataset.peers)===_dtPeers) el.click();
-    });
-    if(window.createPool) window.createPool();
-    dtFusCloseCreate();
+    // Signal ready to first available relay
+    if(window._joinerRelays && window._joinerRelays.length > 0) {
+      dtFusCloseCreate();
+      dtFusTab('mix');
+      window.startJoin(window._joinerRelays[0].pub);
+    } else {
+      alert('No relays found yet — waiting for relay announcements. Try again in a few seconds.');
+    }
   };
 
   /* ── Poll mobile DOM ─── */
@@ -508,8 +507,8 @@
         </div>
         <div class="pool-actions">
           <button class="pool-btn" onclick="openCreatePool()">+ CREATE POOL</button>
-          <button class="pool-btn" onclick="refreshPools()">↻ REFRESH</button>
-          <button class="autojoin-btn" id="autojoin-btn" onclick="toggleAutoJoin()">∞</button>
+          <button class="pool-btn" onclick="renderRelays()">↻ REFRESH</button>
+          <button class="autojoin-btn" id="autojoin-btn" onclick="toggleAutoMix()">∞</button>
         </div>
         <div class="autojoin-status" id="autojoin-status" style="display:none"></div>
         <div id="pool-list">
@@ -589,8 +588,7 @@
         <div class="denom-opt" data-peers="4">4</div>
         <div class="denom-opt active" data-peers="5">5</div>
       </div>
-      <button class="auth-btn" onclick="createPool()" style="margin-top:8px">ANNOUNCE POOL →</button>
-      <button class="auth-btn" onclick="closeCreatePool()" style="background:transparent;border-color:rgba(0,255,65,.15);color:rgba(0,255,65,.3);font-size:11px;padding:10px">CANCEL</button>
+      <button class="auth-btn" onclick="if(_joinerRelays&&_joinerRelays.length)startJoin(_joinerRelays[0].pub)" style="margin-top:8px">SIGNAL READY →</button>
     </div>
 
   </div><!-- phone -->
@@ -602,8 +600,7 @@
 <script type="module">
 'use strict';
 
-import { secp256k1, schnorr } from 'https://esm.sh/@noble/curves@1.8.1/secp256k1';
-import { sha256 }    from 'https://esm.sh/@noble/hashes@1.7.1/sha256';
+import { secp256k1, schnorr, sha256, onionLayer, onionPeel, onionWrap, onionUnpad, nip04Encrypt, nip04Decrypt, nip44Encrypt, nip44Decrypt, giftWrap, giftUnwrap, makeEvent, b2h, h2b, rand, utf8, concat } from './onion-crypto.js';
 import { ripemd160 } from 'https://esm.sh/@noble/hashes@1.7.1/ripemd160';
 import { hmac }      from 'https://esm.sh/@noble/hashes@1.7.1/hmac';
 import { sha512 }    from 'https://esm.sh/@noble/hashes@1.7.1/sha512';
@@ -612,15 +609,13 @@ import { sha512 }    from 'https://esm.sh/@noble/hashes@1.7.1/sha512';
    CONFIG
    ────────────────────────────────────────── */
 const _FV = JSON.parse(localStorage.getItem('00_ep_fulcrum') || 'null') || ['wss://bch.imaginary.cash:50004','wss://electroncash.de:50004','wss://bch.loping.net:50004'];
-const _RELAYS = JSON.parse(localStorage.getItem('00_ep_relays') || 'null') || ['wss://relay.damus.io','wss://nos.lol','wss://relay.nostr.band'];
+const _RELAYS = JSON.parse(localStorage.getItem('00_ep_relays') || 'null') || ['wss://relay.damus.io','wss://nos.lol','wss://relay.primal.net'];
 
-const NOSTR_KIND_POOL   = 22222;
-const NOSTR_KIND_JOIN   = 22223;
-const NOSTR_KIND_PROTO  = 22224;
+const NOSTR_KIND_RELAY_ANN = 22230;  // relay announces itself
+const NOSTR_KIND_JOINER    = 22231;  // ALL joiner communication (encrypted blobs)
 const PHASE_TIMEOUT     = 60000;
-const PEER_HEARTBEAT_MS = 20000;  // re-send join every 20s
-const PEER_TIMEOUT_MS   = 45000;  // prune peer after 45s silence
-let _heartbeatInterval  = null;
+const READY_WINDOW_MS   = 30000;  // relay collects ready signals for 30s
+const MIN_PARTICIPANTS  = 3;
 
 /* ──────────────────────────────────────────
    STATE
@@ -636,9 +631,13 @@ let _balanceSats = 0;
 let _hdScannedAddrs = []; // all HD addresses with activity (for multi-addr balance)
 let _hdKeyMap = {};       // addr → Uint8Array privKey (for signing HD UTXOs)
 
-// Session identity (fresh per session — not linked to BCH addr)
-let _sessionPriv = null;   // Uint8Array(32) secp256k1 ephemeral key
-let _sessionPub = null;    // hex string, x-only 32 bytes
+// Ephemeral round identity (new key per round, destroyed after)
+let _roundPriv = null;     // Uint8Array(32) ephemeral key for current round
+let _roundPub = null;      // hex string, x-only 32 bytes
+
+// Relay discovery
+let _joinerRelays = [];    // [{pub, min_participants, version, ts}]
+let _activeRelayPub = null; // pubkey of the relay we're using for this round
 
 // Nostr — multi-relay
 let _nostrSockets = [];   // [{ws, url, connected}]
@@ -655,29 +654,19 @@ let _fulcrumCallbacks = {};
 let _activeMix = null;
 let _mixHistory = JSON.parse(localStorage.getItem('00_fusion_history') || '[]');
 let _phaseTimer = null;
-let _banList = JSON.parse(localStorage.getItem('00_fusion_bans') || '[]');
 
-// Session timestamp — ignore pools created before this
-let _sessionStartTs = Math.floor(Date.now() / 1000);
-
-// Auto-join
-let _autoJoin = false;
-let _autoJoinTimer = null;
-const MIN_MIX_SATS = 3000; // minimum balance to participate in a mix
+// Auto-mix
+let _autoMix = false;
+let _autoMixRoundsTarget = 3;   // default: 3 rounds after receiving funds
+let _autoMixRoundsCompleted = 0;
+let _pipelining = false;        // chain unconfirmed outputs across rounds
+const MIN_MIX_SATS = 3000;     // minimum balance to participate in a mix
 
 /* ──────────────────────────────────────────
    UTILITIES
    ────────────────────────────────────────── */
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
-const b2h = b => [...b].map(x => x.toString(16).padStart(2,'0')).join('');
-const h2b = h => new Uint8Array(h.match(/.{2}/g).map(x => parseInt(x,16)));
-const rand = n => crypto.getRandomValues(new Uint8Array(n));
-const utf8 = s => new TextEncoder().encode(s);
-function concat(...arrs) {
-  const r = new Uint8Array(arrs.reduce((s, a) => s + a.length, 0));
-  let o = 0; for (const a of arrs) { r.set(a, o); o += a.length; } return r;
-}
 const u32LE = n => new Uint8Array([n & 0xff, (n >> 8) & 0xff, (n >> 16) & 0xff, (n >> 24) & 0xff]);
 function u64LE(n) {
   const b = new Uint8Array(8); let v = BigInt(n);
@@ -824,88 +813,10 @@ function serializeTx(version, locktime, inputs, outputs) {
 }
 
 /* ──────────────────────────────────────────
-   NIP-01 NOSTR EVENT SIGNING
+   CRYPTO: imported from onion-crypto.js
+   makeEvent, nip04Encrypt, nip04Decrypt,
+   onionLayer, onionPeel, onionWrap, onionUnpad
    ────────────────────────────────────────── */
-async function makeEvent(privBytes, kind, content, tags = []) {
-  const pub = b2h(secp256k1.getPublicKey(privBytes, true).slice(1)); // x-only
-  const created_at = Math.floor(Date.now() / 1000);
-  const idHash = sha256(utf8(JSON.stringify([0, pub, created_at, kind, tags, content])));
-  const sig = b2h(await schnorr.sign(idHash, privBytes));
-  return { id: b2h(idHash), pubkey: pub, created_at, kind, tags, content, sig };
-}
-
-/* ──────────────────────────────────────────
-   NIP-04 ENCRYPTION (secp256k1 ECDH + AES-CBC)
-   ────────────────────────────────────────── */
-async function nip04Encrypt(myPriv, theirPubHex, msg) {
-  const shared = secp256k1.getSharedSecret(myPriv, h2b('02' + theirPubHex)).slice(1, 33);
-  const iv = rand(16);
-  const key = await crypto.subtle.importKey('raw', shared, { name: 'AES-CBC' }, false, ['encrypt']);
-  const ct = await crypto.subtle.encrypt({ name: 'AES-CBC', iv }, key, utf8(msg));
-  return btoa(String.fromCharCode(...new Uint8Array(ct))) + '?iv=' + btoa(String.fromCharCode(...iv));
-}
-
-async function nip04Decrypt(myPriv, senderPubHex, encContent) {
-  try {
-    const [ctB64, ivB64] = encContent.split('?iv=');
-    const ct = Uint8Array.from(atob(ctB64), c => c.charCodeAt(0));
-    const iv = Uint8Array.from(atob(ivB64), c => c.charCodeAt(0));
-    const shared = secp256k1.getSharedSecret(myPriv, h2b('02' + senderPubHex)).slice(1, 33);
-    const key = await crypto.subtle.importKey('raw', shared, { name: 'AES-CBC' }, false, ['decrypt']);
-    const pt = await crypto.subtle.decrypt({ name: 'AES-CBC', iv }, key, ct);
-    return new TextDecoder().decode(pt);
-  } catch { return null; }
-}
-
-/* ──────────────────────────────────────────
-   ONION ENCRYPTION (secp256k1 ECDH + AES-256-GCM)
-   Each layer: eph_pub(33) || nonce(12) || ciphertext+tag
-   ────────────────────────────────────────── */
-async function onionLayer(data, peelerPubHex) {
-  const eph = rand(32);
-  const ephPub = secp256k1.getPublicKey(eph, true); // 33 bytes compressed
-  const shared = secp256k1.getSharedSecret(eph, h2b('02' + peelerPubHex)).slice(1, 33);
-  const aesKey = sha256(shared);
-  const iv = rand(12);
-  const key = await crypto.subtle.importKey('raw', aesKey, { name: 'AES-GCM' }, false, ['encrypt']);
-  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv, tagLength: 128 }, key, data));
-  return concat(ephPub, iv, ct);
-}
-
-async function onionPeel(blob, myPriv) {
-  const ephPub = blob.slice(0, 33);
-  const iv = blob.slice(33, 45);
-  const ct = blob.slice(45);
-  const shared = secp256k1.getSharedSecret(myPriv, ephPub).slice(1, 33);
-  const aesKey = sha256(shared);
-  const key = await crypto.subtle.importKey('raw', aesKey, { name: 'AES-GCM' }, false, ['decrypt']);
-  return new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv, tagLength: 128 }, key, ct));
-}
-
-// Wrap output in layers: innermost = last peeler, outermost = first peeler
-// v2 payload format: "addr|value_sats"
-async function onionWrap(payload, peelerPubHexes) {
-  const raw = utf8(payload);
-  const padded = new Uint8Array(80); // v2: 80 bytes for addr|value
-  padded.set(raw);
-  padded[raw.length] = 0x01; // delimiter
-  let data = padded;
-  for (let i = peelerPubHexes.length - 1; i >= 0; i--) {
-    data = await onionLayer(data, peelerPubHexes[i]);
-  }
-  return data;
-}
-
-function onionUnpad(data) {
-  const idx = data.indexOf(0x01);
-  const str = new TextDecoder().decode(data.slice(0, idx > 0 ? idx : data.length));
-  // v2: parse "addr|value" format
-  const sep = str.lastIndexOf('|');
-  if (sep > 0) {
-    return { addr: str.slice(0, sep), value: parseInt(str.slice(sep + 1)) || 0 };
-  }
-  return { addr: str, value: 0 }; // v1 fallback
-}
 
 /* ──────────────────────────────────────────
    CLOCK
@@ -979,10 +890,8 @@ async function tryUnlock(autoPass) {
     } else {
       console.warn('[FUSION] no account node in vault — re-import wallet to enable HD addresses');
     }
-    // Fresh session identity (ephemeral — not linked to BCH address)
-    _sessionPriv = rand(32);
-    _sessionPub = b2h(secp256k1.getPublicKey(_sessionPriv, true).slice(1));
-    console.log('[FUSION] session pub:', _sessionPub.slice(0, 16) + '...');
+    // Round identity created on demand via _generateRoundIdentity()
+    console.log('[JOINER] ready — round keys generated per-round');
     $('#auth-view').style.display = 'none';
     $('#main-view').style.display = 'flex';
     boot();
@@ -1251,21 +1160,18 @@ function _connectRelay(url) {
 function _subscribeRelay(ws) {
   if (!ws || ws.readyState !== 1) return;
   const now = Math.floor(Date.now() / 1000);
-  ws.send(JSON.stringify(['REQ', 'fusion-pools', {
-    kinds: [NOSTR_KIND_POOL],
-    '#t': ['0penw0rld-fusion'],
-    since: now - 300, // 5 min — pools expire fast
+  // Subscribe to relay announcements (discover joiner relays)
+  ws.send(JSON.stringify(['REQ', 'joiner-relays', {
+    kinds: [NOSTR_KIND_RELAY_ANN],
+    '#t': ['0penw0rld-joiner'],
+    since: now - 3600,
   }]));
-  ws.send(JSON.stringify(['REQ', 'fusion-join', {
-    kinds: [NOSTR_KIND_JOIN],
-    '#t': ['0penw0rld-fusion'],
-    since: now - 300,
-  }]));
-  if (_sessionPub) {
-    ws.send(JSON.stringify(['REQ', 'fusion-proto', {
-      kinds: [NOSTR_KIND_PROTO],
-      '#p': [_sessionPub],
-      since: now - 600,
+  // Subscribe to gift-wrapped joiner blobs addressed to our ephemeral round key (kind 1059)
+  if (_roundPub) {
+    ws.send(JSON.stringify(['REQ', 'joiner-round', {
+      kinds: [1059],
+      '#p': [_roundPub],
+      since: now - 300,
     }]));
   }
 }
@@ -1285,229 +1191,175 @@ function nostrPublish(event) {
 /* ──────────────────────────────────────────
    NOSTR EVENT HANDLING
    ────────────────────────────────────────── */
-let _pools = [];
-const _expiredPoolIds = new Set();  // track expired pools to prevent resurrection
 
 function handleNostrEvent(ev) {
-  if (ev.kind === NOSTR_KIND_POOL) handlePoolAnnouncement(ev);
-  else if (ev.kind === NOSTR_KIND_JOIN) handlePoolJoin(ev);
-  else if (ev.kind === NOSTR_KIND_PROTO) handleProtoMessage(ev);
+  if (ev.kind === NOSTR_KIND_RELAY_ANN) handleRelayAnnouncement(ev);
+  else if (ev.kind === 1059) handleGiftWrap(ev);
 }
 
-function handlePoolAnnouncement(ev) {
+// Discover joiner relays
+function handleRelayAnnouncement(ev) {
   try {
     const data = JSON.parse(ev.content);
-    if (!data.min_peers) return;
-    if (ev.created_at < _sessionStartTs) return;
-    if (_pools.find(p => p.id === ev.id)) return;
-    if (_expiredPoolIds.has(ev.id)) return;
-    _pools.push({
-      id: ev.id, pubkey: ev.pubkey,
-      min_peers: data.min_peers, peers: [ev.pubkey], created: ev.created_at,
-      peerSeen: { [ev.pubkey]: Date.now() },
-    });
-    renderPools();
+    if (!data.services || !data.services.includes('joiner')) return;
+    const existing = _joinerRelays.find(r => r.pub === ev.pubkey);
+    if (existing) {
+      existing.ts = Date.now();
+      existing.min_participants = data.min_participants || MIN_PARTICIPANTS;
+      existing.version = data.version || '1.0.0';
+    } else {
+      _joinerRelays.push({
+        pub: ev.pubkey,
+        min_participants: data.min_participants || MIN_PARTICIPANTS,
+        version: data.version || '1.0.0',
+        indexer_url: data.indexer_url || null,
+        ts: Date.now(),
+      });
+      console.log('[JOINER] discovered relay:', ev.pubkey.slice(0, 12), data);
+    }
+    renderRelays();
   } catch (e) {}
 }
 
-function handlePoolJoin(ev) {
+// Handle NIP-59 gift wrap → unwrap → process inner rumor
+async function handleGiftWrap(ev) {
+  if (!_roundPriv) return;
   try {
-    const data = JSON.parse(ev.content);
-    const pool = _pools.find(p => p.id === data.pool_id);
-    if (!pool) return;
-    if (!pool.peerSeen) pool.peerSeen = {};
-
-    // Handle leave
-    if (data.leave) {
-      pool.peers = pool.peers.filter(p => p !== ev.pubkey);
-      delete pool.peerSeen[ev.pubkey];
-      renderPools();
-      if (_activeMix && _activeMix.poolId === data.pool_id && _activeMix.phase <= 1) {
-        _activeMix.peers = _activeMix.peers.filter(p => p !== ev.pubkey);
-        updateMixPhase();
-      }
-      return;
-    }
-
-    // Update last-seen timestamp (heartbeat)
-    pool.peerSeen[ev.pubkey] = Date.now();
-
-    if (!pool.peers.includes(ev.pubkey)) {
-      pool.peers.push(ev.pubkey);
-      renderPools();
-    }
-    if (_activeMix && _activeMix.poolId === data.pool_id) {
-      if (!_activeMix.peers.includes(ev.pubkey)) _activeMix.peers.push(ev.pubkey);
-      updateMixPhase();
-    }
-  } catch (e) {}
+    const unwrapped = await giftUnwrap(_roundPriv, ev);
+    if (!unwrapped) return;
+    const { rumor, sealPubkey } = unwrapped;
+    if (rumor.kind !== NOSTR_KIND_JOINER) return;
+    const data = JSON.parse(rumor.content);
+    _dispatchJoinerMsg(sealPubkey, data);
+  } catch (e) { console.warn('[JOINER] unwrap error:', e); }
 }
 
-async function handleProtoMessage(ev) {
-  if (!_activeMix) return;
-  try {
-    // NIP-04 decrypt
-    const decrypted = await nip04Decrypt(_sessionPriv, ev.pubkey, ev.content);
-    if (!decrypted) return;
-    const data = JSON.parse(decrypted);
-    if (data.pool_id !== _activeMix.poolId) return;
+// Generate ephemeral key pair for a new round
+function _generateRoundIdentity() {
+  _roundPriv = rand(32);
+  _roundPub = b2h(secp256k1.getPublicKey(_roundPriv, true).slice(1));
+  console.log('[JOINER] ephemeral round key:', _roundPub.slice(0, 16) + '...');
+  // Re-subscribe with new key
+  nostrSubscribe();
+}
 
-    _dispatchProtoMsg(ev.pubkey, data);
-  } catch (e) { console.warn('[FUSION] proto msg error:', e); }
+// Destroy round identity after round completes — zero key bytes before releasing
+function _destroyRoundIdentity() {
+  if (_roundPriv) { for (let i = 0; i < _roundPriv.length; i++) _roundPriv[i] = 0; }
+  _roundPriv = null;
+  _roundPub = null;
+}
+
+// Send encrypted "ready" signal to relay
+async function signalReady(relayPubHex) {
+  _generateRoundIdentity();
+  _activeRelayPub = relayPubHex;
+
+  const readyPayload = JSON.stringify({
+    type: 'ready',
+    utxo_count: _utxos.filter(u => u.value >= 546).length,
+    output_count: Math.min(4, Math.max(2, Math.floor(_balanceSats / 600))),
+  });
+
+  const ev = await giftWrap(_roundPriv, relayPubHex, NOSTR_KIND_JOINER, readyPayload);
+  nostrPublish(ev);
+  console.log('[JOINER] ready signal sent to relay', relayPubHex.slice(0, 12));
+  setPhase(1); // waiting for round_start
+}
+
+// Send gift-wrapped message through relay to all round participants
+async function sendViaRelay(payload) {
+  if (!_activeRelayPub || !_roundPriv) return;
+  const msg = JSON.stringify(payload);
+  const ev = await giftWrap(_roundPriv, _activeRelayPub, NOSTR_KIND_JOINER, msg);
+  nostrPublish(ev);
 }
 
 const _msgBuffer = []; // buffer for early-arriving messages
 
-function _dispatchProtoMsg(pubkey, data) {
-  const step = data.step;
+function _dispatchJoinerMsg(senderPub, data) {
+  const type = data.type || data.step;
   const phase = _activeMix ? _activeMix.phase : 0;
 
-  // Only buffer 'inputs' and 'onion' — other steps handle their own phase logic
-  const stepPhase = { inputs: 2, onion: 3 };
-  const needed = stepPhase[step] || 0;
+  // Handle round_start from relay (no active mix needed yet)
+  if (type === 'round_start') {
+    handleRoundStart(data);
+    return;
+  }
 
-  // If message is for a future phase, buffer it
+  if (!_activeMix) return;
+
+  // Buffer messages for future phases
+  const typePhase = { inputs: 2, onion: 3 };
+  const needed = typePhase[type] || 0;
   if (needed > 0 && phase < needed) {
-    console.log('[FUSION] buffered', step, 'from', pubkey.slice(0, 12), '(phase', phase, '< needed', needed + ')');
-    _msgBuffer.push({ pubkey, data });
+    console.log('[JOINER] buffered', type, 'from', senderPub.slice(0, 12), '(phase', phase, '< needed', needed + ')');
+    _msgBuffer.push({ pubkey: senderPub, data });
     return;
   }
 
-  if (step === 'inputs')       handleInputsMsg(pubkey, data);
-  else if (step === 'onion')   handleOnionMsg(pubkey, data);
-  else if (step === 'outputs') handleOutputsMsg(pubkey, data);
-  else if (step === 'tx')      handleTxMsg(pubkey, data);
-  else if (step === 'sign')    handleSignMsg(pubkey, data);
-  else if (step === 'blame')   handleBlameMsg(pubkey, data);
+  if (type === 'inputs')       handleInputsMsg(senderPub, data);
+  else if (type === 'onion')   handleOnionMsg(senderPub, data);
+  else if (type === 'outputs') handleOutputsMsg(senderPub, data);
+  else if (type === 'tx')      handleTxMsg(senderPub, data);
+  else if (type === 'sign')    handleSignMsg(senderPub, data);
 }
 
-/* ──────────────────────────────────────────
-   POOL UI
-   ────────────────────────────────────────── */
-function pruneStalePeers() {
-  const now = Date.now();
-  let changed = false;
-  for (const pool of _pools) {
-    if (!pool.peerSeen) continue;
-    for (const [pub, ts] of Object.entries(pool.peerSeen)) {
-      if (pub === _sessionPub) continue;
-      if (now - ts > PEER_TIMEOUT_MS) {
-        pool.peers = pool.peers.filter(p => p !== pub);
-        delete pool.peerSeen[pub];
-        changed = true;
-      }
-    }
-  }
-  if (changed && _activeMix && _activeMix.phase === 1) {
-    const pool = _pools.find(p => p.id === _activeMix.poolId);
-    if (pool) {
-      _activeMix.peers = _activeMix.peers.filter(p => pool.peers.includes(p) || p === _sessionPub);
-      updateMixPhase();
-    }
-  }
-  return changed;
-}
-
-function renderPools() {
-  const el = $('#pool-list');
-  // Only show pools with at least 1 peer, created after session start, not full
-  const recent = _pools.filter(p => p.created >= _sessionStartTs && p.peers.length > 0 && p.peers.length < p.min_peers);
-  if (recent.length === 0) {
-    el.innerHTML = '<div class="empty-state">NO POOLS FOUND<br><span style="font-size:9px;color:rgba(0,255,65,.15)">create one or wait for peers</span></div>';
-    return;
-  }
-  el.innerHTML = recent.map(p => `
-    <div class="pool-item" onclick="joinPool('${p.id}')">
-      <div class="pool-icon">⚗</div>
-      <div class="pool-info">
-        <div class="pool-amount" style="font-size:11px">COMBINATORIAL MIX</div>
-        <div class="pool-detail">MIN ${p.min_peers} PEERS · ${new Date(p.created * 1000).toLocaleTimeString()}</div>
-      </div>
-      <div class="pool-peers">${p.peers.length}/${p.min_peers} 👥</div>
-    </div>
-  `).join('');
-}
-
-function refreshPools() {
-  // Purge stale pools (>5min) + stale peers
-  const now = Math.floor(Date.now() / 1000);
-  _pools = _pools.filter(p => {
-    if ((now - p.created) >= 300) { _expiredPoolIds.add(p.id); return false; }
-    return true;
-  });
-  pruneStalePeers();
-  renderPools();
-  nostrSubscribe(); // re-subscribe to catch missed events (_expiredPoolIds blocks zombies)
-}
-
-/* ──────────────────────────────────────────
-   CREATE POOL
-   ────────────────────────────────────────── */
-let _selectedPeers = 5;
-
-$$('.denom-opt[data-peers]').forEach(el => el.onclick = () => {
-  $$('.denom-opt[data-peers]').forEach(x => x.classList.remove('active'));
-  el.classList.add('active');
-  _selectedPeers = parseInt(el.dataset.peers);
-});
-
-function openCreatePool() { $('#create-overlay').classList.add('open'); }
-function closeCreatePool() { $('#create-overlay').classList.remove('open'); }
-
-async function createPool() {
-  if (_balanceSats < MIN_MIX_SATS) {
-    alert('Insufficient balance (need at least ' + satsToBch(MIN_MIX_SATS) + ' BCH)');
-    return;
-  }
-
-  const content = JSON.stringify({ min_peers: _selectedPeers, v: 2 });
-  const ev = await makeEvent(_sessionPriv, NOSTR_KIND_POOL, content, [['t', '0penw0rld-fusion']]);
-
-  _pools.push({
-    id: ev.id, pubkey: ev.pubkey,
-    min_peers: _selectedPeers, peers: [ev.pubkey], created: ev.created_at,
-    peerSeen: { [ev.pubkey]: Date.now() },
-  });
-
-  nostrPublish(ev);
-  closeCreatePool();
-  renderPools();
-  joinPool(ev.id);
-}
-
-/* ──────────────────────────────────────────
-   JOIN POOL & MIX PROTOCOL
-   ────────────────────────────────────────── */
-async function joinPool(poolId) {
-  const pool = _pools.find(p => p.id === poolId);
-  if (!pool) return;
-
-  if (_balanceSats < MIN_MIX_SATS) {
-    alert('Insufficient balance (need at least ' + satsToBch(MIN_MIX_SATS) + ' BCH)');
-    return;
-  }
-
-  // Ensure we're in the peers list, filter banned peers
-  const peers = pool.peers.filter(p => !_banList.includes(p));
-  if (!peers.includes(_sessionPub)) peers.push(_sessionPub);
+// Handle round_start from relay
+function handleRoundStart(data) {
+  const { round_id, participants, mix_order } = data;
+  console.log('[JOINER] round started:', round_id.slice(0, 12), participants.length, 'participants');
 
   _activeMix = {
-    poolId,
-    minPeers: pool.min_peers,
-    peers,
-    phase: 1,
+    roundId: round_id,
+    peers: participants,
+    mixOrder: mix_order,
+    relayPub: _activeRelayPub,
+    phase: 2,
     myInputs: [],
-    myOutputs: [],        // [{addr, value, stealth}]
-    peerInputs: {},       // pubkey → { inputs, output_count }
-    expectedOnions: 0,    // total onions expected from all peers
-    collectedOnions: [],  // base64 strings
-    blindOutputs: [],     // [{addr, value}]
+    myOutputs: [],
+    peerInputs: {},
+    collectedOnions: null,
+    blindOutputs: null,
     allInputs: null,
     allOutputs: null,
     unsignedTxHex: null,
     signatures: {},
-    mixOrder: [],
   };
+
+  setPhase(2);
+  startInputRegistration();
+}
+
+/* ──────────────────────────────────────────
+   RELAY UI
+   ────────────────────────────────────────── */
+function renderRelays() {
+  const el = $('#pool-list');
+  if (_joinerRelays.length === 0) {
+    el.innerHTML = '<div class="empty-state">NO RELAYS FOUND<br><span style="font-size:9px;color:rgba(0,255,65,.15)">waiting for relay announcements...</span></div>';
+    return;
+  }
+  el.innerHTML = _joinerRelays.map(r => `
+    <div class="pool-item" onclick="startJoin('${r.pub}')">
+      <div class="pool-icon">⚡</div>
+      <div class="pool-info">
+        <div class="pool-amount" style="font-size:11px">JOINER RELAY</div>
+        <div class="pool-detail">MIN ${r.min_participants} PEERS · v${r.version}</div>
+      </div>
+      <div class="pool-peers">${r.pub.slice(0, 8)}...</div>
+    </div>
+  `).join('');
+}
+
+/* ──────────────────────────────────────────
+   START JOIN — signal ready to relay
+   ────────────────────────────────────────── */
+async function startJoin(relayPubHex) {
+  if (_balanceSats < MIN_MIX_SATS) {
+    alert('Insufficient balance (need at least ' + satsToBch(MIN_MIX_SATS) + ' BCH)');
+    return;
+  }
 
   // Switch to mix tab
   $$('.tab').forEach(x => x.classList.remove('active'));
@@ -1517,51 +1369,25 @@ async function joinPool(poolId) {
 
   $('#mix-idle').style.display = 'none';
   $('#mix-active').style.display = 'flex';
-  $('#mix-denom').textContent = 'COMBINATORIAL MIX';
-  $('#mix-peers').textContent = peers.length + '/' + pool.min_peers + ' PARTICIPANTS';
+  $('#mix-denom').textContent = 'SILENT JOINER';
+  $('#mix-peers').textContent = 'SIGNALING READY...';
   $('#mix-io-info').textContent = '';
   $('#mix-result').style.display = 'none';
 
-  setPhase(1);
-
-  // Publish signed join event
-  const joinEv = await makeEvent(_sessionPriv, NOSTR_KIND_JOIN,
-    JSON.stringify({ pool_id: poolId }),
-    [['t', '0penw0rld-fusion']]);
-  nostrPublish(joinEv);
-
-  // Also mark ourselves as seen locally (in case relay doesn't echo)
-  if (pool.peerSeen) pool.peerSeen[_sessionPub] = Date.now();
-
-  // Heartbeat — re-send join every 20s while in phase 1
-  if (_heartbeatInterval) clearInterval(_heartbeatInterval);
-  _heartbeatInterval = setInterval(async () => {
-    if (!_activeMix || _activeMix.phase !== 1) {
-      clearInterval(_heartbeatInterval); _heartbeatInterval = null;
-      return;
-    }
-    const hbEv = await makeEvent(_sessionPriv, NOSTR_KIND_JOIN,
-      JSON.stringify({ pool_id: _activeMix.poolId }),
-      [['t', '0penw0rld-fusion']]);
-    nostrPublish(hbEv);
-    // Update own timestamp locally
-    const p = _pools.find(x => x.id === _activeMix.poolId);
-    if (p && p.peerSeen) p.peerSeen[_sessionPub] = Date.now();
-  }, PEER_HEARTBEAT_MS);
-
-  console.log('[FUSION] joined pool', poolId.slice(0, 12) + '...');
+  await signalReady(relayPubHex);
+  console.log('[JOINER] signaled ready to relay', relayPubHex.slice(0, 12));
 }
 
 /* ──────────────────────────────────────────
    MIX PHASES
    ────────────────────────────────────────── */
 function setPhase(n) {
-  if (!_activeMix) return;
-  _activeMix.phase = n;
+  if (n > 1 && !_activeMix) return;
+  if (_activeMix) _activeMix.phase = n;
 
   // Replay buffered messages for this phase
   const pending = _msgBuffer.splice(0);
-  for (const msg of pending) _dispatchProtoMsg(msg.pubkey, msg.data);
+  for (const msg of pending) _dispatchJoinerMsg(msg.pubkey, msg.data);
 
   $$('.phase-item').forEach(el => {
     const p = parseInt(el.dataset.phase);
@@ -1575,7 +1401,7 @@ function setPhase(n) {
   if (activeEl) {
     const statusEl = activeEl.querySelector('.phase-status');
     const spinnerHtml = '<div class="spinner" style="display:inline-block;width:12px;height:12px;vertical-align:middle;margin-right:6px"></div>';
-    if (n === 1) statusEl.innerHTML = spinnerHtml + 'Waiting for ' + _activeMix.minPeers + ' participants...';
+    if (n === 1) statusEl.innerHTML = spinnerHtml + 'Waiting for relay to start round...';
     else if (n === 2) statusEl.innerHTML = spinnerHtml + 'Registering inputs...';
     else if (n === 3) statusEl.innerHTML = spinnerHtml + 'Onion-encrypting outputs...';
     else if (n === 4) statusEl.innerHTML = spinnerHtml + 'Assembling CoinJoin TX...';
@@ -1587,20 +1413,13 @@ function setPhase(n) {
   if ([2, 3, 5].includes(n)) startPhaseTimeout(n);
   else clearPhaseTimeout();
 
-  updateMixPhase();
+  updateMixUI();
 }
 
-function updateMixPhase() {
+function updateMixUI() {
   if (!_activeMix) return;
   const m = _activeMix;
-
-  $('#mix-peers').textContent = m.peers.length + '/' + m.minPeers + ' PARTICIPANTS';
-
-  // Phase 1: wait for enough peers
-  if (m.phase === 1 && m.peers.length >= m.minPeers) {
-    setPhase(2);
-    startInputRegistration();
-  }
+  $('#mix-peers').textContent = m.peers.length + ' PARTICIPANTS';
 }
 
 /* ──────────────────────────────────────────
@@ -1661,22 +1480,13 @@ async function startInputRegistration() {
   const ioEl = $('#mix-io-info');
   if (ioEl) ioEl.textContent = nInputs + ' INPUTS → ' + nOutputs + ' STEALTH OUTPUTS';
 
-  // Send inputs + output_count to each peer (NIP-04 encrypted)
-  const inputPayload = JSON.stringify({
-    pool_id: m.poolId, step: 'inputs',
+  // Send inputs + output_count via relay (onion-wrapped)
+  await sendViaRelay({
+    round_id: m.roundId, step: 'inputs',
     inputs: selected.map(u => ({ txid: u.tx_hash, vout: u.tx_pos, value: u.value })),
     output_count: nOutputs,
   });
-
-  for (const peer of m.peers) {
-    if (peer === _sessionPub) continue;
-    const enc = await nip04Encrypt(_sessionPriv, peer, inputPayload);
-    const ev = await makeEvent(_sessionPriv, NOSTR_KIND_PROTO, enc, [
-      ['t', '0penw0rld-fusion'], ['p', peer], ['e', m.poolId],
-    ]);
-    nostrPublish(ev);
-  }
-  console.log('[FUSION v2] inputs registered:', selected.length, 'UTXOs');
+  console.log('[JOINER] inputs registered:', selected.length, 'UTXOs');
 }
 
 function handleInputsMsg(pubkey, data) {
@@ -1714,20 +1524,17 @@ async function startBlindOutput() {
   }
 
   const firstPeeler = peelers[0];
-  if (firstPeeler === _sessionPub) {
+  if (firstPeeler === _roundPub) {
     // We are first peeler — collect our onions locally + wait for peers
     m.collectedOnions = [...myOnions];
     checkOnionsReady();
   } else {
-    // Send all our onions to first peeler
+    // Send all our onions to first peeler via relay
     for (const onionB64 of myOnions) {
-      const enc = await nip04Encrypt(_sessionPriv, firstPeeler, JSON.stringify({
-        pool_id: m.poolId, step: 'onion', onion: onionB64,
-      }));
-      const ev = await makeEvent(_sessionPriv, NOSTR_KIND_PROTO, enc, [
-        ['t', '0penw0rld-fusion'], ['p', firstPeeler], ['e', m.poolId],
-      ]);
-      nostrPublish(ev);
+      await sendViaRelay({
+        round_id: m.roundId, step: 'onion', onion: onionB64,
+        target: firstPeeler,
+      });
     }
   }
 }
@@ -1750,18 +1557,18 @@ function checkOnionsReady() {
 
 async function processOnions() {
   const m = _activeMix;
-  const myIndex = m.mixOrder.indexOf(_sessionPub);
+  const myIndex = m.mixOrder.indexOf(_roundPub);
 
   // Peel our layer from each onion
   const peeled = [];
   for (const onionB64 of m.collectedOnions) {
     const blob = Uint8Array.from(atob(onionB64), c => c.charCodeAt(0));
     try {
-      const inner = await onionPeel(blob, _sessionPriv);
+      const inner = await onionPeel(blob, _roundPriv);
       peeled.push(inner);
     } catch (e) {
-      console.error('[FUSION] onion peel failed:', e);
-      return; // Abort — blame protocol would go here
+      console.error('[JOINER] onion peel failed:', e);
+      return;
     }
   }
 
@@ -1774,40 +1581,30 @@ async function processOnions() {
   const nextIndex = myIndex + 1;
 
   if (nextIndex >= m.mixOrder.length) {
-    // LAST PEELER — we have plaintext outputs (v2: {addr, value} objects)
+    // LAST PEELER — we have plaintext outputs
     m.blindOutputs = peeled.map(p => onionUnpad(p));
-    console.log('[FUSION v2] blind outputs revealed:', m.blindOutputs.length,
+    console.log('[JOINER] blind outputs revealed:', m.blindOutputs.length,
       m.blindOutputs.map(o => o.value + ' sats').join(', '));
 
-    // Broadcast blind outputs to all peers
-    for (const peer of m.peers) {
-      if (peer === _sessionPub) continue;
-      const enc = await nip04Encrypt(_sessionPriv, peer, JSON.stringify({
-        pool_id: m.poolId, step: 'outputs', outputs: m.blindOutputs,
-      }));
-      const ev = await makeEvent(_sessionPriv, NOSTR_KIND_PROTO, enc, [
-        ['t', '0penw0rld-fusion'], ['p', peer], ['e', m.poolId],
-      ]);
-      nostrPublish(ev);
-    }
+    // Broadcast blind outputs to all peers via relay
+    await sendViaRelay({
+      round_id: m.roundId, step: 'outputs', outputs: m.blindOutputs,
+    });
 
     setPhase(4);
     startTxAssembly();
   } else {
-    // Forward to next peeler
+    // Forward to next peeler via relay
     const nextPeeler = m.mixOrder[nextIndex];
-    m.collectedOnions = []; // Reset for potential next role
+    m.collectedOnions = [];
     for (const inner of peeled) {
       const innerB64 = btoa(String.fromCharCode(...inner));
-      const enc = await nip04Encrypt(_sessionPriv, nextPeeler, JSON.stringify({
-        pool_id: m.poolId, step: 'onion', onion: innerB64,
-      }));
-      const ev = await makeEvent(_sessionPriv, NOSTR_KIND_PROTO, enc, [
-        ['t', '0penw0rld-fusion'], ['p', nextPeeler], ['e', m.poolId],
-      ]);
-      nostrPublish(ev);
+      await sendViaRelay({
+        round_id: m.roundId, step: 'onion', onion: innerB64,
+        target: nextPeeler,
+      });
     }
-    console.log('[FUSION] forwarded', peeled.length, 'onions to', nextPeeler.slice(0, 12) + '...');
+    console.log('[JOINER] forwarded', peeled.length, 'onions to', nextPeeler.slice(0, 12));
   }
 }
 
@@ -1830,11 +1627,11 @@ async function startTxAssembly() {
   const lastPeeler = m.mixOrder[m.mixOrder.length - 1];
 
   // Only last peeler assembles the TX
-  if (_sessionPub !== lastPeeler) {
-    console.log('[FUSION v2] waiting for TX from assembler (last peeler:', lastPeeler.slice(0, 12) + ')');
+  if (_roundPub !== lastPeeler) {
+    console.log('[JOINER] waiting for TX from assembler (last peeler:', lastPeeler.slice(0, 12) + ')');
     return;
   }
-  console.log('[FUSION v2] I am assembler — building TX...');
+  console.log('[JOINER] I am assembler — building TX...');
   try {
 
   // Collect ALL inputs
@@ -1842,7 +1639,7 @@ async function startTxAssembly() {
   for (const u of m.myInputs) {
     allInputs.push({
       txidLE: h2b(u.tx_hash).reverse(), txid: u.tx_hash,
-      vout: u.tx_pos, value: u.value, sequence: 0xffffffff, owner: _sessionPub,
+      vout: u.tx_pos, value: u.value, sequence: 0xffffffff, owner: _roundPub,
       _addr: u._addr,
     });
   }
@@ -1888,20 +1685,12 @@ async function startTxAssembly() {
 
   console.log('[FUSION v2] TX assembled:', allInputs.length, 'in,', allOutputs.length, 'out, fee:', fee, 'sats');
 
-  // Broadcast TX to all peers
-  const txPayload = JSON.stringify({
-    pool_id: m.poolId, step: 'tx', tx_hex: m.unsignedTxHex,
+  // Broadcast TX to all peers via relay
+  await sendViaRelay({
+    round_id: m.roundId, step: 'tx', tx_hex: m.unsignedTxHex,
     inputs: allInputs.map(i => ({ txid: i.txid, vout: i.vout, value: i.value, owner: i.owner })),
     outputs: allOutputs.map(o => ({ value: o.value, script: b2h(o.script) })),
   });
-  for (const peer of m.peers) {
-    if (peer === _sessionPub) continue;
-    const enc = await nip04Encrypt(_sessionPriv, peer, txPayload);
-    const ev = await makeEvent(_sessionPriv, NOSTR_KIND_PROTO, enc, [
-      ['t', '0penw0rld-fusion'], ['p', peer], ['e', m.poolId],
-    ]);
-    nostrPublish(ev);
-  }
 
   setPhase(5);
   startVerifySign();
@@ -1946,10 +1735,7 @@ async function startVerifySign() {
     const outScript = b2h(p2pkhAddrScript(out.addr));
     const found = m.allOutputs.some(o => o.value === out.value && b2h(o.script) === outScript);
     if (!found) {
-      console.error('[FUSION v2] OUTPUT MISSING:', out.addr.slice(12, 24), out.value, 'sats — ABORTING');
-      const assembler = m.mixOrder[m.mixOrder.length - 1];
-      if (!_banList.includes(assembler)) _banList.push(assembler);
-      localStorage.setItem('00_fusion_bans', JSON.stringify(_banList));
+      console.error('[JOINER] OUTPUT MISSING:', out.addr.slice(12, 24), out.value, 'sats — ABORTING');
       handlePhaseTimeout(5);
       return;
     }
@@ -1982,7 +1768,7 @@ async function startVerifySign() {
 
   const sigs = [];
   for (let i = 0; i < m.allInputs.length; i++) {
-    if (m.allInputs[i].owner !== _sessionPub) continue;
+    if (m.allInputs[i].owner !== _roundPub) continue;
     const inp = m.allInputs[i];
     const inputAddr = inp._addr || myUtxoMap[inp.txid + ':' + inp.vout];
     const priv = (inputAddr && _hdKeyMap[inputAddr]) ? _hdKeyMap[inputAddr] : _privKey;
@@ -1998,18 +1784,12 @@ async function startVerifySign() {
 
   console.log('[FUSION] signed', sigs.length, 'inputs');
 
-  // Broadcast signatures to all peers
-  const sigPayload = JSON.stringify({ pool_id: m.poolId, step: 'sign', signatures: sigs });
-  for (const peer of m.peers) {
-    if (peer === _sessionPub) continue;
-    const enc = await nip04Encrypt(_sessionPriv, peer, sigPayload);
-    const ev = await makeEvent(_sessionPriv, NOSTR_KIND_PROTO, enc, [
-      ['t', '0penw0rld-fusion'], ['p', peer], ['e', m.poolId],
-    ]);
-    nostrPublish(ev);
-  }
+  // Broadcast signatures via relay
+  await sendViaRelay({
+    round_id: m.roundId, step: 'sign', signatures: sigs,
+  });
 
-  m.signatures[_sessionPub] = sigs;
+  m.signatures[_roundPub] = sigs;
   checkSignaturesReady();
 }
 
@@ -2080,29 +1860,48 @@ async function startBroadcast() {
     setTimeout(refreshBalance, 2000);
     console.log('[FUSION] MIX COMPLETE! txid:', txid);
 
-    // Auto-join: schedule next round
-    if (_autoJoin) {
+    // Auto-mix: pipeline next round or stop
+    _autoMixRoundsCompleted++;
+    if (_autoMix && _autoMixRoundsCompleted < _autoMixRoundsTarget) {
+      autoMixStatus('ROUND ' + _autoMixRoundsCompleted + '/' + _autoMixRoundsTarget + ' — pipelining...');
+      // Pipeline: outputs become inputs for next round
+      if (_pipelining) {
+        _utxos = _utxos.filter(u => !m.myInputs.some(mi => mi.tx_hash === u.tx_hash && mi.tx_pos === u.tx_pos));
+        for (let oi = 0; oi < m.myOutputs.length; oi++) {
+          const out = m.myOutputs[oi];
+          const vout = m.allOutputs.findIndex(o => o.value === out.value && b2h(o.script) === b2h(p2pkhAddrScript(out.addr)));
+          if (vout >= 0) {
+            _utxos.push({ tx_hash: txid, tx_pos: vout, value: out.value, _addr: out.addr, height: 0 });
+            if (out.stealth) _hdKeyMap[out.stealth.addr] = out.stealth.priv;
+          }
+        }
+      }
       resetMix();
-      autoJoinScheduleNext();
+      signalReady(_activeRelayPub);
+    } else {
+      if (_autoMix) autoMixStatus('MIXED — ' + _autoMixRoundsCompleted + ' rounds complete');
+      _destroyRoundIdentity();
     }
   } catch (e) {
-    console.error('[FUSION v2] broadcast failed:', e);
+    console.error('[JOINER] broadcast failed:', e);
     $(`.phase-item[data-phase="6"]`).classList.add('error');
     $(`.phase-item[data-phase="6"] .phase-status`).textContent = 'FAILED: ' + (e.message || e);
     _mixHistory.unshift({ txid: 'FAILED', amount: '0', peers: m.peers.length, outputs: 0, time: Date.now(), status: 'fail' });
     localStorage.setItem('00_fusion_history', JSON.stringify(_mixHistory.slice(0, 50)));
     renderHistory();
+    _destroyRoundIdentity();
 
-    // Auto-join: retry after failure
-    if (_autoJoin) {
+    if (_autoMix) {
       resetMix();
-      autoJoinScheduleNext();
+      autoMixScheduleRetry();
     }
   }
 }
 
 /* ──────────────────────────────────────────
-   BLAME PROTOCOL
+   GRIEF HANDLING
+   Signing phase = blame. Refuse to sign = kicked, round restarts without you.
+   No ban list (ephemeral keys per round make it pointless).
    ────────────────────────────────────────── */
 function startPhaseTimeout(phase) {
   clearPhaseTimeout();
@@ -2116,49 +1915,20 @@ function clearPhaseTimeout() {
 async function handlePhaseTimeout(phase) {
   if (!_activeMix || _activeMix.phase !== phase) return;
   const m = _activeMix;
-  console.warn('[FUSION] TIMEOUT in phase', phase);
+  console.warn('[JOINER] TIMEOUT in phase', phase);
 
-  let blamedPeers = [];
-
+  // Identify non-responders
+  let blamed = [];
   if (phase === 2) {
-    // Who didn't send inputs?
     const responded = new Set(Object.keys(m.peerInputs));
-    blamedPeers = m.peers.filter(p => p !== _sessionPub && !responded.has(p));
-  } else if (phase === 3) {
-    // Onion routing stalled — blame current peeler if we can identify
-    const myIdx = m.mixOrder.indexOf(_sessionPub);
-    if (myIdx === 0 && m.collectedOnions && m.collectedOnions.length < m.peers.length) {
-      // We're first peeler and didn't get all onions — blame peers who didn't send
-      blamedPeers = m.peers.filter(p => p !== _sessionPub);
-    }
+    blamed = m.peers.filter(p => p !== _roundPub && !responded.has(p));
   } else if (phase === 5) {
-    // Who didn't sign?
     const signed = new Set(Object.keys(m.signatures));
-    blamedPeers = m.peers.filter(p => !signed.has(p));
+    blamed = m.peers.filter(p => !signed.has(p));
   }
 
-  if (blamedPeers.length > 0) {
-    console.warn('[FUSION] BLAME:', blamedPeers.map(p => p.slice(0, 12)).join(', '));
-
-    // Ban blamed peers
-    for (const p of blamedPeers) {
-      if (!_banList.includes(p)) _banList.push(p);
-    }
-    localStorage.setItem('00_fusion_bans', JSON.stringify(_banList));
-
-    // Broadcast blame to remaining peers
-    const blamePayload = JSON.stringify({
-      pool_id: m.poolId, step: 'blame',
-      blamed: blamedPeers, reason: 'timeout_phase_' + phase,
-    });
-    for (const peer of m.peers) {
-      if (peer === _sessionPub || blamedPeers.includes(peer)) continue;
-      const enc = await nip04Encrypt(_sessionPriv, peer, blamePayload);
-      const ev = await makeEvent(_sessionPriv, NOSTR_KIND_PROTO, enc, [
-        ['t', '0penw0rld-fusion'], ['p', peer], ['e', m.poolId],
-      ]);
-      nostrPublish(ev);
-    }
+  if (blamed.length > 0) {
+    console.warn('[JOINER] non-responders:', blamed.map(p => p.slice(0, 12)).join(', '));
   }
 
   // Mark phase as error in UI
@@ -2166,34 +1936,25 @@ async function handlePhaseTimeout(phase) {
   if (phaseEl) {
     phaseEl.classList.add('error');
     phaseEl.querySelector('.phase-status').textContent =
-      blamedPeers.length > 0
-        ? 'TIMEOUT — blamed ' + blamedPeers.length + ' peer(s)'
-        : 'TIMEOUT — mix aborted';
+      blamed.length > 0
+        ? 'TIMEOUT — ' + blamed.length + ' peer(s) dropped'
+        : 'TIMEOUT — round aborted';
   }
 
-  // Log to history
   _mixHistory.unshift({
-    txid: 'BLAME', amount: '0', peers: m.peers.length,
+    txid: 'TIMEOUT', amount: '0', peers: m.peers.length,
     outputs: 0, time: Date.now(), status: 'fail',
   });
   localStorage.setItem('00_fusion_history', JSON.stringify(_mixHistory.slice(0, 50)));
   renderHistory();
 
-  // Auto-join: retry after timeout/blame
-  if (_autoJoin) {
-    resetMix();
-    autoJoinScheduleNext();
-  }
-}
+  _destroyRoundIdentity();
 
-function handleBlameMsg(pubkey, data) {
-  if (!_activeMix) return;
-  console.warn('[FUSION] received blame from', pubkey.slice(0, 12), ':', data.blamed?.length, 'peers');
-  // Add blamed peers to our ban list
-  for (const p of (data.blamed || [])) {
-    if (!_banList.includes(p)) _banList.push(p);
+  // Auto-mix: retry
+  if (_autoMix) {
+    resetMix();
+    autoMixScheduleRetry();
   }
-  localStorage.setItem('00_fusion_bans', JSON.stringify(_banList));
 }
 
 /* ──────────────────────────────────────────
@@ -2201,7 +1962,6 @@ function handleBlameMsg(pubkey, data) {
    ────────────────────────────────────────── */
 function resetMix() {
   clearPhaseTimeout();
-  if (_heartbeatInterval) { clearInterval(_heartbeatInterval); _heartbeatInterval = null; }
   _activeMix = null;
   $('#mix-idle').style.display = 'block';
   $('#mix-active').style.display = 'none';
@@ -2209,119 +1969,61 @@ function resetMix() {
 }
 
 /* ──────────────────────────────────────────
-   AUTO-JOIN
+   AUTO-MIX
+   After receiving funds: 3-5 quick rounds, label UTXOs mixed, stop.
    ────────────────────────────────────────── */
-function toggleAutoJoin() {
-  _autoJoin = !_autoJoin;
+function toggleAutoMix() {
+  _autoMix = !_autoMix;
   const btn = $('#autojoin-btn');
   const status = $('#autojoin-status');
-  btn.classList.toggle('active', _autoJoin);
-  if (_autoJoin) {
+  btn.classList.toggle('active', _autoMix);
+  if (_autoMix) {
+    _autoMixRoundsCompleted = 0;
+    _pipelining = true;
     status.style.display = 'block';
-    autoJoinStatus('STARTING...');
-    autoJoinNext();
+    autoMixStatus('STARTING...');
+    autoMixNext();
   } else {
     status.style.display = 'none';
-    if (_autoJoinTimer) { clearTimeout(_autoJoinTimer); _autoJoinTimer = null; }
+    _pipelining = false;
   }
 }
 
-function autoJoinStatus(msg) {
+function autoMixStatus(msg) {
   const el = $('#autojoin-status');
-  if (el) el.textContent = '∞ ' + msg;
+  if (el) el.textContent = msg;
 }
 
-function autoJoinCanMix() {
-  return _balanceSats >= MIN_MIX_SATS;
-}
-
-function _findPool() {
-  if (!autoJoinCanMix()) return null;
-  return _pools
-    .filter(p => p.peers.length < p.min_peers && !p.peers.includes(_sessionPub) && p.created >= _sessionStartTs)
-    .sort((a, b) => b.peers.length - a.peers.length || b.created - a.created)[0] || null;
-}
-
-async function autoJoinNext() {
-  if (!_autoJoin) return;
+async function autoMixNext() {
+  if (!_autoMix) return;
   if (_activeMix) {
-    autoJoinStatus('WAITING FOR CURRENT MIX...');
+    autoMixStatus('WAITING FOR CURRENT ROUND...');
     return;
   }
-
-  await refreshBalance();
-  if (!autoJoinCanMix()) {
-    autoJoinStatus('DONE — BALANCE TOO LOW');
-    _autoJoin = false;
+  if (_balanceSats < MIN_MIX_SATS) {
+    autoMixStatus('DONE — BALANCE TOO LOW');
+    _autoMix = false;
     $('#autojoin-btn').classList.remove('active');
     return;
   }
 
-  // PHASE 1: Listen first — check for existing pools over 5-25s
-  const listenTime = 5000 + Math.floor(Math.random() * 20000);
-  const checks = Math.ceil(listenTime / 5000); // check every 5s
-  for (let i = 0; i < checks; i++) {
-    autoJoinStatus('SCANNING POOLS... (' + (checks - i) * 5 + 's)');
-    await new Promise(r => { _autoJoinTimer = setTimeout(r, 5000); });
-    _autoJoinTimer = null;
-    if (!_autoJoin) return;
-
-    const match = _findPool();
-    if (match) {
-      autoJoinStatus('JOINING POOL (' + match.peers.length + '/' + match.min_peers + ')');
-      joinPool(match.id);
-      return;
-    }
+  // Pick the first available joiner relay
+  if (_joinerRelays.length === 0) {
+    autoMixStatus('WAITING FOR RELAY...');
+    setTimeout(autoMixNext, 5000);
+    return;
   }
 
-  // PHASE 2: No pool found after listening — create one
-  if (!_autoJoin) return;
-  autoJoinStatus('CREATING POOL...');
-  const content = JSON.stringify({ min_peers: 5, v: 2 });
-  const ev = await makeEvent(_sessionPriv, NOSTR_KIND_POOL, content, [['t', '0penw0rld-fusion']]);
-  _pools.push({
-    id: ev.id, pubkey: ev.pubkey,
-    min_peers: 5, peers: [ev.pubkey], created: ev.created_at,
-    peerSeen: { [ev.pubkey]: Date.now() },
-  });
-  nostrPublish(ev);
-  renderPools();
-  joinPool(ev.id);
-
-  // PHASE 3: While in discovery, check for better pools or timeout
-  let _autoCheckCount = 0;
-  const _autoCheckInterval = setInterval(() => {
-    _autoCheckCount++;
-    if (!_autoJoin || !_activeMix || _activeMix.phase !== 1) {
-      clearInterval(_autoCheckInterval);
-      return;
-    }
-    const better = _findPool();
-    if (better && better.peers.length > 0 && better.id !== _activeMix.poolId) {
-      console.log('[AUTOJOIN] switching to pool:', better.peers.length + '/' + better.min_peers);
-      clearInterval(_autoCheckInterval);
-      resetMix();
-      autoJoinStatus('SWITCHING POOL (' + better.peers.length + '/' + better.min_peers + ')');
-      joinPool(better.id);
-      return;
-    }
-    if (_autoCheckCount >= 6) { // 60s timeout
-      console.log('[AUTOJOIN] pool timeout — retrying');
-      clearInterval(_autoCheckInterval);
-      resetMix();
-      autoJoinScheduleNext();
-    }
-  }, 10000);
+  const relay = _joinerRelays[0];
+  autoMixStatus('ROUND ' + (_autoMixRoundsCompleted + 1) + '/' + _autoMixRoundsTarget + ' — signaling...');
+  await startJoin(relay.pub);
 }
 
-function autoJoinScheduleNext() {
-  if (!_autoJoin) return;
-  const delay = 3000 + Math.floor(Math.random() * 5000); // 3-8s
-  autoJoinStatus('NEXT ROUND IN ' + Math.round(delay/1000) + 's...');
-  _autoJoinTimer = setTimeout(() => {
-    _autoJoinTimer = null;
-    autoJoinNext();
-  }, delay);
+function autoMixScheduleRetry() {
+  if (!_autoMix) return;
+  const delay = 3000 + Math.floor(Math.random() * 5000);
+  autoMixStatus('RETRYING IN ' + Math.round(delay / 1000) + 's...');
+  setTimeout(autoMixNext, delay);
 }
 
 /* ──────────────────────────────────────────
@@ -2378,32 +2080,23 @@ function initRain() {
    ────────────────────────────────────────── */
 $('#btn-refresh').onclick = () => {
   refreshBalance();
-  refreshPools();
+  renderRelays();
 };
 
 /* ──────────────────────────────────────────
-   PEER LIVENESS — prune stale peers every 15s
+   RELAY LIVENESS — prune stale relay announcements every 60s
    ────────────────────────────────────────── */
 setInterval(() => {
-  if (pruneStalePeers()) renderPools();
-}, 15000);
+  const now = Date.now();
+  _joinerRelays = _joinerRelays.filter(r => now - r.ts < 600000); // 10 min TTL
+  renderRelays();
+}, 60000);
 
 /* ──────────────────────────────────────────
-   LEAVE ON PAGE CLOSE — best-effort leave event
+   LEAVE ON PAGE CLOSE — destroy round identity
    ────────────────────────────────────────── */
 window.addEventListener('beforeunload', () => {
-  if (!_activeMix) return;
-  try {
-    // Sync event (schnorr.sign is sync in noble-curves)
-    const pub = b2h(secp256k1.getPublicKey(_sessionPriv, true).slice(1));
-    const created_at = Math.floor(Date.now() / 1000);
-    const content = JSON.stringify({ pool_id: _activeMix.poolId, leave: true });
-    const tags = [['t', '0penw0rld-fusion']];
-    const idHash = sha256(utf8(JSON.stringify([0, pub, created_at, NOSTR_KIND_JOIN, tags, content])));
-    const sig = b2h(schnorr.sign(idHash, _sessionPriv));
-    const ev = { id: b2h(idHash), pubkey: pub, created_at, kind: NOSTR_KIND_JOIN, tags, content, sig };
-    nostrPublish(ev);
-  } catch(e) {}
+  _destroyRoundIdentity();
 });
 
 /* ──────────────────────────────────────────
@@ -2412,7 +2105,7 @@ window.addEventListener('beforeunload', () => {
 async function boot() {
   fulcrumConnect();
   nostrConnect();
-  renderPools();
+  renderRelays();
   renderHistory();
 }
 
@@ -2442,13 +2135,11 @@ window.addEventListener('load', () => {
    EXPOSE GLOBALS (needed for onclick= in HTML)
    ────────────────────────────────────────── */
 window.tryUnlock = tryUnlock;
-window.openCreatePool = openCreatePool;
-window.closeCreatePool = closeCreatePool;
-window.createPool = createPool;
-window.joinPool = joinPool;
-window.refreshPools = refreshPools;
+window.startJoin = startJoin;
 window.resetMix = resetMix;
-window.toggleAutoJoin = toggleAutoJoin;
+window.toggleAutoMix = toggleAutoMix;
+window.renderRelays = renderRelays;
+window._joinerRelays = _joinerRelays;
 </script>
 </body>
 </html>

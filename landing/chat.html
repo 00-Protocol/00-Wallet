@@ -1633,7 +1633,7 @@ function unpackAny(raw) {
 
 // ── Nostr relay manager ──────────────────────────
 const _NOSTR_RELAYS = JSON.parse(localStorage.getItem('00_ep_relays') || 'null') || [
-  'wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.nostr.band', 'wss://relay.snort.social'
+  'wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.primal.net', 'wss://relay.snort.social'
 ];
 let _nostrSockets = [], _nostrConnected = false, _seenNostrEvents = new Set();
 window._nostrStatus = function(){ var up=_nostrSockets.filter(function(s){return s.connected}).length; return {up:up,total:_NOSTR_RELAYS.length}; };

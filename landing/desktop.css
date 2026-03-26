@@ -223,7 +223,13 @@ html {
 .desktop-sidebar.collapsed .sidebar-section-label { display: none; }
 .desktop-sidebar.collapsed .sidebar-nav-item {
   justify-content: center;
-  padding: 11px 0;
+  padding: 10px 0;
+}
+.desktop-sidebar.collapsed .sidebar-nav-icon {
+  width: 32px;
+  height: 32px;
+  font-size: 15px;
+  border-radius: 8px;
 }
 .desktop-sidebar.collapsed .sidebar-logo {
   justify-content: center;
@@ -310,18 +316,18 @@ html {
   font-weight: 600;
 }
 .sidebar-nav-icon {
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: -.5px;
-  width: 22px;
-  height: 22px;
+  font-family: -apple-system, 'Segoe UI', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+  width: 26px;
+  height: 26px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   line-height: 1;
-  border-radius: 6px;
+  border-radius: 7px;
   border: 1px solid var(--dt-border);
   background: var(--dt-sidebar-bg);
   color: var(--dt-text-secondary);
@@ -5078,7 +5084,13 @@ select.dt-form-input {
   }
   .desktop-sidebar:not(.expanded) .sidebar-nav-item {
     justify-content: center;
-    padding: 11px 0;
+    padding: 10px 0;
+  }
+  .desktop-sidebar:not(.expanded) .sidebar-nav-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 15px;
+    border-radius: 8px;
   }
   .desktop-sidebar:not(.expanded) .sidebar-logo {
     justify-content: center;

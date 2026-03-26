@@ -39,10 +39,22 @@ const WIZ_ACTION = Object.freeze({
 
 // PathName → BIP44 child index (under account node m/44'/145'/0')
 const WIZ_PATH_INDEX = Object.freeze({
-  receive: 0,
-  change:  1,
-  stealth: 2,  // 00 Protocol extension — PR pending to WizardConnect
-  defi:    7,  // RiftenLabs standard
+  receive: 0,      // m/44'/145'/0'/0
+  change:  1,      // m/44'/145'/0'/1
+  defi:    7,      // m/44'/145'/0'/7  — RiftenLabs standard
+});
+
+// WizardConnect Extensions — standard naming per BCH Stealth Protocol spec
+// Each extension has its own BIP tree, NOT under BIP44
+const WIZ_EXTENSIONS = Object.freeze({
+  bch_stealth_bip352: {
+    spend_path: "m/352'/145'/0'/0'",   // Hardened gate — wallet exports xpub here
+    scan_path:  "m/352'/145'/0'/1'",   // Hardened gate — wallet exports xpub here
+  },
+  rpa_bip47: {
+    spend_path: "m/47'/145'/0'/0'",    // Hardened gate — wallet exports xpub here
+    scan_path:  "m/47'/145'/0'/1'",    // Hardened gate — wallet exports xpub here
+  },
 });
 
 const WIZ_DEFAULT_RELAY = 'wss://relay.cauldron.quest:443';
@@ -357,11 +369,40 @@ class WizWalletManager {
       return;
     }
 
-    // Derive child xpubs for each path
+    // Derive BIP44 child xpubs for standard paths
     const paths = [];
     for (const [name, childIdx] of Object.entries(WIZ_PATH_INDEX)) {
       const xpub = this._deriveChildXpub(acctPubHex, acctChainHex, childIdx);
       if (xpub) paths.push({ name, xpub });
+    }
+
+    // Derive stealth xpubs from BIP352 tree (separate from BIP44)
+    // The wallet derives to the hardened gate and exports xpubs
+    // The dapp does the final /0 non-hardened derivation locally
+    const stealthSpendXpub = window._stealthSpendXpub;  // xpub at m/352'/145'/0'/0'
+    const stealthScanXpub = window._stealthScanXpub;    // xpub at m/352'/145'/0'/1'
+    if (stealthSpendXpub) paths.push({ name: 'stealth_spend', xpub: stealthSpendXpub });
+    if (stealthScanXpub) paths.push({ name: 'stealth_scan', xpub: stealthScanXpub });
+
+    // RPA xpubs from BIP47 tree (if available)
+    const rpaSpendXpub = window._rpaSpendXpub;  // xpub at m/47'/145'/0'/0'
+    const rpaScanXpub = window._rpaScanXpub;     // xpub at m/47'/145'/0'/1'
+    if (rpaSpendXpub) paths.push({ name: 'rpa_spend', xpub: rpaSpendXpub });
+    if (rpaScanXpub) paths.push({ name: 'rpa_scan', xpub: rpaScanXpub });
+
+    // Build extensions block for standard compliance
+    const extensions = {};
+    if (stealthSpendXpub || stealthScanXpub) {
+      extensions.bch_stealth_bip352 = {
+        spend_path: "m/352'/145'/0'/0'",
+        scan_path: "m/352'/145'/0'/1'",
+      };
+    }
+    if (rpaSpendXpub || rpaScanXpub) {
+      extensions.rpa_bip47 = {
+        spend_path: "m/47'/145'/0'/0'",
+        scan_path: "m/47'/145'/0'/1'",
+      };
     }
 
     // Send WalletReady
@@ -373,7 +414,10 @@ class WizWalletManager {
       dapp_discovered: this._dappDiscovered,
       supported_protocols: [WIZ_PROTOCOL],
       session: {
-        [WIZ_PROTOCOL]: { paths }
+        [WIZ_PROTOCOL]: {
+          paths,
+          extensions: Object.keys(extensions).length ? extensions : undefined,
+        }
       },
       public_key: this._credentials.publicKey,
       secret: this._credentials.secret,
@@ -509,6 +553,9 @@ class WizDappManager {
     this._onDisconnect = null;
     this._stealthScanPub = null;
     this._stealthSpendPub = null;
+    this._rpaScanPub = null;
+    this._rpaSpendPub = null;
+    this._extensions = {};
   }
 
   /**
@@ -587,23 +634,69 @@ class WizDappManager {
     }
 
     this._paths = session.paths;
-    console.log('[WIZ-DAPP] connected to', this._walletName, '—', this._paths.length, 'paths');
+    this._extensions = session.extensions || {};
+    console.log('[WIZ-DAPP] connected to', this._walletName, '—', this._paths.length, 'paths',
+      Object.keys(this._extensions).length ? '+ extensions: ' + Object.keys(this._extensions).join(', ') : '');
 
-    // Derive stealth pubkeys if stealth path available
-    const stealthPath = this._paths.find(p => p.name === 'stealth');
-    if (stealthPath) {
-      const decoded = _base58CheckDecode(stealthPath.xpub);
+    // Derive stealth pubkeys from new-format paths (stealth_spend, stealth_scan)
+    // The wallet sends xpubs at the hardened gate — dapp derives /0 locally
+    const bip32Child = window._bip32ChildPub;
+    const spendPath = this._paths.find(p => p.name === 'stealth_spend');
+    const scanPath = this._paths.find(p => p.name === 'stealth_scan');
+
+    if (spendPath && bip32Child) {
+      const decoded = _base58CheckDecode(spendPath.xpub);
       if (decoded) {
-        const chain = decoded.slice(13, 45);
-        const pub = decoded.slice(45, 78);
-        const bip32Child = window._bip32ChildPub;
-        if (bip32Child) {
-          const scanChild = bip32Child(pub, chain, 0);
-          const spendChild = bip32Child(pub, chain, 1);
-          this._stealthScanPub = scanChild.pub;
-          this._stealthSpendPub = spendChild.pub;
-          console.log('[WIZ-DAPP] stealth scan/spend pubkeys derived from xpub');
+        const child = bip32Child(decoded.slice(45, 78), decoded.slice(13, 45), 0);
+        if (child) this._stealthSpendPub = child.pub;
+      }
+    }
+    if (scanPath && bip32Child) {
+      const decoded = _base58CheckDecode(scanPath.xpub);
+      if (decoded) {
+        const child = bip32Child(decoded.slice(45, 78), decoded.slice(13, 45), 0);
+        if (child) this._stealthScanPub = child.pub;
+      }
+    }
+
+    // Fallback: old format where 'stealth' was a single BIP44 child (deprecated)
+    if (!this._stealthSpendPub && !this._stealthScanPub) {
+      const legacyStealth = this._paths.find(p => p.name === 'stealth');
+      if (legacyStealth && bip32Child) {
+        const decoded = _base58CheckDecode(legacyStealth.xpub);
+        if (decoded) {
+          const chain = decoded.slice(13, 45);
+          const pub = decoded.slice(45, 78);
+          const spendChild = bip32Child(pub, chain, 0);
+          const scanChild = bip32Child(pub, chain, 1);
+          if (spendChild) this._stealthSpendPub = spendChild.pub;
+          if (scanChild) this._stealthScanPub = scanChild.pub;
+          console.log('[WIZ-DAPP] stealth derived from legacy format (deprecated)');
         }
+      }
+    }
+
+    if (this._stealthSpendPub || this._stealthScanPub) {
+      console.log('[WIZ-DAPP] stealth pubkeys derived ✓',
+        'spend:', this._stealthSpendPub ? 'yes' : 'no',
+        'scan:', this._stealthScanPub ? 'yes' : 'no');
+    }
+
+    // Derive RPA pubkeys if available
+    const rpaSpendPath = this._paths.find(p => p.name === 'rpa_spend');
+    const rpaScanPath = this._paths.find(p => p.name === 'rpa_scan');
+    if (rpaSpendPath && bip32Child) {
+      const decoded = _base58CheckDecode(rpaSpendPath.xpub);
+      if (decoded) {
+        const child = bip32Child(decoded.slice(45, 78), decoded.slice(13, 45), 0);
+        if (child) this._rpaSpendPub = child.pub;
+      }
+    }
+    if (rpaScanPath && bip32Child) {
+      const decoded = _base58CheckDecode(rpaScanPath.xpub);
+      if (decoded) {
+        const child = bip32Child(decoded.slice(45, 78), decoded.slice(13, 45), 0);
+        if (child) this._rpaScanPub = child.pub;
       }
     }
 
@@ -709,6 +802,9 @@ class WizDappManager {
   getPaths() { return this._paths; }
   getStealthScanPub() { return this._stealthScanPub; }
   getStealthSpendPub() { return this._stealthSpendPub; }
+  getRpaScanPub() { return this._rpaScanPub; }
+  getRpaSpendPub() { return this._rpaSpendPub; }
+  getExtensions() { return this._extensions; }
 }
 
 /* ══════════════════════════════════════════
@@ -766,6 +862,7 @@ window.WizardConnect = Object.freeze({
   PROTOCOL: WIZ_PROTOCOL,
   ACTION: WIZ_ACTION,
   PATH_INDEX: WIZ_PATH_INDEX,
+  EXTENSIONS: WIZ_EXTENSIONS,
   DEFAULT_RELAY: WIZ_DEFAULT_RELAY,
 
   // URI helpers
