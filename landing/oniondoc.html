@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>00 Protocol — Unified Relay Specification</title>
+<style>
+  :root { --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #e6edf3; --muted: #8b949e; --accent: #1DD9A5; --code-bg: #1c2128; --warn: #f0a500; --red: #ff6b6b; --purple: #a855f7; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; padding: 0 20px 80px; }
+  .container { max-width: 860px; margin: 0 auto; }
+  header { padding: 40px 0 20px; border-bottom: 1px solid var(--border); margin-bottom: 32px; }
+  header h1 { font-size: 28px; font-weight: 700; color: var(--purple); }
+  header p { color: var(--muted); font-size: 14px; margin-top: 4px; }
+  h2 { font-size: 20px; font-weight: 700; margin: 36px 0 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border); color: var(--purple); }
+  h3 { font-size: 16px; font-weight: 600; margin: 24px 0 12px; color: var(--text); }
+  p, li { font-size: 14px; color: var(--text); margin-bottom: 10px; }
+  ul, ol { padding-left: 24px; margin-bottom: 16px; }
+  li { margin-bottom: 6px; }
+  code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 13px; font-family: 'SF Mono', 'Fira Code', monospace; color: #79c0ff; }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; overflow-x: auto; margin: 12px 0 20px; font-size: 13px; line-height: 1.6; }
+  pre code { background: none; padding: 0; color: #c9d1d9; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin: 16px 0; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 20px; font-size: 13px; }
+  th { text-align: left; padding: 10px 12px; background: var(--code-bg); border: 1px solid var(--border); font-weight: 600; color: var(--purple); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+  td { padding: 10px 12px; border: 1px solid var(--border); vertical-align: top; }
+  .warn { background: rgba(240,165,0,.08); border-left: 3px solid var(--warn); padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 12px 0; }
+  .warn strong { color: var(--warn); }
+  .ok { background: rgba(29,217,165,.08); border-left: 3px solid var(--accent); padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 12px 0; }
+  .ok strong { color: var(--accent); }
+  .tag { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .tag-green { background: rgba(29,217,165,.15); color: var(--accent); }
+  .tag-yellow { background: rgba(240,165,0,.15); color: var(--warn); }
+  .tag-red { background: rgba(255,107,107,.15); color: var(--red); }
+  .tag-purple { background: rgba(168,85,247,.15); color: var(--purple); }
+  .toc { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin: 20px 0; }
+  .toc a { color: var(--purple); text-decoration: none; font-size: 13px; display: block; padding: 4px 0; }
+  .toc a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>00 Protocol — Unified Relay Specification</h1>
+  <p>Blind CoinJoin coordinator + stealth indexer on Bitcoin Cash via Nostr &bull; v2.0 &bull; March 2026</p>
+  <p style="margin-top:8px"><a href="https://0penw0rld.com" style="color:var(--purple)">0penw0rld.com</a> &bull; Implementation: <code>relay.js</code> + <code>onion-crypto.js</code></p>
+</header>
+
+<div class="toc">
+  <strong style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Table of Contents</strong>
+  <a href="#overview">1. Overview</a>
+  <a href="#architecture">2. Architecture</a>
+  <a href="#nostr-events">3. Nostr Event Kinds</a>
+  <a href="#relay-discovery">4. Relay Discovery</a>
+  <a href="#onion-encryption">5. Onion Encryption</a>
+  <a href="#ready-signal">6. Ready Signal &amp; Round Triggering</a>
+  <a href="#round-coordination">7. Round Coordination</a>
+  <a href="#ephemeral-identity">8. Ephemeral Identity</a>
+  <a href="#pubkey-indexer">9. Pubkey Indexer Integration</a>
+  <a href="#http-api">10. HTTP API</a>
+  <a href="#security">11. Security &amp; Privacy</a>
+  <a href="#deployment">12. Deployment</a>
+  <a href="#comparison">13. Comparison with v1 (HTLC Onion)</a>
+  <a href="#functions">14. Function Reference</a>
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<h2 id="overview">1. Overview</h2>
+
+<p>The <strong>Unified Onion Relay</strong> is a single process that runs two services: a <strong>Pubkey Indexer</strong> (stealth address scanning via HTTP) and a <strong>Joiner Coordinator</strong> (blind CoinJoin round management via Nostr). It replaces the v1 HTLC onion routing system with a fundamentally simpler and more private design.</p>
+
+<div class="card">
+  <strong>Key Properties:</strong>
+  <ul>
+    <li><strong>Single process, dual service</strong> — pubkey indexer + CoinJoin coordinator in one binary</li>
+    <li><strong>Nostr as transport</strong> — relay connects to public Nostr relays as a client, never runs a server (never sees user IPs). Operators can optionally bundle a Nostr relay in the package for full independence from public infrastructure.</li>
+    <li><strong>Blind coordination</strong> — relay counts encrypted blobs, triggers rounds, forwards messages. It sees ephemeral pubkeys but not real identities, inputs, outputs, or amounts.</li>
+    <li><strong>Onion-layered outputs</strong> — each participant wraps their output address in layers of encryption. The relay peels one layer and forwards. No participant learns another's output address.</li>
+    <li><strong>Ephemeral identity</strong> — new Nostr keypair per round, destroyed after completion</li>
+  </ul>
+</div>
+
+<pre><code>                        Nostr Relays
+                       (public infra)
+                      /       |       \
+        User A  ----+        |        +----  User B
+        User C  ----+        |        +----  User D
+                      \       |       /
+                       Onion Relay
+                      /             \
+            Fulcrum WSS          BCHN RPC
+           (blockchain)         (blockchain)</code></pre>
+
+<!-- ═══════════════════════════════════════ -->
+<h2 id="architecture">2. Architecture</h2>
+
+<p>The relay is a single Node.js process running <code>relay.js</code>. It imports <code>pubkey-indexer.js</code> for the indexer service and uses Nostr WebSockets for the Joiner coordinator. Encryption is implemented locally in relay.js (Node.js crypto) and in <code>onion-crypto.js</code> (browser clients). Both use identical algorithms (NIP-44, NIP-59, AES-256-GCM) with platform-appropriate APIs.</p>
+
+<h3>Data Flow</h3>
+<pre><code>Users  &lt;--NIP-44 encrypted--&gt;  Nostr Relays  &lt;--NIP-44 encrypted--&gt;  Onion Relay
+                                                                         |
+                                                                    Fulcrum / BCHN
+                                                                    (blockchain data)</code></pre>
+
+<h3>Packaging</h3>
+<table>
+  <tr><th>Platform</th><th>Relay Included</th><th>How</th></tr>
+  <tr><td>Electron Cash plugin</td><td>Built-in</td><td>Bundled with wallet plugin</td></tr>
+  <tr><td>Desktop app (Electron)</td><td>Built-in</td><td>Ships with app binary</td></tr>
+  <tr><td>Start9 / AppImage</td><td>All-in-one</td><td>Single package: relay + indexer + wallet</td></tr>
+  <tr><td>Light clients (browser)</td><td>No</td><td>Connect to public relays via Nostr</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════ -->
+<h2 id="nostr-events">3. Nostr Event Kinds</h2>
+
+<table>
+  <tr><th>Kind</th><th>Name</th><th>Tag</th><th>Content</th></tr>
+  <tr>
+    <td><code>22230</code></td>
+    <td>Relay Announcement</td>
+    <td><code>['t', '0penw0rld-joiner']</code></td>
+    <td>
+      JSON: <code>{services, version, min_participants, max_participants, indexer_url}</code><br>
+      Published every 5 minutes. Wallets subscribe to discover available relays.
+    </td>
+  </tr>
+  <tr>
+    <td><code>22231</code></td>
+    <td>Joiner Communication</td>
+    <td><code>['p', target_pub]</code></td>
+    <td>
+      NIP-59 gift-wrapped (kind 1059 outer, kind 22231 inner rumor). Triple-layer: rumor → seal → wrap. All Joiner messages: ready signals, round_start, inputs, onion-wrapped outputs, tx skeleton, signatures.
+    </td>
+  </tr>
+</table>
+
+<div class="ok">
+  <strong>Two kinds only.</strong> The v1 system used kind 22232 for settlement notifications. v2 eliminates settlement monitoring entirely — there is only one CoinJoin transaction, and all participants sign it directly.
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<h2 id="relay-discovery">4. Relay Discovery</h2>
+
+<p>Wallets subscribe to kind <code>22230</code> events tagged <code>['t', '0penw0rld-joiner']</code> on public Nostr relays. Each relay announcement contains the relay's pubkey, supported services, and configuration.</p>
+
+<pre><code>// Wallet subscribes to relay announcements
+REQ filter: {
+  kinds: [22230],
+  '#t': ['0penw0rld-joiner'],
+  since: now - 3600
+}
+
+// Relay announces itself (every 5 minutes)
+announceRelay() → kind 22230 event:
+{
+  content: JSON.stringify({
+    services: ['joiner', 'indexer'],
+    version: '2.0.0',
+    min_participants: 3,
+    max_participants: 10,
+    indexer_url: 'http://localhost:3847'
+  }),
+  tags: [['t', '0penw0rld-joiner']],
+  pubkey: relay_xonly_pub
+}
+
+// Wallet picks freshest relay, stores relay list
+// Relay pubkey is used as NIP-44 encryption target</code></pre>
+
+<!-- ═══════════════════════════════════════ -->
+<h2 id="onion-encryption">5. Onion Encryption</h2>
+
+<p>Shared module <code>onion-crypto.js</code> is used by wallet clients, the relay, and the Joiner UI. It provides onion layer encryption (secp256k1 ECDH + AES-256-GCM) and NIP-44 authenticated message encryption (ChaCha20 + HKDF + HMAC-SHA256).</p>
+
+<h3>Single Layer — <code>onionLayer(data, peelerPubHex)</code></h3>
+<pre><code>1. eph = random(32)                         // ephemeral key per layer
+2. ephPub = secp256k1.getPublicKey(eph)      // 33 bytes compressed
+3. shared = ECDH(eph, peelerPub)[1:33]       // x-coordinate only
+4. aesKey = SHA256(shared)                   // 32-byte AES key
+5. iv = random(12)                           // 12-byte GCM nonce
+6. ct = AES-256-GCM.encrypt(aesKey, iv, data)
+
+Output: ephPub(33) || iv(12) || ciphertext+tag</code></pre>
+
+<h3>Peel Layer — <code>onionPeel(blob, myPriv)</code></h3>
+<pre><code>1. Extract ephPub (33 bytes) from blob
+2. ECDH(myPriv, ephPub) → shared secret
+3. aesKey = SHA256(shared)
+4. Extract iv (12 bytes)
+5. Decrypt remainder with AES-256-GCM
+6. Return plaintext</code></pre>
+
+<h3>Joiner Output Wrapping — <code>onionWrap(payload, peelerPubHexes)</code></h3>
+<pre><code>// Payload format: "addr|value_sats" (e.g. "bitcoincash:qz...abc|50000")
+// Padded to JOINER_PAD_SIZE = 80 bytes with 0x01 delimiter
+
+1. raw = utf8(payload)
+2. padded = new Uint8Array(80)
+3. padded.set(raw); padded[raw.length] = 0x01
+4. For each peeler pub (last to first):
+     padded = onionLayer(padded, peelerPub)
+5. Return nested encrypted blob
+
+// Each participant in the round is a "peeler"
+// The relay peels the outer layer, participants peel the rest
+// Final output address is only revealed inside the CoinJoin construction</code></pre>
+
+<h3>Unpad — <code>onionUnpad(data)</code></h3>
+<pre><code>// After all layers are peeled:
+1. Find 0x01 delimiter
+2. Decode UTF-8 up to delimiter
+3. Parse "addr|value" → { addr, value }
+// Returns the output address and sats amount for the CoinJoin tx</code></pre>
+
+<h3>NIP-44 — <code>nip44Encrypt / nip44Decrypt</code></h3>
+<pre><code>// Used for all kind 22231 Joiner communication
+// NIP-44 v2: ChaCha20 + HKDF-SHA256 + HMAC-SHA256
+
+// 1. Conversation key (computed once per key pair)
+shared_x         = ECDH(myPriv, theirPub).x              // 32-byte x-coordinate
+conversation_key = HKDF-extract(SHA256, shared_x, "nip44-v2")  // 32 bytes
+
+// 2. Per-message keys (HKDF-expand with random nonce)
+nonce(32)    = random()
+keys(76)     = HKDF-expand(SHA256, conversation_key, nonce, 76)
+  chacha_key   = keys[0:32]     // ChaCha20 key
+  chacha_nonce = keys[32:44]    // ChaCha20 nonce (12 bytes)
+  hmac_key     = keys[44:76]    // HMAC-SHA256 key
+
+// 3. Encrypt: pad → ChaCha20 → HMAC
+padded     = [length_BE(2)] + plaintext + zero_padding_to_power_of_2
+ciphertext = ChaCha20(chacha_key, chacha_nonce, padded)
+mac        = HMAC-SHA256(hmac_key, nonce || ciphertext)
+
+// 4. Wire format: base64( 0x02 || nonce(32) || ciphertext || mac(32) )</code></pre>
+
+<!-- ═══════════════════════════════════════ -->
+<h2 id="ready-signal">6. Ready Signal &amp; Round Triggering</h2>
+
+<ol>
+  <li><strong>Ephemeral key</strong> — User generates a fresh Nostr keypair for this round</li>
+  <li><strong>Send ready</strong> — NIP-59 gift-wrapped message to relay pubkey (kind 1059, inner kind 22231):
+    <pre><code>{
+  type: 'ready',
+  utxo_count: 3,    // number of inputs the user will contribute
+  output_count: 2   // number of outputs the user wants
+}</code></pre>
+  </li>
+  <li><strong>Relay receives</strong> — Decrypts the outer NIP-44 layer. Sees the ephemeral pubkey + metadata (utxo_count, output_count). Adds to ready queue.</li>
+  <li><strong>Threshold check</strong> — Every 5 seconds, relay prunes stale entries (older than 30s window) and checks if <code>&gt;= minParticipants</code> (default 3) are queued</li>
+  <li><strong>Round trigger</strong> — When threshold is met, relay takes up to <code>maxParticipants</code> (default 10) from the queue and starts a round</li>
+</ol>
+
+<div class="ok">
+  <strong>No public Nostr event = no fingerprint.</strong> Ready signals are NIP-59 gift-wrapped — Nostr relays see only a disposable ephemeral pubkey, a randomized timestamp, and encrypted content. They cannot identify who is ready or when rounds are forming.
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<h2 id="round-coordination">7. Round Coordination</h2>
+
+<p>Once the relay has enough ready participants, it starts a round:</p>
+
+<ol>
+  <li><strong>Generate round_id</strong> — <code>random(16)</code> hex string</li>
+  <li><strong>Shuffle mix_order</strong> — Fisher-Yates shuffle of participant ephemeral pubkeys. This determines the onion peeling chain.</li>
+  <li><strong>Send round_start</strong> — NIP-44 encrypted to each participant:
+    <pre><code>{
+  type: 'round_start',
+  round_id: 'a1b2c3...',
+  participants: ['pub1', 'pub2', 'pub3', ...],
+  mix_order: ['pub3', 'pub1', 'pub2', ...]   // shuffled peeling order
+}</code></pre>
+  </li>
+  <li><strong>Message bus</strong> — Relay receives onion-wrapped blobs and round messages from participants. It peels the outer NIP-44 layer, then:
+    <ul>
+      <li>If message has a <code>target</code> field: forward only to that specific participant</li>
+      <li>Otherwise: broadcast to all round participants except sender</li>
+    </ul>
+  </li>
+  <li><strong>Round timeout</strong> — 360 seconds total per round (60s &times; 6 phases). Non-responders cause the round to be deleted. Participants can re-queue with new ephemeral keys.</li>
+</ol>
+
+<pre><code>// Round lifecycle:
+//
+// Phase 1: READY      — users send ready signals (pre-round)
+// Phase 2: ROUND_START — relay sends round_start to all
+// Phase 3: INPUTS     — participants announce their UTXOs
+// Phase 4: OUTPUTS    — participants send onion-wrapped output addresses
+// Phase 5: TX BUILD   — coordinator (or participant) builds unsigned tx
+// Phase 6: SIGN       — each participant signs their inputs
+// Phase 7: BROADCAST  — signed CoinJoin tx broadcast to network</code></pre>
+
+<!-- ═══════════════════════════════════════ -->
+<h2 id="ephemeral-identity">8. Ephemeral Identity</h2>
+
+<p>Each participant generates a <strong>new Nostr keypair for every round</strong>. The ephemeral private key is used to NIP-44 encrypt/decrypt messages with the relay and other participants. It is destroyed after the round completes (success or failure).</p>
+
+<div class="card">
+  <strong>Properties:</strong>
+  <ul>
+    <li><strong>Unlinkable across rounds</strong> — The relay sees ephemeral pubkeys but cannot correlate them to real identities or to previous rounds</li>
+    <li><strong>No persistent identity</strong> — There is no "account" or "session" on the relay. Each round is a fresh anonymous interaction.</li>
+    <li><strong>Ban resistance</strong> — A griefer who disrupts a round simply gets a new identity in the next round. Ban lists are pointless against ephemeral keys. Instead, the protocol relies on economic cost (UTXOs must be real) and phase timeouts.</li>
+    <li><strong>Forward secrecy</strong> — Compromising the relay's private key after a round does not reveal past participants, because the ephemeral keys that encrypted messages to the relay are already destroyed.</li>
+  </ul>
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<h2 id="pubkey-indexer">9. Pubkey Indexer Integration</h2>
+
+<p>The same relay process serves an HTTP API for <strong>stealth address scanning</strong>. It connects to Fulcrum (WSS) or BCHN (RPC) to extract public keys from transaction inputs across block ranges.</p>
+
+<pre><code>// Client requests all pubkeys for a block range:
+GET /api/pubkeys?from=830000&to=830100
+
+// Response: array of {txid, pubkeys} for every input in that range
+// Client downloads ALL pubkeys, then filters locally with their scan key
+// Server doesn't know what the client is looking for</code></pre>
+
+<div class="ok">
+  <strong>Privacy by design:</strong> The indexer returns all pubkeys for the requested range indiscriminately. The client performs ECDH locally with their scan private key to detect payments. The server has no knowledge of which pubkeys belong to the client or which transactions are relevant.
+</div>
+
+<h3>Connection backends</h3>
+<table>
+  <tr><th>Backend</th><th>Protocol</th><th>Used For</th></tr>
+  <tr><td>Fulcrum</td><td>WSS (ElectrumX)</td><td>Block headers, raw transactions, UTXO queries</td></tr>
+  <tr><td>BCHN</td><td>JSON-RPC</td><td>Raw block data, mempool, broadcast</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════ -->
+<h2 id="http-api">10. HTTP API</h2>
+
+<table>
+  <tr><th>Endpoint</th><th>Method</th><th>Description</th></tr>
+  <tr>
+    <td><code>/api/pubkeys?from=X&amp;to=Y</code></td>
+    <td>GET</td>
+    <td>Block-range pubkey query for stealth address scanning. Returns all input pubkeys for blocks X through Y.</td>
+  </tr>
+  <tr>
+    <td><code>/api/health</code></td>
+    <td>GET</td>
+    <td>Connection status — blockchain backend connectivity, sync state.</td>
+  </tr>
+  <tr>
+    <td><code>/api/relay/info</code></td>
+    <td>GET</td>
+    <td>Relay pubkey, services (<code>['joiner','indexer']</code>), version, min/max participants, Nostr relay list.</td>
+  </tr>
+  <tr>
+    <td><code>/api/relay/status</code></td>
+    <td>GET</td>
+    <td>Active rounds (count, phase, age), ready queue depth, Nostr connection count.</td>
+  </tr>
+</table>
+
+<pre><code>// Example: /api/relay/info response
+{
+  "pubkey": "a1b2c3d4e5f6...",
+  "services": ["joiner", "indexer"],
+  "version": "2.0.0",
+  "min_participants": 3,
+  "max_participants": 10,
+  "nostr_relays": [
+    "wss://relay.damus.io",
+    "wss://nos.lol",
+    "wss://relay.primal.net"
+  ]
+}
+
+// Example: /api/relay/status response
+{
+  "ready_queue": 2,
+  "active_rounds": 1,
+  "rounds": [
+    { "id": "a1b2c3d4e5f6", "participants": 4, "phase": 2, "age_ms": 12340 }
+  ],
+  "nostr_connected": 3
+}</code></pre>
+
+<!-- ═══════════════════════════════════════ -->
+<h2 id="security">11. Security &amp; Privacy</h2>
+
+<h3>What the relay sees</h3>
+<table>
+  <tr><th>Data</th><th>Visible?</th><th>Notes</th></tr>
+  <tr><td>Ephemeral pubkeys</td><td><span class="tag tag-yellow">Yes</span></td><td>One-time keys, destroyed after round</td></tr>
+  <tr><td>Blob count per round</td><td><span class="tag tag-yellow">Yes</span></td><td>Knows how many participants, not who they are</td></tr>
+  <tr><td>Timing of ready signals</td><td><span class="tag tag-yellow">Yes</span></td><td>Knows when participants join, not their identity</td></tr>
+  <tr><td>UTXO count / output count</td><td><span class="tag tag-yellow">Yes</span></td><td>Metadata from ready signal</td></tr>
+</table>
+
+<h3>What the relay does NOT see</h3>
+<table>
+  <tr><th>Data</th><th>Visible?</th><th>Why</th></tr>
+  <tr><td>Real identities</td><td><span class="tag tag-green">No</span></td><td>Only ephemeral pubkeys, fresh per round</td></tr>
+  <tr><td>Input UTXOs</td><td><span class="tag tag-green">No</span></td><td>Participants exchange inputs directly via onion encryption</td></tr>
+  <tr><td>Output addresses</td><td><span class="tag tag-green">No</span></td><td>Onion-wrapped with multi-layer encryption</td></tr>
+  <tr><td>Amounts</td><td><span class="tag tag-green">No</span></td><td>Encoded inside onion payloads</td></tr>
+  <tr><td>User IPs</td><td><span class="tag tag-green">No</span></td><td>Relay connects to Nostr as a client, not a server</td></tr>
+</table>
+
+<h3>What Nostr relays see</h3>
+<table>
+  <tr><th>Data</th><th>Visible?</th><th>Notes</th></tr>
+  <tr><td>User IPs</td><td><span class="tag tag-yellow">Yes</span></td><td>Mitigated by Tor option or by running a bundled Nostr relay in the onion relay package</td></tr>
+  <tr><td>Encrypted blobs</td><td><span class="tag tag-yellow">Yes</span></td><td>NIP-44 ciphertext, cannot decrypt without private keys</td></tr>
+  <tr><td>Message content</td><td><span class="tag tag-green">No</span></td><td>All payloads are NIP-44 authenticated encryption end-to-end</td></tr>
+</table>
+
+<h3>Comparison with CashFusion server</h3>
+<div class="warn">
+  <strong>CashFusion server sees everything:</strong> The CF server receives all inputs and all outputs in plaintext during round construction. It knows which participant contributed which inputs and requested which outputs. A compromised CF server can fully deanonymize every round. The 00 Unified Relay is blind — it coordinates timing and forwarding without ever seeing inputs, outputs, or amounts.
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<h2 id="deployment">12. Deployment</h2>
+
+<h3>Docker</h3>
+<pre><code># Dockerfile.relay — builds the unified relay image
+docker build -f Dockerfile.relay -t 00-relay .
+docker run -p 3847:3847 00-relay</code></pre>
+
+<h3>Config</h3>
+<pre><code># config.relay.yaml (extends config.indexer.yaml)
+port: 3847
+source: fulcrum
+fulcrumUrls:
+  - wss://bch.imaginary.cash:50004
+  - wss://electroncash.de:50004
+  - wss://bch.loping.net:50004
+
+joinerEnabled: true
+indexerEnabled: true
+nostrRelays:
+  - wss://relay.damus.io
+  - wss://nos.lol
+  - wss://relay.primal.net
+
+minParticipants: 3
+maxParticipants: 10
+readyWindowMs: 30000
+phaseTimeoutMs: 60000
+announceIntervalMs: 300000</code></pre>
+
+<h3>CLI</h3>
+<pre><code># Full relay (indexer + joiner) — default
+node relay.js
+
+# Joiner only (no HTTP indexer API)
+node relay.js --joiner-only
+
+# Indexer only (no Nostr joiner coordinator)
+node relay.js --indexer-only
+
+# Custom options
+node relay.js --port 4000 --min-participants 5 --nostr-relay wss://custom.relay
+
+# npm script
+npm run relay</code></pre>
+
+<!-- ═══════════════════════════════════════ -->
+<h2 id="comparison">13. Comparison with v1 (HTLC Onion)</h2>
+
+<table>
+  <tr><th>Property</th><th>v1 — HTLC Onion Routing</th><th>v2 — Unified Relay (CoinJoin)</th></tr>
+  <tr>
+    <td>Transaction count</td>
+    <td><span class="tag tag-red">6+ tx</span> per payment (fund + claim per hop)</td>
+    <td><span class="tag tag-green">1 tx</span> — single CoinJoin transaction</td>
+  </tr>
+  <tr>
+    <td>On-chain footprint</td>
+    <td>HTLC scripts (OP_SHA256 + OP_CLTV) visible on-chain</td>
+    <td>Standard P2PKH inputs/outputs, indistinguishable from normal tx</td>
+  </tr>
+  <tr>
+    <td>Settlement</td>
+    <td>Preimage-based claim chain, settlement monitoring loop</td>
+    <td>All participants sign once, single broadcast</td>
+  </tr>
+  <tr>
+    <td>Relay knowledge</td>
+    <td>Each hop sees previous + next hop, amounts, and HTLC hashes</td>
+    <td>Relay sees ephemeral pubkeys and blob count only</td>
+  </tr>
+  <tr>
+    <td>Failure mode</td>
+    <td>HTLC timeout refunds (hours). Race conditions between claim and refund.</td>
+    <td>Round aborts instantly. No funds at risk. Re-queue with new key.</td>
+  </tr>
+  <tr>
+    <td>Fee structure</td>
+    <td>Per-hop relay fees + miner fees for each HTLC tx</td>
+    <td>Single tx miner fee split among participants. No relay fee.</td>
+  </tr>
+  <tr>
+    <td>Complexity</td>
+    <td>HTLC scripts, hash decoration, CLTV chains, settlement monitoring</td>
+    <td>One CoinJoin tx, onion-wrapped outputs, NIP-44 authenticated encryption</td>
+  </tr>
+  <tr>
+    <td>Nostr events</td>
+    <td>3 kinds (22230, 22231, 22232)</td>
+    <td>2 kinds (22230, 22231)</td>
+  </tr>
+</table>
+
+<div class="ok">
+  <strong>Note:</strong> HTLC-based onion routing has been moved to a separate multichain atomic swap mixer project. The 00 wallet now uses the Unified Relay exclusively for privacy mixing.
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<h2 id="functions">14. Function Reference</h2>
+
+<h3><code>relay.js</code></h3>
+<table>
+  <tr><th>Function</th><th>Description</th></tr>
+  <tr><td><code>loadOrCreateKey()</code></td><td>Load relay identity from disk or generate new secp256k1 keypair. Saved to <code>.joiner-key</code> with mode 0600.</td></tr>
+  <tr><td><code>nip44Encrypt(myPriv, theirPubHex, msg)</code></td><td>NIP-44 encrypt: HKDF + ChaCha20 + HMAC-SHA256. Returns base64 payload.</td></tr>
+  <tr><td><code>nip44Decrypt(myPriv, senderPubHex, b64)</code></td><td>NIP-44 decrypt: verify HMAC, ChaCha20 decrypt, unpad. Returns plaintext or null.</td></tr>
+  <tr><td><code>makeEvent(privBytes, kind, content, tags)</code></td><td>Create and Schnorr-sign a NIP-01 Nostr event. Returns full event object with id, sig.</td></tr>
+  <tr><td><code>nostrConnect()</code></td><td>Connect to configured Nostr relays via WebSocket. Auto-reconnects on disconnect (5s delay).</td></tr>
+  <tr><td><code>subscribeRelay(ws)</code></td><td>Subscribe to kind 1059 (gift wrap) events tagged to relay's pubkey (<code>#p</code> filter).</td></tr>
+  <tr><td><code>nostrPublish(event)</code></td><td>Broadcast a signed Nostr event to all connected relays.</td></tr>
+  <tr><td><code>handleNostrEvent(ev)</code></td><td>Main event router. Deduplicates by event ID, decrypts NIP-44, dispatches to ready handler or round handler.</td></tr>
+  <tr><td><code>handleReadySignal(ephPub, data)</code></td><td>Add participant to ready queue with ephemeral pubkey + metadata.</td></tr>
+  <tr><td><code>checkReadyThreshold()</code></td><td>Prune stale entries (30s window), trigger round if <code>&gt;= minParticipants</code>.</td></tr>
+  <tr><td><code>startRound(participants)</code></td><td>Generate round_id, shuffle mix_order (Fisher-Yates), send round_start to each participant.</td></tr>
+  <tr><td><code>startRoundTimeout(roundId)</code></td><td>Set phase timeout (60s * 6 phases). Deletes round on expiry.</td></tr>
+  <tr><td><code>handleRoundMessage(senderPub, data)</code></td><td>Forward messages between round participants. Targeted or broadcast mode.</td></tr>
+  <tr><td><code>announceRelay()</code></td><td>Publish kind 22230 announcement with services, version, config. Runs every 5 minutes.</td></tr>
+  <tr><td><code>addRelayEndpoints(server)</code></td><td>Add <code>/api/relay/info</code> and <code>/api/relay/status</code> endpoints to the HTTP server.</td></tr>
+  <tr><td><code>parseCLI()</code></td><td>Parse CLI arguments: <code>--port</code>, <code>--joiner-only</code>, <code>--indexer-only</code>, <code>--min-participants</code>, etc.</td></tr>
+  <tr><td><code>main()</code></td><td>Entry point. Loads crypto, generates identity, starts indexer + joiner, begins announcement loop.</td></tr>
+</table>
+
+<h3><code>onion-crypto.js</code></h3>
+<table>
+  <tr><th>Function</th><th>Description</th></tr>
+  <tr><td><code>onionLayer(data, peelerPubHex)</code></td><td>Encrypt single layer: ephemeral ECDH + AES-256-GCM. Returns <code>ephPub(33) || iv(12) || ct+tag</code>.</td></tr>
+  <tr><td><code>onionPeel(blob, myPriv)</code></td><td>Decrypt single layer: ECDH with ephPub from blob, AES-256-GCM decrypt.</td></tr>
+  <tr><td><code>onionWrap(payload, peelerPubHexes)</code></td><td>Wrap 80-byte padded Joiner payload in nested onion layers (inside-out).</td></tr>
+  <tr><td><code>onionUnpad(data)</code></td><td>Remove padding from peeled payload. Parse <code>"addr|value"</code> format.</td></tr>
+  <tr><td><code>nip44Encrypt(myPriv, theirPubHex, msg)</code></td><td>NIP-44 authenticated encryption (ChaCha20 + HKDF + HMAC-SHA256).</td></tr>
+  <tr><td><code>nip44Decrypt(myPriv, senderPubHex, b64)</code></td><td>NIP-44 decryption with HMAC verification and power-of-2 unpadding.</td></tr>
+  <tr><td><code>giftWrap(authorPriv, recipPub, kind, content)</code></td><td>NIP-59: create rumor → seal (NIP-44) → gift wrap (NIP-44, ephemeral key, randomized timestamp).</td></tr>
+  <tr><td><code>giftUnwrap(myPriv, wrapEvent)</code></td><td>NIP-59: unwrap kind 1059 → decrypt seal → decrypt rumor. Returns {rumor, sealPubkey}.</td></tr>
+  <tr><td><code>makeEvent(privBytes, kind, content, tags)</code></td><td>NIP-01 event creation + Schnorr signing (browser version).</td></tr>
+</table>
+
+<h3>Constants</h3>
+<table>
+  <tr><th>Constant</th><th>Value</th><th>Purpose</th></tr>
+  <tr><td><code>NOSTR_KIND_RELAY_ANN</code></td><td>22230</td><td>Relay announcement event kind</td></tr>
+  <tr><td><code>NOSTR_KIND_JOINER</code></td><td>22231</td><td>Joiner communication event kind</td></tr>
+  <tr><td><code>JOINER_PAD_SIZE</code></td><td>80 bytes</td><td>Fixed payload size for onion-wrapped outputs</td></tr>
+  <tr><td><code>readyWindowMs</code></td><td>30000 (30s)</td><td>Time window to collect ready signals</td></tr>
+  <tr><td><code>phaseTimeoutMs</code></td><td>60000 (60s)</td><td>Timeout per round phase</td></tr>
+  <tr><td><code>announceIntervalMs</code></td><td>300000 (5 min)</td><td>Relay announcement frequency</td></tr>
+  <tr><td><code>minParticipants</code></td><td>3</td><td>Minimum participants to trigger a round</td></tr>
+  <tr><td><code>maxParticipants</code></td><td>10</td><td>Maximum participants per round</td></tr>
+</table>
+
+<div style="margin-top:48px;padding-top:24px;border-top:1px solid var(--border);text-align:center;color:var(--muted);font-size:12px">
+  <p>00 Protocol &bull; <a href="https://0penw0rld.com" style="color:var(--purple)">0penw0rld.com</a> &bull; <a href="https://0penw0rld.com/stealth.html" style="color:var(--purple)">Stealth Spec</a> &bull; <a href="https://0penw0rld.com/indexer.html" style="color:var(--purple)">Indexer Spec</a> &bull; <a href="https://0penw0rld.com/wizard.html" style="color:var(--purple)">WizardConnect Spec</a></p>
+</div>
+
+</div>
+</body>
+</html>

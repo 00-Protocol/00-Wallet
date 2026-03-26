@@ -1,0 +1,31 @@
+# 00 Protocol — Unified Relay Configuration
+# Extends indexer config with joiner coordinator settings
+
+# ── Indexer ──
+source: fulcrum
+port: 3847
+max_range: 100
+cache_dir: ./cache/pubkeys
+
+fulcrum_urls:
+  - wss://bch.imaginary.cash:50004
+  - wss://electroncash.de:50004
+  - wss://bch.loping.net:50004
+
+# ── Joiner Coordinator ──
+joiner_enabled: true
+indexer_enabled: true
+
+nostr_relays:
+  - wss://relay.damus.io
+  - wss://nos.lol
+  - wss://relay.primal.net
+
+min_participants: 3
+max_participants: 10
+ready_window_sec: 30
+phase_timeout_sec: 60
+announce_interval_sec: 300
+
+# Relay key file (auto-generated on first run)
+key_file: .joiner-key

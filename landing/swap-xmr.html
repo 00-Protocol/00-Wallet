@@ -297,7 +297,7 @@ moneroTs.LibraryUtils.WORKER_LOADER = () => {
    ══════════════════════════════════════════ */
 const _BCH_DEFAULTS = ['wss://bch.imaginary.cash:50004','wss://electroncash.de:50004','wss://bch.loping.net:50004'];
 let _BCH_SERVERS = JSON.parse(localStorage.getItem('00_ep_fulcrum') || 'null') || _BCH_DEFAULTS;
-let _RELAYS = JSON.parse(localStorage.getItem('00_ep_relays') || 'null') || ['wss://relay.damus.io','wss://nos.lol','wss://relay.nostr.band'];
+let _RELAYS = JSON.parse(localStorage.getItem('00_ep_relays') || 'null') || ['wss://relay.damus.io','wss://nos.lol','wss://relay.primal.net'];
 
 const OFFER_TTL = 1800;
 

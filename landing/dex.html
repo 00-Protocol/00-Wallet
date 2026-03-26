@@ -411,7 +411,7 @@
   }
 
   /* ── Fetch tokens independently for desktop ─── */
-  var INDEXER=localStorage.getItem('00_ep_indexer')||'https://indexer.riften.net';
+  var INDEXER=localStorage.getItem('00_ep_indexer')||'https://0penw0rld.com';
   function dtFetchTokens(){
     fetch(INDEXER+'/cauldron/tokens/list_cached')
       .then(function(r){return r.json();})
@@ -571,7 +571,7 @@
 </script>
 
 <script type="module">
-const INDEXER=localStorage.getItem('00_ep_indexer')||'https://indexer.riften.net';
+const INDEXER=localStorage.getItem('00_ep_indexer')||'https://0penw0rld.com';
 const META=localStorage.getItem('00_ep_meta')||'https://meta.riften.net';
 const DELPHI_TOKEN='d0d46f5cbd82188acede0d3e49c75700c19cb8331a30101f0bb6a260066ac972';
 const MUSD_TOKEN='b38a33f750f84c5c169a6f23cb873e6e79605021585d4f3408789689ed87f366';

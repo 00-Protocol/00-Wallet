@@ -1,0 +1,15 @@
+FROM node:20-alpine
+WORKDIR /app
+
+# Copy relay + indexer
+COPY relay.js pubkey-indexer.js package.json ./
+COPY config.relay.yaml ./
+
+# Install dependencies
+RUN npm install --omit=dev ws @noble/curves @noble/hashes
+
+# Expose indexer HTTP API + relay operates via Nostr (outbound WSS)
+EXPOSE 3847
+
+# Default: run unified relay (indexer + joiner)
+CMD ["node", "relay.js"]

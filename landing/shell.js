@@ -2,6 +2,22 @@
 (function () {
 'use strict';
 
+// SPA mode detection: v2.html uses hash-based routing
+const IS_SPA = !!(document.getElementById('view-container-desktop') || window.location.pathname.endsWith('v2.html'));
+
+// URL map: html filename → SPA hash path
+const SPA_ROUTES = {
+  'index.html': '#/dashboard', 'wallet.html': '#/wallet', 'chat.html': '#/chat',
+  'pay.html': '#/pay', 'swap.html': '#/swap', 'dex.html': '#/dex', 'loan.html': '#/loan',
+  'id.html': '#/id', 'mesh.html': '#/mesh', 'onion.html': '#/onion',
+  'vault.html': '#/vault', 'fusion.html': '#/fusion', 'sub.html': '#/sub',
+  'analyse.html': '#/analyse', 'config.html': '#/config',
+};
+
+function resolveUrl(htmlUrl) {
+  return IS_SPA ? (SPA_ROUTES[htmlUrl] || htmlUrl) : htmlUrl;
+}
+
 const APPS = [
   { name: '00 Dashboard', url: 'index.html' },
   { name: '00 Wallet', url: 'wallet.html' },
@@ -22,10 +38,10 @@ const APPS = [
 
 // ── Desktop UI ─────────────────────────────────────────────────
 const APP_ICONS = {
-  'index.html': '00', 'wallet.html': '00', 'chat.html': '00', 'pay.html': '00',
-  'swap.html': '00', 'dex.html': '00', 'loan.html': '00',
-  'id.html': '00', 'mesh.html': '00',
-  'onion.html': '00', 'vault.html': '00', 'fusion.html': '00', 'sub.html': '00', 'analyse.html': '00', 'config.html': '⚙',
+  'index.html': '⌂', 'wallet.html': '₿', 'chat.html': '✉', 'pay.html': '↗',
+  'swap.html': '⇄', 'dex.html': '◈', 'loan.html': '∞',
+  'id.html': '◉', 'mesh.html': '⬡',
+  'onion.html': '⧉', 'vault.html': '⊡', 'fusion.html': '⚗', 'sub.html': '↻', 'analyse.html': '◪', 'config.html': '⚙',
 };
 const APP_SECTIONS = {
   Overview: ['index.html'],
@@ -79,16 +95,17 @@ function isConnected() {
 const EP_DEFAULTS = {
   fulcrum:      ['wss://bch.imaginary.cash:50004','wss://electroncash.de:50004','wss://bch.loping.net:50004'],
   btc_electrum: ['wss://e2.keff.org:50004','wss://fulcrum.grey.pw:50004','wss://btc.electroncash.dk:50004','wss://electrum.petrkr.net:50004','wss://bitcoinserver.nl:50004','wss://mempool.8333.mobi:50004'],
-  relays:       ['wss://relay.damus.io','wss://nos.lol','wss://relay.nostr.band','wss://relay.snort.social'],
+  relays:       ['wss://relay.damus.io','wss://nos.lol','wss://relay.primal.net','wss://relay.snort.social'],
   eth_rpc:  'https://ethereum-rpc.publicnode.com',
   bnb_rpc:  'https://bsc-rpc.publicnode.com',
-  avax_rpc: 'https://api.avax.network/ext/bc/C/rpc',
-  sol_rpc:  'https://api.mainnet-beta.solana.com',
+  avax_rpc: '/avax-rpc/',
+  sol_rpc:  '/sol-rpc/',
   trx_rpc:  'https://api.trongrid.io',
   xlm_rpc:  'https://horizon.stellar.org',
   xrp_rpc:  'wss://xrplcluster.com',
   ltc_rpc: 'https://litecoinspace.org/api',
-  indexer: 'https://indexer.riften.net',
+  indexer: 'https://0penw0rld.com',
+  relay:   'https://relay.0penw0rld.com',
   midgard: 'https://midgard.ninerealms.com/v2',
   meta:    'https://meta.riften.net',
 };
@@ -116,6 +133,7 @@ window._00ep = {
   get xrp_rpc()      { return _epRead('xrp_rpc',      EP_DEFAULTS.xrp_rpc); },
   get ltc_rpc()      { return _epRead('ltc_rpc',       EP_DEFAULTS.ltc_rpc); },
   get indexer() { return _epRead('indexer', EP_DEFAULTS.indexer); },
+  get relay()   { return _epRead('relay',   EP_DEFAULTS.relay); },
   get midgard() { return _epRead('midgard', EP_DEFAULTS.midgard); },
   get meta()    { return _epRead('meta',    EP_DEFAULTS.meta); },
   defaults: EP_DEFAULTS,
@@ -731,16 +749,29 @@ function buildHomeIndicator() {
 
 // ── Desktop Sidebar ────────────────────────────────────────────
 function buildDesktopSidebar() {
-  const cur = window.location.pathname.split('/').pop() || 'index.html';
+  const cur = IS_SPA
+    ? (window.location.hash ? window.location.hash.replace('#/', '') + '.html' : 'index.html')
+    : (window.location.pathname.split('/').pop() || 'index.html');
+  // In SPA mode, also listen for hash changes to update active state
+  if (IS_SPA) {
+    window.addEventListener('hashchange', () => {
+      const path = window.location.hash.replace('#/', '') || 'dashboard';
+      document.querySelectorAll('.sidebar-nav-item').forEach(el => {
+        const href = el.getAttribute('href') || '';
+        el.classList.toggle('active', href === '#/' + path);
+      });
+    });
+  }
   const sb = document.createElement('nav');
   sb.className = 'desktop-sidebar';
   sb.id = 'desktop-sidebar';
   if (localStorage.getItem('00_sidebar_collapsed') === '1') sb.classList.add('collapsed');
+  else if (window.matchMedia('(min-width:900px) and (max-width:1100px)').matches) sb.classList.add('expanded');
 
   // Logo
   const logo = document.createElement('a');
   logo.className = 'sidebar-logo';
-  logo.href = '/';
+  logo.href = IS_SPA ? '#/dashboard' : '/';
   logo.innerHTML = '<span class="sidebar-logo-icon">00</span><span class="sidebar-logo-text sidebar-label">Protocol</span>';
   sb.appendChild(logo);
 
@@ -756,8 +787,10 @@ function buildDesktopSidebar() {
       const app = APPS.find(a => a.url === url);
       if (!app) continue;
       const a = document.createElement('a');
-      a.className = 'sidebar-nav-item' + (url === cur ? ' active' : '');
-      a.href = url;
+      const resolved = resolveUrl(url);
+      const isActive = IS_SPA ? (resolved === '#/' + cur.replace('.html', '')) : (url === cur);
+      a.className = 'sidebar-nav-item' + (isActive ? ' active' : '');
+      a.href = resolved;
       a.innerHTML = `<span class="sidebar-nav-icon">${APP_ICONS[url] || '●'}</span><span class="sidebar-label">${app.name.replace('00 ', '')}</span>`;
       nav.appendChild(a);
     }
@@ -837,8 +870,15 @@ function buildDesktopSidebar() {
   colBtn.className = 'sidebar-bottom-item';
   colBtn.innerHTML = '<span class="sidebar-bottom-icon">☰</span><span class="sidebar-label">Collapse</span>';
   colBtn.onclick = () => {
-    sb.classList.toggle('collapsed');
-    localStorage.setItem('00_sidebar_collapsed', sb.classList.contains('collapsed') ? '1' : '0');
+    const isAutoCollapsed = window.matchMedia('(min-width:900px) and (max-width:1100px)').matches;
+    if (isAutoCollapsed) {
+      // In auto-collapse range: toggle .expanded to override
+      sb.classList.toggle('expanded');
+      localStorage.setItem('00_sidebar_collapsed', sb.classList.contains('expanded') ? '0' : '1');
+    } else {
+      sb.classList.toggle('collapsed');
+      localStorage.setItem('00_sidebar_collapsed', sb.classList.contains('collapsed') ? '1' : '0');
+    }
   };
   bot.appendChild(colBtn);
 
@@ -868,6 +908,19 @@ function inject() {
         var d = document.querySelector('.sb-dot[data-chain="btc"]');
         if (d) d.classList.toggle('on', on);
       });
+    }
+    // SPA mode: style desktop view container
+    if (IS_SPA) {
+      const dtVC = document.getElementById('view-container-desktop');
+      if (dtVC) {
+        dtVC.style.display = 'block';
+        dtVC.style.marginLeft = '240px';
+        dtVC.style.width = 'calc(100vw - 240px)';
+        dtVC.style.minHeight = '100vh';
+        dtVC.style.background = 'var(--dt-bg, #f5f6f8)';
+        dtVC.style.boxSizing = 'border-box';
+        dtVC.style.overflowX = 'hidden';
+      }
     }
   }
 

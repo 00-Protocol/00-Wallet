@@ -748,12 +748,12 @@
     <div id="cd-adv-scan-body" style="display:none">
       <div style="display:flex;gap:12px;margin-bottom:12px">
         <div style="flex:1">
-          <div class="cd-form-lbl">FROM</div>
-          <input type="date" id="cd-adv-scan-from" class="cd-form-input" style="font-size:12px">
+          <div class="cd-form-lbl">FROM BLOCK</div>
+          <input type="number" id="cd-adv-scan-from" class="cd-form-input" style="font-size:12px" placeholder="943500">
         </div>
         <div style="flex:1">
           <div class="cd-form-lbl">TO</div>
-          <input type="date" id="cd-adv-scan-to" class="cd-form-input" style="font-size:12px">
+          <input type="number" id="cd-adv-scan-to" class="cd-form-input" style="font-size:12px" placeholder="943600">
         </div>
       </div>
       <div style="width:100%;height:4px;background:var(--cd-bg-secondary);border-radius:2px;margin-bottom:8px;overflow:hidden;display:none" id="cd-adv-progress-wrap">
@@ -2603,14 +2603,19 @@ window.cdOpenReceive = window.cdOpenReceive || function(){};
       if(!result || result.success===false){ errEl.textContent='Broadcast failed: '+(result&&result.error||'unknown'); _cdSending=false; btn.disabled=false; btn.textContent='⚡ STEALTH SEND →'; return; }
       // Send Nostr notification
       try {
+        console.log('[STEALTH] Sending Nostr DM notification...');
+        console.log('[STEALTH]   _rand:', typeof window._rand, '_nip04Encrypt:', typeof window._nip04Encrypt, '_makeNostrEvent:', typeof window._makeNostrEvent, '_nostrPublish:', typeof window._nostrPublish);
         var ephPriv = window._rand(32);
         var recipScanXOnly = window._b2h(recipScanPub.slice(1));
         var txid = typeof result==='string' ? result : (result.txid||result.tx_hash||'');
-        var payload = JSON.stringify({txid:txid, sender:window._b2h(senderPub)});
+        console.log('[STEALTH]   recipScanXOnly:', recipScanXOnly.slice(0,16) + '...', 'txid:', txid.slice(0,16) + '...');
+        var payload = JSON.stringify({type:'stealth', txid:txid, sender:window._b2h(senderPub)});
         var encrypted = await window._nip04Encrypt(ephPriv, recipScanXOnly, payload);
+        console.log('[STEALTH]   encrypted OK, publishing...');
         var ev = await window._makeNostrEvent(ephPriv, 4, encrypted, [['p', recipScanXOnly]]);
         window._nostrPublish(ev);
-      } catch(e){ console.error('[STEALTH] Nostr notify error:', e); }
+        console.log('[STEALTH]   Nostr DM PUBLISHED OK');
+      } catch(e){ console.error('[STEALTH] Nostr notify error:', e.message, e); }
       // Save stealth send in TX history
       var stTxid = typeof result==='string' ? result : (result.txid||result.tx_hash||'');
       if(stTxid){
@@ -3184,12 +3189,12 @@ window.cdOpenReceive = window.cdOpenReceive || function(){};
               <div style="font-size:9px;letter-spacing:2px;color:rgba(var(--accent-rgb),.4);margin-bottom:8px">SCAN ALL BLOCKS BETWEEN TWO DATES</div>
               <div style="display:flex;gap:8px;margin-bottom:8px">
                 <div style="flex:1">
-                  <label style="font-size:9px;letter-spacing:1px;color:rgba(var(--accent-rgb),.3)">FROM</label>
-                  <input type="date" id="adv-scan-from" style="width:100%;padding:6px 8px;background:rgba(0,0,0,.2);border:1px solid rgba(var(--accent-rgb),.1);border-radius:6px;color:var(--green);font-family:'Share Tech Mono',monospace;font-size:11px">
+                  <label style="font-size:9px;letter-spacing:1px;color:rgba(var(--accent-rgb),.3)">FROM BLOCK</label>
+                  <input type="number" id="adv-scan-from" placeholder="943500" style="width:100%;padding:6px 8px;background:rgba(0,0,0,.2);border:1px solid rgba(var(--accent-rgb),.1);border-radius:6px;color:var(--green);font-family:'Share Tech Mono',monospace;font-size:11px">
                 </div>
                 <div style="flex:1">
                   <label style="font-size:9px;letter-spacing:1px;color:rgba(var(--accent-rgb),.3)">TO</label>
-                  <input type="date" id="adv-scan-to" style="width:100%;padding:6px 8px;background:rgba(0,0,0,.2);border:1px solid rgba(var(--accent-rgb),.1);border-radius:6px;color:var(--green);font-family:'Share Tech Mono',monospace;font-size:11px">
+                  <input type="number" id="adv-scan-to" placeholder="943600" style="width:100%;padding:6px 8px;background:rgba(0,0,0,.2);border:1px solid rgba(var(--accent-rgb),.1);border-radius:6px;color:var(--green);font-family:'Share Tech Mono',monospace;font-size:11px">
                 </div>
               </div>
               <div style="font-size:9px;color:rgba(var(--accent-rgb),.25);margin-bottom:8px" id="adv-scan-info">≈ scans all P2PKH inputs in every block within range</div>
@@ -3257,6 +3262,8 @@ import { sha256 }     from 'https://esm.sh/@noble/hashes@1.7.1/sha256';
 import { sha512 }     from 'https://esm.sh/@noble/hashes@1.7.1/sha512';
 import { ripemd160 }  from 'https://esm.sh/@noble/hashes@1.7.1/ripemd160';
 import { keccak_256 } from 'https://esm.sh/@noble/hashes@1.7.1/sha3';
+import { extract as hkdfExtract, expand as hkdfExpand } from 'https://esm.sh/@noble/hashes@1.7.1/hkdf';
+import { chacha20 }   from 'https://esm.sh/@noble/ciphers@1.2.1/chacha';
 import QRCode         from 'https://esm.sh/qrcode@1.5.4';
 import { autoConnect as xmrAutoConnect, getBlockCount as xmrGetBlockCount, scanBlocks as xmrScanBlocks, scanMempool as xmrScanMempool, scanSingleTx as xmrScanSingleTx, isKeyImageSpent as xmrIsKeyImageSpent, computeSharedSecret as xmrSharedSecret, deriveOutputPrivKey as xmrDeriveOutPriv, computeKeyImage as xmrKeyImage } from './xmr-rpc.js?v=218';
 
@@ -3953,15 +3960,15 @@ let _stealthUtxos = [];      // [{txid, vout, value, priv, pub, addr, from, ts}]
 
 // ── Auto Stealth Mode (CoinJoin pipeline) ────────
 let _autoStealth = localStorage.getItem('00_auto_stealth') !== 'false'; // default ON
-let _cjRounds = parseInt(localStorage.getItem('00_cj_rounds') || '1');
-let _cjSessionPriv = null, _cjSessionPub = null; // ephemeral CoinJoin session keys
+let _cjRounds = parseInt(localStorage.getItem('00_cj_rounds') || '3');
+let _cjRoundPriv = null, _cjRoundPub = null; // ephemeral per-round CoinJoin keys
 let _cjActiveMix = null;
-let _cjPools = [];
-let _cjBanList = JSON.parse(localStorage.getItem('00_fusion_bans') || '[]');
+let _cjJoinerRelays = []; // discovered relay list [{pubkey, created, ...}]
+let _cjActiveRelayPub = null; // pubkey of relay we're using
+let _cjPipelining = false; // pipelining flag
 let _cjMixHistory = JSON.parse(localStorage.getItem('00_fusion_history') || '[]');
-let _cjPhaseTimer = null, _cjAutoTimer = null, _cjHeartbeat = null, _cjCountdownTimer = null;
+let _cjPhaseTimer = null, _cjAutoTimer = null, _cjCountdownTimer = null;
 let _cjAutoRunning = false;
-let _cjSessionStartTs = 0;
 let _cjMsgBuffer = [];
 let _cjSeenEvents = new Set();
 let _cjRoundsCompleted = 0;
@@ -3969,12 +3976,9 @@ let _cjPipelineActive = false;
 let _cjPrevUtxoSet = null; // for detecting new incoming funds
 let _cjProcessedUtxos = new Set(JSON.parse(localStorage.getItem('00_cj_processed') || '[]')); // UTXOs already mixed — skip re-trigger
 const CJ_MIN_SATS = 3000;
-const CJ_KIND_POOL  = 22222;
-const CJ_KIND_JOIN  = 22223;
-const CJ_KIND_PROTO = 22224;
+const CJ_KIND_RELAY_ANN = 22230; // relay announces itself
+const CJ_KIND_JOINER    = 22231; // ALL joiner communication
 const CJ_PHASE_TIMEOUT = 60000;
-const CJ_HEARTBEAT_MS  = 20000;
-const CJ_PEER_TIMEOUT  = 45000;
 
 // ── XMR Crypto Helpers ───────────────────────────
 const L_ED = 0x1000000000000000000000000000000014DEF9DEA2F79CD65812631A5CF5D3EDn;
@@ -4032,7 +4036,7 @@ function xmrAddress(pubSpend, pubView, network = 18) {
 
 // ── Nostr (stealth notifications) ─────────────────
 const _RELAYS = JSON.parse(localStorage.getItem('00_ep_relays') || 'null') ||
-  ['wss://relay.damus.io','wss://nos.lol','wss://relay.nostr.band'];
+  ['wss://relay.damus.io','wss://nos.lol'];
 let _nostrSockets = [], _nostrConnected = false;
 const _seenEvents = new Set();
 
@@ -4055,7 +4059,7 @@ function _connectRelay(url) {
     if (dot) dot.classList.add('on');
     if (lbl) lbl.textContent = 'NOSTR: ' + names.join(', ');
     _subscribeStealthDMs(ws);
-    if (_cjSessionPub) _cjSubscribe(ws);
+    _cjSubscribe(ws);
     console.log('[NOSTR] connected to', url);
   };
   ws.onmessage = e => {
@@ -4067,7 +4071,7 @@ function _connectRelay(url) {
         if (_seenEvents.size > 5000) { const a = [..._seenEvents]; _seenEvents.clear(); a.slice(-2500).forEach(x => _seenEvents.add(x)); }
         handleStealthEvent(msg[2]);
         // Also route CoinJoin events
-        if ([CJ_KIND_POOL, CJ_KIND_JOIN, CJ_KIND_PROTO].includes(msg[2].kind)) _cjHandleNostrEvent(msg[2]);
+        if ([CJ_KIND_RELAY_ANN, 1059].includes(msg[2].kind)) _cjHandleNostrEvent(msg[2]);
       }
     } catch {}
   };
@@ -4127,6 +4131,111 @@ async function nip04Decrypt(myPriv, senderPubHex, encContent) {
     return new TextDecoder().decode(pt);
   } catch { return null; }
 }
+
+// ── NIP-44 (ChaCha20 + HKDF + HMAC-SHA256) ──────
+const _NIP44_SALT = utf8('nip44-v2');
+function _nip44ConvKey(myPriv, theirPubHex) {
+  const shared = secp256k1.getSharedSecret(myPriv, h2b('02' + theirPubHex)).slice(1, 33);
+  return hkdfExtract(sha256, shared, _NIP44_SALT);
+}
+function _nip44PadLen(len) { return len <= 32 ? 32 : 1 << (32 - Math.clz32(len - 1)); }
+function _nip44Pad(msg) {
+  const raw = utf8(msg);
+  if (raw.length < 1 || raw.length > 65535) throw new Error('invalid length');
+  const padded = new Uint8Array(2 + _nip44PadLen(raw.length));
+  new DataView(padded.buffer).setUint16(0, raw.length);
+  padded.set(raw, 2);
+  return padded;
+}
+function _nip44Unpad(padded) {
+  const len = new DataView(padded.buffer, padded.byteOffset).getUint16(0);
+  if (len < 1 || len > padded.length - 2) throw new Error('invalid padding');
+  return new TextDecoder().decode(padded.slice(2, 2 + len));
+}
+async function nip44Encrypt(myPriv, theirPubHex, msg) {
+  const convKey    = _nip44ConvKey(myPriv, theirPubHex);
+  const nonce      = rand(32);
+  const keys       = hkdfExpand(sha256, convKey, nonce, 76);
+  const chachaKey  = keys.slice(0, 32);
+  const chaChaNonce = keys.slice(32, 44);
+  const hmacKey    = keys.slice(44, 76);
+  const padded     = _nip44Pad(msg);
+  const ciphertext = chacha20(chachaKey, chaChaNonce, padded);
+  const mac        = hmac(sha256, hmacKey, concat(nonce, ciphertext));
+  const payload    = concat(new Uint8Array([2]), nonce, ciphertext, mac);
+  return btoa(String.fromCharCode(...payload));
+}
+async function nip44Decrypt(myPriv, senderPubHex, b64payload) {
+  try {
+    const raw = Uint8Array.from(atob(b64payload), c => c.charCodeAt(0));
+    if (raw[0] !== 2) throw new Error('unsupported version');
+    const nonce      = raw.slice(1, 33);
+    const ciphertext = raw.slice(33, raw.length - 32);
+    const mac        = raw.slice(raw.length - 32);
+    const convKey    = _nip44ConvKey(myPriv, senderPubHex);
+    const keys       = hkdfExpand(sha256, convKey, nonce, 76);
+    const hmacKey    = keys.slice(44, 76);
+    const expectedMac = hmac(sha256, hmacKey, concat(nonce, ciphertext));
+    let ok = expectedMac.length === mac.length ? 1 : 0;
+    for (let i = 0; i < expectedMac.length; i++) ok &= (expectedMac[i] === mac[i]) ? 1 : 0;
+    if (!ok) throw new Error('bad mac');
+    const chachaKey   = keys.slice(0, 32);
+    const chaChaNonce = keys.slice(32, 44);
+    const padded = chacha20(chachaKey, chaChaNonce, ciphertext);
+    return _nip44Unpad(padded);
+  } catch { return null; }
+}
+
+// ── NIP-59 Gift Wrap ─────────────────────
+const _TWO_DAYS = 2 * 24 * 60 * 60;
+function _randomTimeShift() {
+  const buf = rand(4);
+  return (buf[0] | (buf[1] << 8) | (buf[2] << 16) | ((buf[3] & 0x01) << 24)) % _TWO_DAYS;
+}
+function _eventId(pub, ts, kind, tags, content) {
+  return b2h(sha256(utf8(JSON.stringify([0, pub, ts, kind, tags, content]))));
+}
+async function giftWrap(authorPriv, recipientPubHex, innerKind, innerContent, innerTags = []) {
+  const authorPub = b2h(secp256k1.getPublicKey(authorPriv, true).slice(1));
+  const now = Math.floor(Date.now() / 1000);
+  // Layer 1: rumor (unsigned)
+  const rumor = { id: _eventId(authorPub, now, innerKind, innerTags, innerContent),
+    pubkey: authorPub, created_at: now, kind: innerKind, tags: innerTags, content: innerContent };
+  // Layer 2: seal (kind 13)
+  const sealContent = await nip44Encrypt(authorPriv, recipientPubHex, JSON.stringify(rumor));
+  const sealTs = now - _randomTimeShift();
+  const sealIdHash = sha256(utf8(JSON.stringify([0, authorPub, sealTs, 13, [], sealContent])));
+  const seal = { id: b2h(sealIdHash), pubkey: authorPub, created_at: sealTs, kind: 13,
+    tags: [], content: sealContent, sig: b2h(await schnorr.sign(sealIdHash, authorPriv)) };
+  // Layer 3: gift wrap (kind 1059)
+  const ephPriv = rand(32);
+  const ephPub = b2h(secp256k1.getPublicKey(ephPriv, true).slice(1));
+  const wrapContent = await nip44Encrypt(ephPriv, recipientPubHex, JSON.stringify(seal));
+  const wrapTs = now - _randomTimeShift();
+  const wrapTags = [['p', recipientPubHex]];
+  const wrapIdHash = sha256(utf8(JSON.stringify([0, ephPub, wrapTs, 1059, wrapTags, wrapContent])));
+  return { id: b2h(wrapIdHash), pubkey: ephPub, created_at: wrapTs, kind: 1059,
+    tags: wrapTags, content: wrapContent, sig: b2h(await schnorr.sign(wrapIdHash, ephPriv)) };
+}
+async function giftUnwrap(myPriv, wrapEvent) {
+  try {
+    if (wrapEvent.kind !== 1059) return null;
+    // Verify wrap signature (ephemeral key)
+    const wrapIdHash = sha256(utf8(JSON.stringify([0, wrapEvent.pubkey, wrapEvent.created_at, 1059, wrapEvent.tags, wrapEvent.content])));
+    if (!schnorr.verify(h2b(wrapEvent.sig), wrapIdHash, h2b(wrapEvent.pubkey))) return null;
+    const sealJson = await nip44Decrypt(myPriv, wrapEvent.pubkey, wrapEvent.content);
+    if (!sealJson) return null;
+    const seal = JSON.parse(sealJson);
+    if (seal.kind !== 13) return null;
+    // Verify seal signature (author key)
+    const sealIdHash = sha256(utf8(JSON.stringify([0, seal.pubkey, seal.created_at, 13, seal.tags, seal.content])));
+    if (!schnorr.verify(h2b(seal.sig), sealIdHash, h2b(seal.pubkey))) return null;
+    const rumorJson = await nip44Decrypt(myPriv, seal.pubkey, seal.content);
+    if (!rumorJson) return null;
+    return { rumor: JSON.parse(rumorJson), sealPubkey: seal.pubkey };
+  } catch { return null; }
+}
+
 async function makeNostrEvent(privBytes, kind, content, tags = []) {
   const pub = b2h(secp256k1.getPublicKey(privBytes, true).slice(1));
   const created_at = Math.floor(Date.now() / 1000);
@@ -4575,9 +4684,9 @@ async function _stealthPeriodicScan() {
 async function advancedStealthScan(prefix) {
   const p = prefix || 'adv-';
   if (!_stealthScanPub || !_stealthSpendPub) { console.warn('[STEALTH] scan aborted — stealth keys not available'); return; }
-  const fromDate = document.getElementById(p + 'scan-from').value;
-  const toDate = document.getElementById(p + 'scan-to').value;
-  if (!fromDate || !toDate) { alert('Select both dates'); return; }
+  const fromVal = document.getElementById(p + 'scan-from').value;
+  const toVal = document.getElementById(p + 'scan-to').value;
+  if (!fromVal || !toVal) { alert('Enter block heights'); return; }
 
   const btn = document.getElementById(p + 'scan-btn');
   const status = document.getElementById(p + 'status') || document.getElementById(p + 'scan-status');
@@ -4589,127 +4698,101 @@ async function advancedStealthScan(prefix) {
   progressBar.style.width = '0%';
 
   try {
-    // 1) Convert dates to block heights via Blockchair
-    status.textContent = 'Resolving block heights...';
-    const fromTs = Math.floor(new Date(fromDate).getTime() / 1000);
-    const toTs = Math.floor(new Date(toDate + 'T23:59:59').getTime() / 1000);
-
-    // Get current block height
-    const tipResp = await fetch('https://api.blockchair.com/bitcoin-cash/stats');
-    const tipData = await tipResp.json();
-    const currentHeight = tipData.data.best_block_height;
-    const currentTs = Math.floor(Date.now() / 1000);
-
-    // Approximate: BCH ~600s per block
-    const fromHeight = Math.max(1, currentHeight - Math.floor((currentTs - fromTs) / 600));
-    const toHeight = Math.min(currentHeight, currentHeight - Math.floor((currentTs - toTs) / 600));
+    // 1) Read block heights directly
+    const fromHeight = parseInt(fromVal);
+    const toHeight = parseInt(toVal);
 
     if (fromHeight >= toHeight) { status.textContent = 'Invalid date range'; btn.disabled = false; btn.textContent = '⚡ START DEEP SCAN'; return; }
 
     const totalBlocks = toHeight - fromHeight;
     status.textContent = `Scanning blocks ${fromHeight} → ${toHeight} (${totalBlocks} blocks)`;
 
-    // 2) Scan blocks in batches
+    // 2) Fetch pubkeys from indexer in batches of 50 blocks
+    const INDEXER_URL = 'https://0penw0rld.com/api';
+    const BATCH_SIZE = 50;
     let totalFound = 0;
     let totalTxScanned = 0;
-    const BATCH_SIZE = 10; // blocks per Blockchair call
 
-    for (let bStart = fromHeight; bStart < toHeight; bStart += BATCH_SIZE) {
+    for (let bStart = fromHeight; bStart <= toHeight; bStart += BATCH_SIZE) {
       const bEnd = Math.min(bStart + BATCH_SIZE - 1, toHeight);
       const pct = Math.floor(((bStart - fromHeight) / totalBlocks) * 100);
       progressBar.style.width = pct + '%';
-      status.textContent = `Block ${bStart}–${bEnd} / ${toHeight} | Found: ${totalFound} | Scanned: ${totalTxScanned} TXs`;
+      status.textContent = `Block ${bStart}–${bEnd} / ${toHeight} | Found: ${totalFound} | Scanned: ${totalTxScanned} pubkeys`;
 
-      // Fetch block txids via Blockchair
-      let txids = [];
+      // Fetch all pubkeys from indexer (one call per batch, no rate limit)
+      let pubkeys = [];
       try {
-        const bResp = await fetch(`https://api.blockchair.com/bitcoin-cash/blocks?q=id(${bStart}..${bEnd})&fields=id,transaction_count&limit=${BATCH_SIZE}`);
-        const bData = await bResp.json();
-        const blocks = bData.data || [];
-
-        for (const block of blocks) {
-          const height = block.id;
-          try {
-            const dResp = await fetch(`https://api.blockchair.com/bitcoin-cash/dashboards/block/${height}`);
-            const dData = await dResp.json();
-            const blockTxids = dData.data?.[String(height)]?.transactions || [];
-            txids.push(...blockTxids);
-          } catch { /* skip failed block */ }
-          // Small delay to avoid rate limiting
-          await new Promise(r => setTimeout(r, 200));
-        }
+        const resp = await fetch(`${INDEXER_URL}/pubkeys?from=${bStart}&to=${bEnd}`);
+        const data = await resp.json();
+        pubkeys = data.pubkeys || [];
+        totalTxScanned += pubkeys.length;
       } catch (e) {
-        status.textContent = `Blockchair error at ${bStart}: ${e.message}. Retrying in 5s...`;
-        await new Promise(r => setTimeout(r, 5000));
+        console.warn('[ADV-SCAN] indexer error at', bStart, e.message);
+        status.textContent = `Indexer error at ${bStart}: ${e.message}. Retrying...`;
+        await new Promise(r => setTimeout(r, 2000));
         continue;
       }
 
-      // 3) For each TX, fetch raw hex via Fulcrum and test ECDH
-      for (const txid of txids) {
+      // 3) For each pubkey, test ECDH locally (no Fulcrum calls needed!)
+      for (const entry of pubkeys) {
         try {
-          const rawHex = await bcGetTxHex(txid);
-          if (!rawHex) { console.log('[ADV-SCAN] skip', txid.slice(0,12), 'no rawHex'); continue; }
-          totalTxScanned++;
+          const senderPub = h2b(entry.pubkey);
+          const outpoint = h2b(entry.outpoint);
+          const txid = entry.txid;
 
-          const inputs = parseTxAllInputPubkeys(rawHex);
-          if (!inputs.length) { console.log('[ADV-SCAN] skip', txid.slice(0,12), 'no inputs'); continue; }
-          const outputs = parseTxHex(rawHex);
-          if (!outputs) { console.log('[ADV-SCAN] skip', txid.slice(0,12), 'no outputs'); continue; }
-          // Debug: log target TX
-          if (txid.startsWith('b7d73e7043')) {
-            console.log('[ADV-SCAN] TARGET TX found!', txid, 'inputs:', inputs.length, 'outputs:', outputs.length);
-            for (const inp of inputs) {
-              const dr = stealthDerive(null, inp.pubkey, _stealthScanPub, _stealthSpendPub, inp.outpoint);
-              const es = b2h(p2pkhScript(ripemd160(sha256(dr.pub))));
-              const mi = outputs.findIndex(o => o.script === es);
-              console.log('[ADV-SCAN] TARGET derivation:', dr.addr.slice(12,30), 'matchIdx:', mi, 'expected:', es.slice(6,46), 'out0:', outputs[0]?.script?.slice(6,46));
-            }
-          }
+          // ECDH derive stealth address
+          const { addr, pub, cBig } = stealthDerive(null, senderPub, _stealthScanPub, _stealthSpendPub, outpoint);
 
-          for (const inp of inputs) {
-            // Standard stealth
-            const { addr, pub, cBig } = stealthDerive(null, inp.pubkey, _stealthScanPub, _stealthSpendPub, inp.outpoint);
-            const expectedScript = b2h(p2pkhScript(ripemd160(sha256(pub))));
-            const matchIdx = outputs.findIndex(o => o.script === expectedScript);
-            if (matchIdx !== -1) {
-              if (!_stealthUtxos.some(u => u.txid === txid && u.vout === matchIdx)) {
+          // Check if this derived address has a UTXO on-chain
+          const stealthSH = _addrSH(addr);
+          const utxos = await _fvCall('blockchain.scripthash.listunspent', [stealthSH]);
+
+          if (utxos.length > 0) {
+            for (const utxo of utxos) {
+              if (!_stealthUtxos.some(u => u.txid === utxo.tx_hash && u.vout === utxo.tx_pos)) {
                 const priv = stealthSpendingKey(_stealthSpendPriv, cBig);
                 _stealthUtxos.push({
-                  txid, vout: matchIdx, value: outputs[matchIdx].value,
+                  txid: utxo.tx_hash, vout: utxo.tx_pos, value: utxo.value,
                   priv: b2h(priv), pub: b2h(pub), addr,
                   from: 'deep-scan', ts: Math.floor(Date.now() / 1000),
                 });
                 totalFound++;
+                console.log('[ADV-SCAN] FOUND stealth UTXO:', utxo.tx_hash.slice(0,16), utxo.value, 'sats');
+                // Save immediately after each find to prevent loss
+                _saveStealthUtxos();
+                // Add to TX history
+                try {
+                  var hist = JSON.parse(localStorage.getItem('00_tx_history') || '[]');
+                  if (!hist.some(function(h) { return h.txid === utxo.tx_hash; })) {
+                    hist.unshift({ txid: utxo.tx_hash, chain: 'bch', dir: 'stealth', amount: utxo.value, height: entry.height, ts: Math.floor(Date.now() / 1000) });
+                    localStorage.setItem('00_tx_history', JSON.stringify(hist));
+                  }
+                } catch(e3) {}
               }
             }
-            // Fusion stealth (idx 0-3)
-            for (let _fi = 0; _fi < 4; _fi++) {
-              const fusionOutpoint = concat(inp.outpoint, u32LE(_fi));
-              const fd = stealthDerive(null, inp.pubkey, _stealthScanPub, _stealthSpendPub, fusionOutpoint);
-              const fScript = b2h(p2pkhScript(ripemd160(sha256(fd.pub))));
-              const fIdx = outputs.findIndex(o => o.script === fScript);
-              if (fIdx === -1) continue;
-              if (_stealthUtxos.some(u => u.txid === txid && u.vout === fIdx)) continue;
-              const fPriv = stealthSpendingKey(_stealthSpendPriv, fd.cBig);
-              _stealthUtxos.push({
-                txid, vout: fIdx, value: outputs[fIdx].value,
-                priv: b2h(fPriv), pub: b2h(fd.pub), addr: fd.addr,
-                from: 'deep-scan', ts: Math.floor(Date.now() / 1000),
-              });
-              totalFound++;
-            }
           }
-        } catch(scanErr) { console.warn('[ADV-SCAN] TX error:', txid.slice(0,16), scanErr.message); }
+        } catch(scanErr) { console.warn('[ADV-SCAN] pubkey error:', entry.txid?.slice(0,16), scanErr.message); }
       }
-
-      // Rate limit protection
-      await new Promise(r => setTimeout(r, 500));
     }
 
-    // 4) Save results
+    // 4) Save results + update UI
     progressBar.style.width = '100%';
-    if (totalFound > 0) { _saveStealthUtxos(); _registerStealthAddresses(); renderStealth(); refreshBalance(); }
-    status.textContent = `✓ Done — Scanned ${totalTxScanned} TXs across ${totalBlocks} blocks — Found ${totalFound} stealth UTXOs`;
+    if (totalFound > 0) {
+      _saveStealthUtxos(); _registerStealthAddresses(); renderStealth();
+      // Force coin-detail balance update directly from localStorage
+      var su = JSON.parse(localStorage.getItem('00stealth_utxos') || '[]');
+      var sBal = su.reduce(function(s, u) { return s + (u.value || 0); }, 0);
+      var sCoins = sBal / 1e8;
+      console.log('[ADV-SCAN] saved', totalFound, 'UTXOs, localStorage has', su.length, 'total,', sBal, 'sats');
+      var pr = {}; try { var c = JSON.parse(localStorage.getItem('00_dash_prices') || '{}'); if (c.ts && Date.now() - c.ts < 300000) pr = c; } catch(e2) {}
+      var sPrice = pr.bch && pr.bch.price || 0;
+      var balEl = document.getElementById('cd-bal-amount');
+      var fiatEl = document.getElementById('cd-bal-fiat');
+      if (balEl) balEl.textContent = sCoins.toFixed(8) + ' BCH';
+      if (fiatEl) fiatEl.textContent = '$' + (sCoins * sPrice).toFixed(2);
+      console.log('[ADV-SCAN] saved', totalFound, 'stealth UTXOs, total now:', _stealthUtxos.length);
+    }
+    status.textContent = `✓ Done — Scanned ${totalTxScanned} pubkeys across ${totalBlocks} blocks — Found ${totalFound} stealth UTXOs`;
 
   } catch (e) {
     status.textContent = '✗ Error: ' + e.message;
@@ -5216,22 +5299,28 @@ function _cjStartCountdown(baseMsg, seconds) {
   _cjCountdownTimer = setInterval(tick, 1000);
 }
 
-function _cjInitSession() {
-  _cjSessionPriv = rand(32);
-  _cjSessionPub = b2h(secp256k1.getPublicKey(_cjSessionPriv, true).slice(1));
-  _cjSessionStartTs = Math.floor(Date.now() / 1000);
-  _cjPools = [];
+function _cjGenerateRoundIdentity() {
+  _cjRoundPriv = rand(32);
+  _cjRoundPub = b2h(secp256k1.getPublicKey(_cjRoundPriv, true).slice(1));
   _cjSeenEvents = new Set();
-  console.log('[CJ] session:', _cjSessionPub.slice(0, 16) + '...');
+  console.log('[CJ] round identity:', _cjRoundPub.slice(0, 16) + '...');
+}
+function _cjDestroyRoundIdentity() {
+  if (_cjRoundPriv) { for (let i = 0; i < _cjRoundPriv.length; i++) _cjRoundPriv[i] = 0; }
+  _cjRoundPriv = null;
+  _cjRoundPub = null;
 }
 
 // ── CoinJoin Nostr subscriptions ──
 function _cjSubscribe(ws) {
-  if (!ws || ws.readyState !== 1 || !_cjSessionPub) return;
+  if (!ws || ws.readyState !== 1) return;
   const now = Math.floor(Date.now() / 1000);
-  ws.send(JSON.stringify(['REQ', 'cj-pools', { kinds: [CJ_KIND_POOL], '#t': ['0penw0rld-fusion'], since: now - 300 }]));
-  ws.send(JSON.stringify(['REQ', 'cj-join', { kinds: [CJ_KIND_JOIN], '#t': ['0penw0rld-fusion'], since: now - 300 }]));
-  ws.send(JSON.stringify(['REQ', 'cj-proto', { kinds: [CJ_KIND_PROTO], '#p': [_cjSessionPub], since: now - 600 }]));
+  // Subscribe to relay announcements
+  ws.send(JSON.stringify(['REQ', 'cj-relay-ann', { kinds: [CJ_KIND_RELAY_ANN], '#t': ['0penw0rld-fusion'], since: now - 300 }]));
+  // Subscribe to gift-wrapped joiner blobs addressed to our round key (kind 1059)
+  if (_cjRoundPub) {
+    ws.send(JSON.stringify(['REQ', 'cj-joiner', { kinds: [1059], '#p': [_cjRoundPub], since: now - 600 }]));
+  }
 }
 function _cjResubscribeAll() {
   for (const s of _nostrSockets) _cjSubscribe(s.ws);
@@ -5239,57 +5328,86 @@ function _cjResubscribeAll() {
 
 // ── CoinJoin Nostr event handler ──
 function _cjHandleNostrEvent(ev) {
-  if (ev.kind === CJ_KIND_POOL) _cjHandlePool(ev);
-  else if (ev.kind === CJ_KIND_JOIN) _cjHandleJoin(ev);
-  else if (ev.kind === CJ_KIND_PROTO) _cjHandleProto(ev);
+  if (ev.kind === CJ_KIND_RELAY_ANN) _cjHandleRelayAnn(ev);
+  else if (ev.kind === 1059) _cjHandleGiftWrap(ev);
 }
 
-function _cjHandlePool(ev) {
+// ── Relay Discovery ──
+function _cjHandleRelayAnn(ev) {
   try {
     const data = JSON.parse(ev.content);
-    if (!data.min_peers || ev.created_at < _cjSessionStartTs) return;
-    if (_cjPools.find(p => p.id === ev.id)) return;
-    _cjPools.push({ id: ev.id, pubkey: ev.pubkey, min_peers: data.min_peers, peers: [ev.pubkey], created: ev.created_at, peerSeen: { [ev.pubkey]: Date.now() } });
-  } catch {}
-}
-
-function _cjHandleJoin(ev) {
-  try {
-    const data = JSON.parse(ev.content);
-    const pool = _cjPools.find(p => p.id === data.pool_id);
-    if (!pool) return;
-    if (!pool.peerSeen) pool.peerSeen = {};
-    if (data.leave) {
-      pool.peers = pool.peers.filter(p => p !== ev.pubkey);
-      delete pool.peerSeen[ev.pubkey];
-      if (_cjActiveMix && _cjActiveMix.poolId === data.pool_id && _cjActiveMix.phase <= 1) {
-        _cjActiveMix.peers = _cjActiveMix.peers.filter(p => p !== ev.pubkey);
-        _cjCheckPhase1();
-      }
+    if (_cjJoinerRelays.find(r => r.pubkey === ev.pubkey)) {
+      // Update existing relay entry
+      const existing = _cjJoinerRelays.find(r => r.pubkey === ev.pubkey);
+      existing.created = ev.created_at;
+      if (data.name) existing.name = data.name;
       return;
     }
-    pool.peerSeen[ev.pubkey] = Date.now();
-    if (!pool.peers.includes(ev.pubkey)) pool.peers.push(ev.pubkey);
-    if (_cjActiveMix && _cjActiveMix.poolId === data.pool_id) {
-      if (!_cjActiveMix.peers.includes(ev.pubkey)) _cjActiveMix.peers.push(ev.pubkey);
-      _cjCheckPhase1();
-    }
+    _cjJoinerRelays.push({ pubkey: ev.pubkey, created: ev.created_at, name: data.name || '', id: ev.id });
+    console.log('[CJ] relay discovered:', ev.pubkey.slice(0, 16) + '...');
   } catch {}
 }
 
-async function _cjHandleProto(ev) {
-  if (!_cjActiveMix) return;
+// ── Signal Ready to Relay ──
+async function _cjSignalReady(relayPubHex) {
+  _cjGenerateRoundIdentity();
+  _cjActiveRelayPub = relayPubHex;
+  const readyPayload = JSON.stringify({ type: 'ready' });
+  const ev = await giftWrap(_cjRoundPriv, relayPubHex, CJ_KIND_JOINER, readyPayload);
+  nostrPublish(ev);
+  _cjResubscribeAll(); // resubscribe with new round key
+  _cjStatus('SIGNALED READY TO RELAY');
+  console.log('[CJ] signaled ready to relay:', relayPubHex.slice(0, 16) + '...');
+}
+
+// ── Send Via Relay ──
+async function _cjSendViaRelay(payload) {
+  if (!_cjActiveRelayPub || !_cjRoundPriv) return;
+  const msg = typeof payload === 'string' ? payload : JSON.stringify(payload);
+  const ev = await giftWrap(_cjRoundPriv, _cjActiveRelayPub, CJ_KIND_JOINER, msg);
+  nostrPublish(ev);
+}
+
+// ── Handle Joiner Blob (from relay) ──
+async function _cjHandleGiftWrap(ev) {
+  if (!_cjRoundPriv) return;
   try {
-    const dec = await nip04Decrypt(_cjSessionPriv, ev.pubkey, ev.content);
-    if (!dec) return;
-    const data = JSON.parse(dec);
-    if (data.pool_id !== _cjActiveMix.poolId) return;
-    _cjDispatchMsg(ev.pubkey, data);
-  } catch (e) { console.warn('[CJ] proto error:', e); }
+    const unwrapped = await giftUnwrap(_cjRoundPriv, ev);
+    if (!unwrapped) return;
+    const { rumor, sealPubkey } = unwrapped;
+    if (rumor.kind !== CJ_KIND_JOINER) return;
+    const data = JSON.parse(rumor.content);
+    const type = data.type;
+    if (type === 'round_start') _cjHandleRoundStart(data);
+    else if (type === 'inputs') _cjHandleInputs(data.from || sealPubkey, data);
+    else if (type === 'onion') _cjHandleOnion(data.from || sealPubkey, data);
+    else if (type === 'outputs') _cjHandleOutputs(data.from || sealPubkey, data);
+    else if (type === 'tx') _cjHandleTx(data.from || sealPubkey, data);
+    else if (type === 'sign') _cjHandleSign(data.from || sealPubkey, data);
+    else { _cjDispatchMsg(data.from || sealPubkey, data); }
+  } catch (e) { console.warn('[CJ] gift unwrap error:', e); }
+}
+
+// ── Handle Round Start (from relay) ──
+function _cjHandleRoundStart(data) {
+  if (_cjActiveMix) return; // already in a mix
+  const peers = data.participants || [];
+  const mixOrder = data.mix_order || [...peers].sort();
+  _cjActiveMix = {
+    roundId: data.round_id, peers, phase: 1,
+    myInputs: [], myOutputs: [],
+    peerInputs: {}, expectedOnions: 0, collectedOnions: [],
+    blindOutputs: [], allInputs: null, allOutputs: null,
+    unsignedTxHex: null, signatures: {}, mixOrder,
+  };
+  _cjStatus('ROUND STARTED — ' + peers.length + ' PARTICIPANTS');
+  console.log('[CJ] round start:', data.round_id, 'peers:', peers.length);
+  _cjSetPhase(2);
+  _cjStartInputs();
 }
 
 function _cjDispatchMsg(pubkey, data) {
-  const step = data.step, phase = _cjActiveMix ? _cjActiveMix.phase : 0;
+  const step = data.step || data.type, phase = _cjActiveMix ? _cjActiveMix.phase : 0;
   const stepPhase = { inputs: 2, onion: 3 };
   const needed = stepPhase[step] || 0;
   if (needed > 0 && phase < needed) { _cjMsgBuffer.push({ pubkey, data }); return; }
@@ -5298,7 +5416,6 @@ function _cjDispatchMsg(pubkey, data) {
   else if (step === 'outputs') _cjHandleOutputs(pubkey, data);
   else if (step === 'tx') _cjHandleTx(pubkey, data);
   else if (step === 'sign') _cjHandleSign(pubkey, data);
-  else if (step === 'blame') _cjHandleBlame(pubkey, data);
 }
 
 // ── Onion encryption for blind outputs ──
@@ -5381,25 +5498,16 @@ function _cjSetPhase(n) {
   for (const msg of pending) _cjDispatchMsg(msg.pubkey, msg.data);
   if ([2, 3, 5].includes(n)) { clearTimeout(_cjPhaseTimer); _cjPhaseTimer = setTimeout(() => _cjPhaseTimeout(n), CJ_PHASE_TIMEOUT); }
   else { clearTimeout(_cjPhaseTimer); _cjPhaseTimer = null; }
-  _cjCheckPhase1();
-  const labels = { 1: 'WAITING FOR PEERS', 2: 'REGISTERING INPUTS', 3: 'ONION MIXING', 4: 'ASSEMBLING TX', 5: 'VERIFYING & SIGNING', 6: 'BROADCASTING' };
+  const labels = { 1: 'WAITING FOR RELAY', 2: 'REGISTERING INPUTS', 3: 'ONION MIXING', 4: 'ASSEMBLING TX', 5: 'VERIFYING & SIGNING', 6: 'BROADCASTING' };
   _cjStatus('PHASE ' + n + ': ' + (labels[n] || ''));
   _updatePipelineBadge();
   _updatePipelineModal();
 }
 
-function _cjCheckPhase1() {
-  if (!_cjActiveMix || _cjActiveMix.phase !== 1) return;
-  if (_cjActiveMix.peers.length >= _cjActiveMix.minPeers) {
-    _cjSetPhase(2);
-    _cjStartInputs();
-  }
-}
-
 // ── Phase 2: Input Registration ──
 async function _cjStartInputs() {
   const m = _cjActiveMix;
-  m.mixOrder = [...m.peers].sort();
+  if (!m.mixOrder || !m.mixOrder.length) m.mixOrder = [...m.peers].sort();
   const usable = _utxos.filter(u => u.value >= 546 && (!_cjProcessedUtxos.has(u.txid + ':' + u.vout) || u.height > 0));
   if (!usable.length) { _cjStatus('NO SPENDABLE UTXOS'); _cjResetMix(); return; }
   const maxIn = Math.min(5, usable.length);
@@ -5432,17 +5540,13 @@ async function _cjStartInputs() {
     }
   }
 
-  const inputPayload = JSON.stringify({
-    pool_id: m.poolId, step: 'inputs',
+  const inputPayload = {
+    type: 'inputs',
+    round_id: m.roundId,
     inputs: m.myInputs.map(u => ({ txid: u.tx_hash, vout: u.tx_pos, value: u.value })),
     output_count: nOutputs,
-  });
-  for (const peer of m.peers) {
-    if (peer === _cjSessionPub) continue;
-    const enc = await nip04Encrypt(_cjSessionPriv, peer, inputPayload);
-    const ev = await makeNostrEvent(_cjSessionPriv, CJ_KIND_PROTO, enc, [['t', '0penw0rld-fusion'], ['p', peer], ['e', m.poolId]]);
-    nostrPublish(ev);
-  }
+  };
+  await _cjSendViaRelay(inputPayload);
   _cjStatus('INPUTS: ' + nInputs + ' → ' + nOutputs + ' STEALTH OUTPUTS');
 }
 
@@ -5469,14 +5573,12 @@ async function _cjStartBlindOutput() {
     myOnions.push(btoa(String.fromCharCode(...onion)));
   }
   const firstPeeler = peelers[0];
-  if (firstPeeler === _cjSessionPub) {
+  if (firstPeeler === _cjRoundPub) {
     m.collectedOnions = [...myOnions];
     _cjCheckOnions();
   } else {
     for (const ob64 of myOnions) {
-      const enc = await nip04Encrypt(_cjSessionPriv, firstPeeler, JSON.stringify({ pool_id: m.poolId, step: 'onion', onion: ob64 }));
-      const ev = await makeNostrEvent(_cjSessionPriv, CJ_KIND_PROTO, enc, [['t', '0penw0rld-fusion'], ['p', firstPeeler], ['e', m.poolId]]);
-      nostrPublish(ev);
+      await _cjSendViaRelay({ type: 'onion', round_id: m.roundId, onion: ob64, target: firstPeeler });
     }
   }
 }
@@ -5496,11 +5598,11 @@ function _cjCheckOnions() {
 
 async function _cjProcessOnions() {
   const m = _cjActiveMix;
-  const myIndex = m.mixOrder.indexOf(_cjSessionPub);
+  const myIndex = m.mixOrder.indexOf(_cjRoundPub);
   const peeled = [];
   for (const ob64 of m.collectedOnions) {
     const blob = Uint8Array.from(atob(ob64), c => c.charCodeAt(0));
-    try { peeled.push(await _cjOnionPeel(blob, _cjSessionPriv)); }
+    try { peeled.push(await _cjOnionPeel(blob, _cjRoundPriv)); }
     catch (e) { console.error('[CJ] peel fail:', e); return; }
   }
   for (let i = peeled.length - 1; i > 0; i--) {
@@ -5510,12 +5612,7 @@ async function _cjProcessOnions() {
   const nextIndex = myIndex + 1;
   if (nextIndex >= m.mixOrder.length) {
     m.blindOutputs = peeled.map(p => _cjOnionUnpad(p));
-    for (const peer of m.peers) {
-      if (peer === _cjSessionPub) continue;
-      const enc = await nip04Encrypt(_cjSessionPriv, peer, JSON.stringify({ pool_id: m.poolId, step: 'outputs', outputs: m.blindOutputs }));
-      const ev = await makeNostrEvent(_cjSessionPriv, CJ_KIND_PROTO, enc, [['t', '0penw0rld-fusion'], ['p', peer], ['e', m.poolId]]);
-      nostrPublish(ev);
-    }
+    await _cjSendViaRelay({ type: 'outputs', round_id: m.roundId, outputs: m.blindOutputs });
     _cjSetPhase(4);
     _cjAssembleTx();
   } else {
@@ -5523,9 +5620,7 @@ async function _cjProcessOnions() {
     m.collectedOnions = [];
     for (const inner of peeled) {
       const ib64 = btoa(String.fromCharCode(...inner));
-      const enc = await nip04Encrypt(_cjSessionPriv, nextPeeler, JSON.stringify({ pool_id: m.poolId, step: 'onion', onion: ib64 }));
-      const ev = await makeNostrEvent(_cjSessionPriv, CJ_KIND_PROTO, enc, [['t', '0penw0rld-fusion'], ['p', nextPeeler], ['e', m.poolId]]);
-      nostrPublish(ev);
+      await _cjSendViaRelay({ type: 'onion', round_id: m.roundId, onion: ib64, target: nextPeeler });
     }
   }
 }
@@ -5540,11 +5635,11 @@ function _cjHandleOutputs(pubkey, data) {
 async function _cjAssembleTx() {
   const m = _cjActiveMix;
   const lastPeeler = m.mixOrder[m.mixOrder.length - 1];
-  if (_cjSessionPub !== lastPeeler) return; // only assembler builds
+  if (_cjRoundPub !== lastPeeler) return; // only assembler builds
   try {
     const allInputs = [];
     for (const u of m.myInputs) {
-      allInputs.push({ txidLE: h2b(u.tx_hash).reverse(), txid: u.tx_hash, vout: u.tx_pos, value: u.value, sequence: 0xffffffff, owner: _cjSessionPub, _addr: u._addr });
+      allInputs.push({ txidLE: h2b(u.tx_hash).reverse(), txid: u.tx_hash, vout: u.tx_pos, value: u.value, sequence: 0xffffffff, owner: _cjRoundPub, _addr: u._addr });
     }
     for (const [pub, data] of Object.entries(m.peerInputs)) {
       for (const inp of data.inputs) {
@@ -5560,17 +5655,12 @@ async function _cjAssembleTx() {
     m.allInputs = allInputs; m.allOutputs = allOutputs;
     const unsignedInputs = allInputs.map(i => ({ ...i, scriptSig: new Uint8Array(0) }));
     m.unsignedTxHex = b2h(serializeTx(1, 0, unsignedInputs, allOutputs));
-    const txPayload = JSON.stringify({
-      pool_id: m.poolId, step: 'tx', tx_hex: m.unsignedTxHex,
+    const txPayload = {
+      type: 'tx', round_id: m.roundId, tx_hex: m.unsignedTxHex,
       inputs: allInputs.map(i => ({ txid: i.txid, vout: i.vout, value: i.value, owner: i.owner })),
       outputs: allOutputs.map(o => ({ value: o.value, script: b2h(o.script) })),
-    });
-    for (const peer of m.peers) {
-      if (peer === _cjSessionPub) continue;
-      const enc = await nip04Encrypt(_cjSessionPriv, peer, txPayload);
-      const ev = await makeNostrEvent(_cjSessionPriv, CJ_KIND_PROTO, enc, [['t', '0penw0rld-fusion'], ['p', peer], ['e', m.poolId]]);
-      nostrPublish(ev);
-    }
+    };
+    await _cjSendViaRelay(txPayload);
     _cjSetPhase(5);
     _cjVerifySign();
   } catch (e) { console.error('[CJ] assembly error:', e); _cjStatus('ASSEMBLY ERROR: ' + e.message); }
@@ -5585,6 +5675,7 @@ function _cjHandleTx(pubkey, data) {
   if (m.phase <= 4) { _cjSetPhase(5); _cjVerifySign(); }
 }
 
+
 // ── Phase 5: Verify & Sign ──
 async function _cjVerifySign() {
   const m = _cjActiveMix;
@@ -5592,9 +5683,6 @@ async function _cjVerifySign() {
   for (const out of m.myOutputs) {
     const outScript = b2h(p2pkhScript(cashAddrToHash20(out.addr)));
     if (!m.allOutputs.some(o => o.value === out.value && b2h(o.script) === outScript)) {
-      const assembler = m.mixOrder[m.mixOrder.length - 1];
-      if (!_cjBanList.includes(assembler)) _cjBanList.push(assembler);
-      localStorage.setItem('00_fusion_bans', JSON.stringify(_cjBanList));
       _cjPhaseTimeout(5); return;
     }
   }
@@ -5607,7 +5695,7 @@ async function _cjVerifySign() {
 
   const sigs = [];
   for (let i = 0; i < m.allInputs.length; i++) {
-    if (m.allInputs[i].owner !== _cjSessionPub) continue;
+    if (m.allInputs[i].owner !== _cjRoundPub) continue;
     const inp = m.allInputs[i];
     const inputAddr = inp._addr || m.myInputs.find(u => u.tx_hash === inp.txid && u.tx_pos === inp.vout)?._addr;
     const priv = (inputAddr && _hdKeyForAddr(inputAddr)) || _bchPriv32;
@@ -5619,14 +5707,9 @@ async function _cjVerifySign() {
     const scriptSig = concat(new Uint8Array([derSig.length]), derSig, new Uint8Array([pub.length]), pub);
     sigs.push({ index: i, scriptSig: b2h(scriptSig) });
   }
-  const sigPayload = JSON.stringify({ pool_id: m.poolId, step: 'sign', signatures: sigs });
-  for (const peer of m.peers) {
-    if (peer === _cjSessionPub) continue;
-    const enc = await nip04Encrypt(_cjSessionPriv, peer, sigPayload);
-    const ev = await makeNostrEvent(_cjSessionPriv, CJ_KIND_PROTO, enc, [['t', '0penw0rld-fusion'], ['p', peer], ['e', m.poolId]]);
-    nostrPublish(ev);
-  }
-  m.signatures[_cjSessionPub] = sigs;
+  const sigPayload = { type: 'sign', round_id: m.roundId, signatures: sigs };
+  await _cjSendViaRelay(sigPayload);
+  m.signatures[_cjRoundPub] = sigs;
   _cjCheckSigs();
 }
 
@@ -5678,16 +5761,48 @@ async function _cjBroadcast() {
     _cjRoundsCompleted++;
     const roundLabel = _cjRounds === 0 ? ('ROUND ' + _cjRoundsCompleted + '/∞') : ('ROUND ' + _cjRoundsCompleted + '/' + _cjRounds);
     _cjStatus(roundLabel + ' COMPLETE — TX: ' + txid.slice(0, 12) + '...');
-    _cjResetMix();
-    if (_cjRounds === 0 || _cjRoundsCompleted < _cjRounds) {
-      _cjStartCountdown('Next round in', 3);
-      setTimeout(() => { refreshBalance().then(() => _cjAutoJoinNext()); }, 3000);
+
+    // Pipelining: outputs from this round become inputs for next round
+    if (_cjPipelining && (_cjRounds === 0 || _cjRoundsCompleted < _cjRounds)) {
+      // Update UTXOs with outputs from this round (unconfirmed chain, BCH allows 50 ancestor limit)
+      const newUtxos = [];
+      for (let i = 0; i < m.allOutputs.length; i++) {
+        const myOut = m.myOutputs.find(o => {
+          const outScript = b2h(p2pkhScript(cashAddrToHash20(o.addr)));
+          return o.value === m.allOutputs[i].value && b2h(m.allOutputs[i].script) === outScript;
+        });
+        if (myOut) {
+          newUtxos.push({ txid, vout: i, value: myOut.value, _addr: myOut.addr, height: 0 });
+        }
+      }
+      if (newUtxos.length) {
+        // Register stealth keys for new outputs
+        for (const out of m.myOutputs) {
+          if (out.stealth) {
+            _cjSaveStealthUtxo(out.stealth.addr, out.stealth.priv, out.stealth.pub);
+          }
+        }
+      }
+      _cjResetMix();
+      // Signal ready immediately (no delay) for pipelining
+      if (_cjActiveRelayPub) {
+        _cjSignalReady(_cjActiveRelayPub);
+      } else {
+        _cjAutoJoinNext();
+      }
     } else {
-      _cjPipelineActive = false;
-      _cjStatus('PIPELINE COMPLETE — ' + _cjRoundsCompleted + ' ROUND(S) MIXED');
-      _cjRoundsCompleted = 0;
-      _loadStealthUtxos(); _registerStealthAddresses();
-      setTimeout(refreshBalance, 2000);
+      _cjResetMix();
+      if (_cjRounds === 0 || _cjRoundsCompleted < _cjRounds) {
+        _cjStartCountdown('Next round in', 3);
+        setTimeout(() => { refreshBalance().then(() => _cjAutoJoinNext()); }, 3000);
+      } else {
+        _cjPipelineActive = false;
+        _cjPipelining = false;
+        _cjStatus('PIPELINE COMPLETE — ' + _cjRoundsCompleted + ' ROUND(S) MIXED');
+        _cjRoundsCompleted = 0;
+        _loadStealthUtxos(); _registerStealthAddresses();
+        setTimeout(refreshBalance, 2000);
+      }
     }
   } catch (e) {
     _cjStatus('BROADCAST FAILED: ' + (e.message || e));
@@ -5698,99 +5813,54 @@ async function _cjBroadcast() {
   }
 }
 
-// ── Blame / Timeout ──
+// ── Timeout ──
 function _cjPhaseTimeout(phase) {
   if (!_cjActiveMix || _cjActiveMix.phase !== phase) return;
-  const m = _cjActiveMix;
-  let blamed = [];
-  if (phase === 2) { const r = new Set(Object.keys(m.peerInputs)); blamed = m.peers.filter(p => p !== _cjSessionPub && !r.has(p)); }
-  else if (phase === 5) { const s = new Set(Object.keys(m.signatures)); blamed = m.peers.filter(p => !s.has(p)); }
-  for (const p of blamed) { if (!_cjBanList.includes(p)) _cjBanList.push(p); }
-  if (blamed.length) localStorage.setItem('00_fusion_bans', JSON.stringify(_cjBanList));
-  _cjStatus('TIMEOUT PHASE ' + phase + (blamed.length ? ' — BLAMED ' + blamed.length + ' PEER(S)' : ''));
+  _cjStatus('TIMEOUT PHASE ' + phase);
   _cjResetMix();
-  if (_cjAutoRunning) { _cjStartCountdown('Retrying in', 5); setTimeout(_cjAutoJoinNext, 5000); }
-}
-
-function _cjHandleBlame(pubkey, data) {
-  for (const p of (data.blamed || [])) { if (!_cjBanList.includes(p)) _cjBanList.push(p); }
-  localStorage.setItem('00_fusion_bans', JSON.stringify(_cjBanList));
+  if (_cjAutoRunning) { _cjStartCountdown('Retrying via relay in', 5); setTimeout(_cjAutoJoinNext, 5000); }
 }
 
 function _cjResetMix() {
   clearTimeout(_cjPhaseTimer); _cjPhaseTimer = null;
-  if (_cjHeartbeat) { clearInterval(_cjHeartbeat); _cjHeartbeat = null; }
   _cjActiveMix = null;
+  _cjDestroyRoundIdentity();
   _updatePipelineBadge();
   _updatePipelineModal();
 }
 
-// ── Join Pool ──
-async function _cjJoinPool(poolId) {
-  const pool = _cjPools.find(p => p.id === poolId);
-  if (!pool) return;
-  const peers = pool.peers.filter(p => !_cjBanList.includes(p));
-  if (!peers.includes(_cjSessionPub)) peers.push(_cjSessionPub);
-  _cjActiveMix = {
-    poolId, minPeers: pool.min_peers, peers, phase: 1,
-    myInputs: [], myOutputs: [],
-    peerInputs: {}, expectedOnions: 0, collectedOnions: [],
-    blindOutputs: [], allInputs: null, allOutputs: null,
-    unsignedTxHex: null, signatures: {}, mixOrder: [],
-  };
-  _cjSetPhase(1);
-  const joinEv = await makeNostrEvent(_cjSessionPriv, CJ_KIND_JOIN, JSON.stringify({ pool_id: poolId }), [['t', '0penw0rld-fusion']]);
-  nostrPublish(joinEv);
-  if (pool.peerSeen) pool.peerSeen[_cjSessionPub] = Date.now();
-  if (_cjHeartbeat) clearInterval(_cjHeartbeat);
-  _cjHeartbeat = setInterval(async () => {
-    if (!_cjActiveMix || _cjActiveMix.phase !== 1) { clearInterval(_cjHeartbeat); _cjHeartbeat = null; return; }
-    const hbEv = await makeNostrEvent(_cjSessionPriv, CJ_KIND_JOIN, JSON.stringify({ pool_id: _cjActiveMix.poolId }), [['t', '0penw0rld-fusion']]);
-    nostrPublish(hbEv);
-  }, CJ_HEARTBEAT_MS);
-}
-
-// ── Auto Join Loop ──
+// ── Auto Join Loop (relay discovery) ──
 async function _cjAutoJoinNext() {
   if (!_cjAutoRunning) return;
   if (_cjActiveMix) { _cjStatus('WAITING FOR CURRENT MIX...'); return; }
   await refreshBalance();
   if (_balance < CJ_MIN_SATS) { _cjStatus('BALANCE TOO LOW'); _cjAutoRunning = false; return; }
-  // Prune stale pools
+  // Prune stale relay announcements
   const now = Math.floor(Date.now() / 1000);
-  _cjPools = _cjPools.filter(p => now - p.created < 300);
+  _cjJoinerRelays = _cjJoinerRelays.filter(r => now - r.created < 300);
   _cjResubscribeAll();
 
-  // Listen for pools 5-15s
+  // Listen for relay announcements 5-10s
   const checks = 2 + Math.floor(Math.random() * 2);
   for (let i = 0; i < checks; i++) {
-    _cjStartCountdown('Scanning pools...', (checks - i) * 5);
+    _cjStartCountdown('Discovering relays...', (checks - i) * 5);
     await new Promise(r => { _cjAutoTimer = setTimeout(r, 5000); });
     _cjAutoTimer = null;
     if (!_cjAutoRunning) return;
-    const match = _cjPools.filter(p => p.peers.length < p.min_peers && !p.peers.includes(_cjSessionPub) && p.created >= _cjSessionStartTs)
-      .sort((a, b) => b.peers.length - a.peers.length || b.created - a.created)[0];
-    if (match) { _cjStopCountdown(); _cjStatus('JOINING POOL (' + match.peers.length + '/' + match.min_peers + ')'); _cjJoinPool(match.id); return; }
+    if (_cjJoinerRelays.length > 0) {
+      const relay = _cjJoinerRelays[Math.floor(Math.random() * _cjJoinerRelays.length)];
+      _cjStopCountdown();
+      _cjStatus('SIGNALING READY TO RELAY');
+      _cjSignalReady(relay.pubkey);
+      return;
+    }
   }
   if (!_cjAutoRunning) return;
-  // Create pool
-  _cjStatus('CREATING POOL...');
-  const content = JSON.stringify({ min_peers: 5, v: 2 });
-  const ev = await makeNostrEvent(_cjSessionPriv, CJ_KIND_POOL, content, [['t', '0penw0rld-fusion']]);
-  _cjPools.push({ id: ev.id, pubkey: ev.pubkey, min_peers: 5, peers: [ev.pubkey], created: ev.created_at, peerSeen: { [ev.pubkey]: Date.now() } });
-  nostrPublish(ev);
-  _cjJoinPool(ev.id);
-  // Check for better pools while waiting
-  _cjStartCountdown('Waiting for peers...', 60);
-  let checkCount = 0;
-  const checkInt = setInterval(() => {
-    checkCount++;
-    if (!_cjAutoRunning || !_cjActiveMix || _cjActiveMix.phase !== 1) { clearInterval(checkInt); _cjStopCountdown(); return; }
-    const better = _cjPools.filter(p => p.peers.length < p.min_peers && !p.peers.includes(_cjSessionPub) && p.peers.length > 0 && p.id !== _cjActiveMix.poolId)
-      .sort((a, b) => b.peers.length - a.peers.length)[0];
-    if (better) { clearInterval(checkInt); _cjStopCountdown(); _cjResetMix(); _cjJoinPool(better.id); return; }
-    if (checkCount >= 6) { const d = 3000 + Math.floor(Math.random() * 5000); clearInterval(checkInt); _cjResetMix(); _cjStartCountdown('Retrying...', Math.ceil(d / 1000)); setTimeout(_cjAutoJoinNext, d); }
-  }, 10000);
+  // No relays found — retry after delay
+  _cjStatus('NO RELAYS FOUND');
+  const d = 3000 + Math.floor(Math.random() * 5000);
+  _cjStartCountdown('Retrying...', Math.ceil(d / 1000));
+  setTimeout(_cjAutoJoinNext, d);
 }
 
 // ── HD key lookup helper ──
@@ -5820,10 +5890,11 @@ async function startPrivacyPipeline() {
   if (_cjPipelineActive) return;
   if (_balance < CJ_MIN_SATS) { _cjStatus('BALANCE TOO LOW'); return; }
   _cjPipelineActive = true;
+  _cjPipelining = true;
   _cjRoundsCompleted = 0;
   _cjAutoRunning = true;
 
-  if (!_cjSessionPriv) _cjInitSession();
+  _cjGenerateRoundIdentity();
   // Subscribe to CoinJoin events on existing Nostr connections
   _cjResubscribeAll();
   _cjStatus('PIPELINE STARTED — ' + (_cjRounds === 0 ? '∞' : _cjRounds) + ' ROUND(S)');
@@ -5833,6 +5904,7 @@ async function startPrivacyPipeline() {
 function stopPrivacyPipeline() {
   _cjAutoRunning = false;
   _cjPipelineActive = false;
+  _cjPipelining = false;
   _cjStopCountdown();
   if (_cjAutoTimer) { clearTimeout(_cjAutoTimer); _cjAutoTimer = null; }
   _cjResetMix();
@@ -5846,7 +5918,6 @@ function toggleAutoStealth() {
   _updateAutoStealthUI();
   if (_autoStealth) {
     _cjPrevUtxoSet = _cjSnapshotUtxos();
-    if (!_cjSessionPriv) _cjInitSession();
     // Start immediately if mixable UTXOs exist
     if (_balance >= CJ_MIN_SATS && _utxos.some(u => !_cjProcessedUtxos.has(u.txid + ':' + u.vout))) {
       startPrivacyPipeline();
@@ -5913,9 +5984,9 @@ function _updatePipelineModal() {
   const footer = document.getElementById('cd-pipeline-footer');
   if (_cjActiveMix && _cjPipelineActive) {
     const roundText = _cjRounds === 0 ? 'Round ' + (_cjRoundsCompleted + 1) + '/∞' : 'Round ' + (_cjRoundsCompleted + 1) + '/' + _cjRounds;
-    const poolId = _cjActiveMix.poolId ? _cjActiveMix.poolId.slice(0, 8) + '...' : '—';
+    const relayId = _cjActiveRelayPub ? _cjActiveRelayPub.slice(0, 8) + '...' : '—';
     footer.style.display = 'block';
-    footer.textContent = roundText + '  ·  Pool: ' + poolId;
+    footer.textContent = roundText + '  ·  Relay: ' + relayId;
   } else {
     footer.style.display = 'none';
   }
@@ -7060,11 +7131,13 @@ async function walletImport() {
   err.textContent = '// DERIVING KEYS...';
   try {
     let seed64;
-    if (/^[0-9a-f]{128}$/i.test(seed)) seed64 = h2b(seed);
-    else seed64 = await mnemonicToSeed(seed);
+    let seedWords = null;
+    if (/^[0-9a-f]{128}$/i.test(seed)) { seed64 = h2b(seed); }
+    else { seed64 = await mnemonicToSeed(seed); seedWords = seed; }
     const derived = deriveBchPriv(seed64);
     const profile = {
       seedHex: b2h(seed64),
+      seedWords: seedWords,
       bchPrivHex: b2h(derived.priv),
       acctPrivHex: b2h(derived.acctPriv),
       acctChainHex: b2h(derived.acctChain),
@@ -7387,7 +7460,6 @@ async function bootApp(profile, pass) {
   try { if (_stealthNostrPub) nostrConnect(); } catch(e) { console.warn('[BOOT] nostr error:', e.message); }
   // Init Auto Stealth Mode
   try {
-    _cjInitSession();
     _updateAutoStealthUI();
     _cjPrevUtxoSet = _cjSnapshotUtxos();
     // Auto-start pipeline if ON and mixable UTXOs exist
@@ -7543,7 +7615,7 @@ const BACKUP_KEYS = [
   '00stealth_utxos','00_hd_paths','00_balances',
   '00_auto_stealth','00_cj_rounds',
   '00_ep_fulcrum','00_ep_btc_electrum','00_ep_relays','00_ep_eth_rpc',
-  '00_fusion_history','00_fusion_bans','00_cj_processed',
+  '00_fusion_history','00_cj_processed',
 ];
 
 function _getSessionPass() {
@@ -7645,6 +7717,7 @@ async function openExportKeys() {
     try { await decryptVault(vault, pass); } catch { alert('Wrong password.'); return; }
 
     const keys = [
+      ...(_profile.seedWords ? [{ label: 'SEED PHRASE (12 WORDS)', path: 'BIP39 mnemonic — write this down and keep it safe', val: _profile.seedWords }] : []),
       { label: 'SEED (HEX)', path: 'Master seed — source of all keys', val: _profile.seedHex },
       { label: 'BCH', path: "m/44'/145'/0'/0/0", val: _b2hSafe(_bchPriv32) },
       { label: 'BCH ADDRESS', path: _bchAddr || '—', val: _bchAddr || '' },
@@ -7655,8 +7728,8 @@ async function openExportKeys() {
       { label: 'XMR SPEND', path: "m/44'/145'/0'/5/0", val: _b2hSafe(_xmrSpendPriv) },
       { label: 'XMR VIEW', path: 'Derived from spend key', val: _b2hSafe(_xmrViewPriv) },
       { label: 'XMR ADDRESS', path: _xmrAddr || '—', val: _xmrAddr || '' },
-      { label: 'STEALTH SCAN', path: "m/44'/145'/0'/2'/0", val: _b2hSafe(_stealthScanPriv) },
-      { label: 'STEALTH SPEND', path: "m/44'/145'/0'/2'/1", val: _b2hSafe(_stealthSpendPriv) },
+      { label: 'STEALTH SCAN', path: "m/352'/145'/0'/1'/0 (BIP352)", val: _b2hSafe(_stealthScanPriv) },
+      { label: 'STEALTH SPEND', path: "m/352'/145'/0'/0'/0 (BIP352)", val: _b2hSafe(_stealthSpendPriv) },
       { label: 'STEALTH PAYCODE', path: 'stealth:scan_pub+spend_pub', val: (_stealthScanPub && _stealthSpendPub) ? 'stealth:' + b2h(_stealthScanPub) + b2h(_stealthSpendPub) : '' },
     ];
 
@@ -7741,6 +7814,8 @@ Object.assign(window, {
   _stealthDerive: stealthDerive,
   _nostrPublish: nostrPublish,
   _nip04Encrypt: nip04Encrypt,
+  _nip44Encrypt: nip44Encrypt,
+  _nip44Decrypt: nip44Decrypt,
   _makeNostrEvent: makeNostrEvent,
   _schnorr: schnorr,
   _rand: rand,
@@ -7803,6 +7878,8 @@ Object.defineProperties(window, {
   _ripemd160:         { get(){ return ripemd160; } },
   _nip04Encrypt:      { get(){ return nip04Encrypt; } },
   _nip04Decrypt:      { get(){ return nip04Decrypt; } },
+  _nip44Encrypt:      { get(){ return nip44Encrypt; } },
+  _nip44Decrypt:      { get(){ return nip44Decrypt; } },
   _makeNostrEvent:    { get(){ return makeNostrEvent; } },
   _acctPubHex:        { get(){ return _acctPubHex; } },
   _acctChainHex:      { get(){ return _acctChainHex; } },
