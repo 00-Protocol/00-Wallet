@@ -1,0 +1,17 @@
+{
+  "scripts": {
+    "relay": "node relay.js",
+    "relay:joiner-only": "node relay.js --joiner-only",
+    "relay:indexer-only": "node relay.js --indexer-only",
+    "indexer": "node pubkey-indexer.js --mode serve",
+    "scan": "node pubkey-indexer.js --mode scan"
+  },
+  "dependencies": {
+    "@noble/ciphers": "^1.2.1",
+    "@noble/curves": "^1.8.1",
+    "@noble/hashes": "^1.7.1",
+    "esbuild": "^0.27.4",
+    "monero-ts": "^0.11.8",
+    "ws": "^8.19.0"
+  }
+}

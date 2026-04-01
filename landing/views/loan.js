@@ -13,7 +13,7 @@ let _container = null, _unsubs = [], _bchPrice = 0;
 function _template() {
   return `<div class="dt-inner" style="padding:32px 40px">
     <div class="dt-page-header">
-      <div class="dt-page-title-wrap"><div class="dt-page-icon">◆</div><div><div class="dt-page-title">Loan</div><div class="dt-page-sub">Moria Protocol · BCH Collateralized Lending</div></div></div>
+      <div class="dt-page-title-wrap"><div class="dt-page-icon"><img src="icons/loan.png" style="width:28px;height:28px"></div><div><div class="dt-page-title">Loan</div><div class="dt-page-sub">Moria Protocol · BCH Collateralized Lending</div></div></div>
       <div class="dt-page-actions"><div class="dt-oracle" id="dt-loan-oracle">BCH $—</div></div>
     </div>
     <div class="dt-tabs" id="dt-loan-tabs">

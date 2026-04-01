@@ -33,6 +33,9 @@ const CHAINS = [
   { id:'avax', chain:'AVALANCHE',           name:'Avalanche',           ticker:'AVAX', dec:18, color:'#E84142', icon:'icons/avax.png', iconType:'img', type:'chain' },
   { id:'usdc_avax', chain:'',               name:'USDC',                ticker:'USDC', dec:6,  color:'#2775CA', icon:'icons/usdc.png', iconType:'img', type:'token' },
   { id:'usdt_avax', chain:'',               name:'USDT',                ticker:'USDT', dec:6,  color:'#26A17B', icon:'icons/usdt.png', iconType:'img', type:'token' },
+  { id:'matic', chain:'POLYGON',            name:'Polygon',             ticker:'POL',  dec:18, color:'#8247E5', icon:'https://assets.coingecko.com/coins/images/4713/small/polygon.png',iconType:'img', type:'chain' },
+  { id:'usdc_polygon', chain:'',          name:'USDC',                ticker:'USDC', dec:6,  color:'#2775CA', icon:'icons/usdc.png', iconType:'img', type:'token' },
+  { id:'usdce_polygon', chain:'',         name:'USDC.e',              ticker:'USDC.e',dec:6, color:'#2775CA', icon:'icons/usdc.png', iconType:'img', type:'token' },
   { id:'sol',  chain:'SOLANA',              name:'Solana',              ticker:'SOL',  dec:9,  color:'#9945FF', icon:'icons/sol.png',  iconType:'img', type:'chain' },
   { id:'usdc_sol', chain:'',                name:'USDC',                ticker:'USDC', dec:6,  color:'#2775CA', icon:'icons/usdc.png', iconType:'img', type:'token' },
   { id:'usdt_sol', chain:'',                name:'USDT',                ticker:'USDT', dec:6,  color:'#26A17B', icon:'icons/usdt.png', iconType:'img', type:'token' },
@@ -43,8 +46,8 @@ const CHAINS = [
   { id:'xlm',  chain:'STELLAR',            name:'Stellar',             ticker:'XLM',  dec:7,  color:'#14B6E7', icon:'icons/xlm.png',  iconType:'img', type:'chain' },
 ];
 
-const PRICE_CHAINS = ['bch','btc','eth','xmr','ltc','bnb','avax','sol','trx','xrp','xlm'];
-const PRICE_DOTS = {bch:'#0AC18E',btc:'#F7931A',eth:'#627EEA',xmr:'#FF6600',ltc:'#345D9D',bnb:'#F3BA2F',avax:'#E84142',sol:'#9945FF',trx:'#FF0013',xrp:'#23292F',xlm:'#14B6E7'};
+const PRICE_CHAINS = ['bch','btc','eth','xmr','ltc','bnb','matic','avax','sol','trx','xrp','xlm'];
+const PRICE_DOTS = {bch:'#0AC18E',btc:'#F7931A',eth:'#627EEA',xmr:'#FF6600',ltc:'#345D9D',bnb:'#F3BA2F',matic:'#8247E5',avax:'#E84142',sol:'#9945FF',trx:'#FF0013',xrp:'#23292F',xlm:'#14B6E7'};
 
 function fmtBal(raw, dec, ticker) {
   if (raw === undefined || raw === null) return '0 ' + ticker;
@@ -80,6 +83,7 @@ function render() {
     const bal = balances[c.id];
     let priceKey = c.id;
     if (c.id === 'sbch') priceKey = 'bch';
+    else if (c.id === 'usdce_polygon') priceKey = 'usdc';
     else if (c.id.startsWith('usdc')) priceKey = 'usdc';
     else if (c.id.startsWith('usdt')) priceKey = 'usdt';
     else if (c.id.startsWith('rlusd')) priceKey = 'usdc';
@@ -102,6 +106,7 @@ function render() {
     // Map price keys: stablecoins → usdc/usdt, stealth → bch
     let priceKey = c.id;
     if (c.id === 'sbch') priceKey = 'bch';
+    else if (c.id === 'usdce_polygon') priceKey = 'usdc';
     else if (c.id.startsWith('usdc')) priceKey = 'usdc';
     else if (c.id.startsWith('usdt')) priceKey = 'usdt';
     else if (c.id.startsWith('rlusd')) priceKey = 'usdc'; // ~$1

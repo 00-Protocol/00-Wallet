@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="150" height="150" viewBox="0 0 150 150">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0AC18E"/>
+      <stop offset="100%" style="stop-color:#07956D"/>
+    </linearGradient>
+  </defs>
+  <!-- Background circle -->
+  <rect width="150" height="150" rx="30" fill="url(#bg)"/>
+  <!-- "00" text -->
+  <text x="75" y="88" text-anchor="middle" font-family="Inter, Helvetica, Arial, sans-serif" font-size="72" font-weight="800" fill="white" letter-spacing="-3">00</text>
+  <!-- Subtle shield/lock accent -->
+  <path d="M75 110 L75 120 M68 113 L75 120 L82 113" stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/>
+</svg>

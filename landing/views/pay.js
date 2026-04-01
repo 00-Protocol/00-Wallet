@@ -53,7 +53,7 @@ function _template() {
   <div class="dt-inner" style="padding:32px 40px">
     <div class="dt-page-header">
       <div class="dt-page-title-wrap">
-        <div class="dt-page-icon">↯</div>
+        <div class="dt-page-icon"><img src="icons/pay.png" style="width:28px;height:28px"></div>
         <div><div class="dt-page-title">Pay</div><div class="dt-page-sub">BCH Payment Terminal</div></div>
       </div>
       <div class="dt-page-actions">${statusDotsHtml(['fulcrum'])}<div class="dt-oracle" id="dt-pay-oracle">BCH $—</div></div>

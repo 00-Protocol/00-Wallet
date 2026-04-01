@@ -12,6 +12,7 @@ const SPA_ROUTES = {
   'id.html': '#/id', 'mesh.html': '#/mesh', 'onion.html': '#/onion',
   'vault.html': '#/vault', 'fusion.html': '#/fusion', 'sub.html': '#/sub',
   'analyse.html': '#/analyse', 'config.html': '#/config',
+  'bet.html': '#/bet', 'elon.html': '#/elon',
 };
 
 function resolveUrl(htmlUrl) {
@@ -34,19 +35,23 @@ const APPS = [
   { name: '00 Sub', url: 'sub.html' },
   { name: '00 Analyse', url: 'analyse.html' },
   { name: '00 Config', url: 'config.html' },
+  { name: '00 Bet', url: 'bet.html' },
+  { name: '00 Elon', url: 'elon.html' },
 ];
 
 // ── Desktop UI ─────────────────────────────────────────────────
 const APP_ICONS = {
-  'index.html': '⌂', 'wallet.html': '₿', 'chat.html': '✉', 'pay.html': '↗',
-  'swap.html': '⇄', 'dex.html': '◈', 'loan.html': '∞',
+  'index.html': '⌂', 'wallet.html': '<img src="icons/bch-wallet.png" style="width:18px;height:18px">', 'chat.html': '<img src="icons/chat.png" style="width:18px;height:18px">', 'pay.html': '<img src="icons/pay.png" style="width:18px;height:18px">',
+  'swap.html': '⇄', 'dex.html': '<img src="icons/dex.png" style="width:18px;height:18px">', 'loan.html': '<img src="icons/loan.png" style="width:18px;height:18px">',
   'id.html': '◉', 'mesh.html': '⬡',
-  'onion.html': '⧉', 'vault.html': '⊡', 'fusion.html': '⚗', 'sub.html': '↻', 'analyse.html': '◪', 'config.html': '⚙',
+  'onion.html': '<img src="icons/onion.png" style="width:18px;height:18px">', 'vault.html': '<img src="icons/vault.png" style="width:18px;height:18px">', 'fusion.html': '⚗', 'sub.html': '<img src="icons/sub.png" style="width:18px;height:18px">', 'analyse.html': '◪', 'config.html': '⚙',
+  'bet.html': '🎲', 'elon.html': '<img src="https://pbs.twimg.com/profile_images/2035314704307081216/71U1ftM3_200x200.jpg" style="width:18px;height:18px;border-radius:50%;object-fit:cover">',
 };
 const APP_SECTIONS = {
   Overview: ['index.html'],
   Finance:  ['wallet.html','pay.html','swap.html','dex.html','loan.html','sub.html'],
   Privacy:  ['chat.html','onion.html','vault.html','fusion.html'],
+  Trading:  ['bet.html','elon.html'],
   Analytics: ['analyse.html'],
   Identity: ['id.html','mesh.html'],
 };
@@ -194,6 +199,22 @@ function disconnect() {
 
 window._shellSetLang    = setLang;
 window._shellDisconnect = disconnect;
+
+/** Refresh the sidebar connect/disconnect button based on current auth state */
+function _refreshConnectBtn(btn) {
+  btn = btn || document.getElementById('sidebar-connect-btn');
+  if (!btn) return;
+  if (isConnected()) {
+    btn.className = 'sidebar-bottom-item danger';
+    btn.innerHTML = '<span class="sidebar-bottom-icon">⏻</span><span class="sidebar-label">' + t('disc') + '</span>';
+    btn.onclick = disconnect;
+  } else {
+    btn.className = 'sidebar-bottom-item';
+    btn.innerHTML = '<span class="sidebar-bottom-icon">⏻</span><span class="sidebar-label">' + t('connect') + '</span>';
+    btn.onclick = () => { window.location.hash = '#/auth'; };
+  }
+}
+window._shellRefreshAuth = _refreshConnectBtn;
 
 // ── CSS ────────────────────────────────────────────────────────
 const st = document.createElement('style');
@@ -772,7 +793,7 @@ function buildDesktopSidebar() {
   const logo = document.createElement('a');
   logo.className = 'sidebar-logo';
   logo.href = IS_SPA ? '#/dashboard' : '/';
-  logo.innerHTML = '<span class="sidebar-logo-icon">00</span><span class="sidebar-logo-text sidebar-label">Protocol</span>';
+  logo.innerHTML = '<span class="sidebar-logo-icon">00</span><span class="sidebar-logo-text sidebar-label">Protocol</span><span class="sidebar-label" style="font-size:9px;color:var(--dt-text-secondary,#94a3b8);margin-left:6px;font-weight:400;opacity:.7;cursor:pointer" title="Click to force reload" onclick="event.preventDefault();event.stopPropagation();location.reload(true)">v0.25</span>';
   sb.appendChild(logo);
 
   // Nav sections
@@ -852,17 +873,10 @@ function buildDesktopSidebar() {
     bot.appendChild(walletBtn);
   }
 
-  // Connect / Disconnect
+  // Connect / Disconnect — dynamic, refreshed on auth change
   const discBtn = document.createElement('button');
-  if (isConnected()) {
-    discBtn.className = 'sidebar-bottom-item danger';
-    discBtn.innerHTML = '<span class="sidebar-bottom-icon">⏻</span><span class="sidebar-label">' + t('disc') + '</span>';
-    discBtn.onclick = disconnect;
-  } else {
-    discBtn.className = 'sidebar-bottom-item';
-    discBtn.innerHTML = '<span class="sidebar-bottom-icon">⏻</span><span class="sidebar-label">' + t('connect') + '</span>';
-    discBtn.onclick = () => { window.location.href = 'wallet.html'; };
-  }
+  discBtn.id = 'sidebar-connect-btn';
+  _refreshConnectBtn(discBtn);
   bot.appendChild(discBtn);
 
   // Collapse toggle

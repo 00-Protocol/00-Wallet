@@ -22,7 +22,7 @@ function tIcon(t) { return META + '/icon/' + t.token_id; }
 function _template() {
   return `<div class="dt-inner" style="padding:32px 40px">
     <div class="dt-page-header">
-      <div class="dt-page-title-wrap"><div class="dt-page-icon">◈</div><div><div class="dt-page-title">DEX</div><div class="dt-page-sub">Cauldron Decentralized Exchange</div></div></div>
+      <div class="dt-page-title-wrap"><div class="dt-page-icon"><img src="icons/dex.png" style="width:28px;height:28px"></div><div><div class="dt-page-title">DEX</div><div class="dt-page-sub">Cauldron Decentralized Exchange</div></div></div>
       <div class="dt-page-actions"><div class="dt-oracle" id="dt-dex-price">BCH $—</div><div class="dt-oracle" id="dt-dex-tvl">TVL —</div></div>
     </div>
     <div class="dt-tabs" id="dt-dex-tabs">

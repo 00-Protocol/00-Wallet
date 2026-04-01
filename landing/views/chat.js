@@ -29,6 +29,7 @@ import {
 } from '../core/ccsh-crypto.js';
 
 import * as auth from '../core/auth.js';
+import { pubHashToCashAddr } from '../core/cashaddr.js';
 import { navigate } from '../router.js';
 
 /* ── Module exports ── */
@@ -185,7 +186,6 @@ function _handleNostrEvent(ev) {
       } catch {}
     }
     entry.ts = Date.now();
-    console.log('[chat/nostr] relay chunks msg_id=' + msgIdHex.slice(0, 12) + '... n=' + entry.chunks.length);
     _tryDecryptV2(msgIdHex);
     const now = Date.now();
     for (const [k, v] of _pendingRelayParts) { if (now - v.ts > 3600_000) _pendingRelayParts.delete(k); }
@@ -214,7 +214,6 @@ async function _tryDecryptV2(msgIdHex) {
   try {
     const text = await splitDecrypt(chainBlob, relayData, ephPub, myPriv32);
     const senderPubHex = b2h(chain.sender_pub);
-    console.log('[chat/v2] decrypted msg_id=' + msgIdHex.slice(0, 12) + '... from=' + senderPubHex.slice(0, 16));
     let contact = _findContactByPub(senderPubHex);
     const time = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
     if (!contact) {
@@ -250,7 +249,6 @@ async function _scanInbox() {
       .map(u => u.transaction_hash);
     const txids = [...new Set([...unconfirmedTxids, ...confirmedTxids])];
     const myPriv32 = h2b(_profile.x25519_priv_hex);
-    console.log('[chat] scan addr=' + _profile.bch_address.slice(0, 20) + '... txs=' + txids.length + ' unseen=' + txids.filter(t => !_seenTxids.has(t)).length);
 
     for (const txid of txids.slice(0, 20)) {
       if (_seenTxids.has(txid)) continue;
@@ -276,7 +274,6 @@ async function _scanInbox() {
             }
             const entry = _pendingChainParts.get(msgIdHex);
             entry.chunks.push({ idx: pkt.chunk_index, total: pkt.chunk_total, data: pkt.ciphertext_chunk });
-            console.log('[chat/v2] chain chunk msg_id=' + msgIdHex.slice(0, 12) + '... idx=' + pkt.chunk_index + '/' + pkt.chunk_total);
             await _tryDecryptV2(msgIdHex);
           } catch (e) { console.debug('[chat/v2] chain parse error:', e.message); }
           continue;
@@ -325,7 +322,6 @@ async function _scanInbox() {
                 contact.bch_address = newAddr;
                 if (newPubHex) contact.pub_hex = newPubHex;
                 _saveContacts();
-                console.log('[chat] ADDR_CHANGE applied for', contact.name);
               }
             } catch (e) { console.debug('[chat] ADDR_CHANGE parse error:', e.message); }
           }
@@ -447,7 +443,6 @@ async function _sendCcshMsgV2(contact, text) {
   if (window._nostrPublish) {
     try { window._nostrPublish(nostrEvent); } catch {}
   }
-  console.log('[chat/v2] chain TX=' + txid.slice(0, 12) + '... relay=' + nostrEvent.id.slice(0, 12));
   return txid;
 }
 
@@ -779,15 +774,16 @@ function _renderMain() {
     <!-- Header -->
     <div class="dt-page-header" style="flex-shrink:0;margin-bottom:16px">
       <div class="dt-page-title-wrap">
-        <div class="dt-page-icon">💬</div>
+        <div class="dt-page-icon"><img src="icons/chat.png" style="width:28px;height:28px"></div>
         <div>
           <div class="dt-page-title">Chat</div>
           <div class="dt-page-sub">Split-Knowledge · BCH + Nostr</div>
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:10px">
-        <span id="chat-balance" style="font-family:monospace;font-size:12px;color:var(--dt-text-secondary);opacity:.5">loading...</span>
+        <span id="chat-balance" style="font-family:monospace;font-size:12px;color:var(--dt-text-secondary)">loading...</span>
         <div class="dt-page-actions" style="margin:0">
+          <button class="dt-action-btn-outline" style="width:auto;padding:6px 14px;font-size:11px;border-color:#0AC18E;color:#0AC18E" id="chat-btn-topup">+ Top Up</button>
           <button class="dt-action-btn-outline" style="width:auto;padding:6px 14px;font-size:11px" id="chat-btn-card">My Card</button>
           <button class="dt-action-btn-outline" style="width:auto;padding:6px 14px;font-size:11px" id="chat-btn-ci">Change ID</button>
         </div>
@@ -1007,6 +1003,64 @@ function _appendMsg(m) {
    UI: EVENT BINDINGS
    ══════════════════════════════════════════ */
 
+/* ── Top Up: transfer sats from wallet to chat ── */
+async function _doTopUp() {
+  const topUpAmount = 50000; // 50,000 sats default (~$0.25)
+  const btn = document.getElementById('chat-btn-topup');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Sending...'; }
+
+  try {
+    if (!_profile?.bch_address) throw new Error('Chat address not available');
+    const walletKeys = auth.getKeys();
+    if (!walletKeys?.privKey) throw new Error('Wallet not unlocked');
+
+    // Use sendBch from core
+    const { sendBch } = await import('../core/send-bch.js');
+    const { sha256: sha } = await import('https://esm.sh/@noble/hashes@1.7.1/sha256');
+    const { secp256k1 } = await import('https://esm.sh/@noble/curves@1.8.1/secp256k1');
+    const { cashAddrToHash20 } = await import('../core/cashaddr.js');
+
+    // Fetch wallet UTXOs
+    const hdAddrs = (await import('../core/state.js')).get('hdAddresses') || [];
+    let utxos = [];
+    const { getPrivForAddr } = await import('../services/hd-scanner.js');
+    for (const hd of hdAddrs) {
+      try {
+        const h = cashAddrToHash20(hd.addr);
+        const script = new Uint8Array([0x76, 0xa9, 0x14, ...h, 0x88, 0xac]);
+        const sh = Array.from(sha(script)).reverse().map(b => b.toString(16).padStart(2, '0')).join('');
+        const raw = await window._fvCall('blockchain.scripthash.listunspent', [sh]) || [];
+        for (const u of raw) utxos.push({ txid: u.tx_hash, vout: u.tx_pos, value: u.value, addr: hd.addr });
+      } catch {}
+    }
+    if (!utxos.length) throw new Error('No wallet UTXOs available');
+
+    // Change address
+    const changeAddr = (await import('../core/state.js')).get('hdChangeAddr');
+    const changeH160 = changeAddr ? cashAddrToHash20(changeAddr) : ripemd160(sha256(secp256k1.getPublicKey(walletKeys.privKey, true)));
+
+    const result = await sendBch({
+      toAddress: _profile.bch_address,
+      amountSats: topUpAmount,
+      feeRate: 1,
+      utxos,
+      privKey: walletKeys.privKey,
+      pubKey: secp256k1.getPublicKey(walletKeys.privKey, true),
+      changeHash160: changeH160,
+      hdGetKey: getPrivForAddr,
+    });
+
+    if (btn) { btn.textContent = '✓ Sent ' + topUpAmount + ' sats'; btn.disabled = false; }
+    setTimeout(() => { if (btn) btn.textContent = '+ Top Up'; }, 3000);
+    // Refresh chat balance
+    setTimeout(_refreshBalance, 3000);
+  } catch (e) {
+    console.error('[chat] top-up error:', e);
+    if (btn) { btn.textContent = '✗ ' + e.message; btn.disabled = false; }
+    setTimeout(() => { if (btn) btn.textContent = '+ Top Up'; }, 3000);
+  }
+}
+
 function _bindEvents() {
   /* Add contact */
   document.getElementById('chat-btn-add')?.addEventListener('click', () => _openAddModal());
@@ -1017,6 +1071,9 @@ function _bindEvents() {
 
   /* Save contact */
   document.getElementById('chat-ac-save')?.addEventListener('click', _saveContact);
+
+  /* Top Up — transfer from wallet to chat address */
+  document.getElementById('chat-btn-topup')?.addEventListener('click', _doTopUp);
 
   /* Share card */
   document.getElementById('chat-btn-card')?.addEventListener('click', _openShareCard);
@@ -1161,6 +1218,22 @@ async function _openChangeIdentity() {
   _ciNewBchPrivHex = b2h(newBchPriv);
   _ciNewBchAddr = privToBchAddr(newBchPriv);
 
+  // Check balance
+  let balanceSats = 0;
+  try {
+    const data = await _bcGetAddr(_profile.bch_address);
+    balanceSats = data?.address?.balance ?? 0;
+    if (_profile.bch_address_prev) {
+      const prev = await _bcGetAddr(_profile.bch_address_prev);
+      balanceSats += prev?.address?.balance ?? 0;
+    }
+  } catch {}
+
+  const costPerContact = 2046;
+  const selectedCount = _contacts.length;
+  const totalCost = selectedCount * costPerContact + 1500; // + self-transfer fee
+  const hasEnough = balanceSats >= totalCost;
+
   body.innerHTML = `
     <div class="dt-form-group"><div class="dt-form-lbl">NEW X25519 PUBLIC KEY</div>
       <div style="font-family:monospace;font-size:10px;word-break:break-all;padding:10px;background:var(--dt-bg,#f0f2f5);border-radius:8px;color:var(--dt-text)">${_ciNewPubHex}</div>
@@ -1168,23 +1241,54 @@ async function _openChangeIdentity() {
     <div class="dt-form-group"><div class="dt-form-lbl">NEW BCH ADDRESS</div>
       <div style="font-family:monospace;font-size:10px;word-break:break-all;padding:10px;background:var(--dt-bg,#f0f2f5);border-radius:8px;color:var(--dt-text)">${_ciNewBchAddr}</div>
     </div>
-    <div class="dt-form-group"><div class="dt-form-lbl">CONTACTS TO NOTIFY</div>
+    <div class="dt-form-group">
+      <div class="dt-form-lbl" style="display:flex;justify-content:space-between;align-items:center">
+        CONTACTS TO NOTIFY
+        <span style="font-size:10px;font-weight:400;color:var(--dt-text-secondary)">~${costPerContact} sats each</span>
+      </div>
       <div id="chat-ci-contacts" style="display:flex;flex-direction:column;gap:4px">
-        ${_contacts.length ? _contacts.map(c => `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--dt-bg,#f0f2f5);border-radius:6px;font-size:12px;color:var(--dt-text)">
-          <span>${_esc(c.name)}</span>
+        ${_contacts.length ? _contacts.map((c, i) => `<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--dt-bg,#f0f2f5);border-radius:6px;font-size:12px;color:var(--dt-text);cursor:pointer">
+          <input type="checkbox" class="ci-contact-cb" data-idx="${i}" checked style="accent-color:#0AC18E">
+          <span style="flex:1">${_esc(c.name)}</span>
           <span class="ci-status" data-pub="${c.pub_hex.slice(0, 8)}" style="font-size:10px;color:var(--dt-text-secondary)">pending</span>
-        </div>`).join('') : '<div style="font-size:12px;color:var(--dt-text-secondary)">No contacts to notify</div>'}
+        </label>`).join('') : '<div style="font-size:12px;color:var(--dt-text-secondary)">No contacts to notify</div>'}
       </div>
     </div>
-    <div style="padding:12px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:8px;margin:12px 0;font-size:11px;color:#92400e;line-height:1.6;text-align:center">
-      This action is irreversible. A BCH TX will be sent to each contact (~2046 sat each). They will update your address automatically.
+    <div id="chat-ci-cost" style="padding:8px 12px;background:var(--dt-bg,#f0f2f5);border-radius:8px;margin:8px 0;display:flex;justify-content:space-between;font-size:11px">
+      <span>Balance: <strong>${(balanceSats / 1e8).toFixed(8)} BCH</strong> (${balanceSats} sats)</span>
+      <span>Cost: <strong id="chat-ci-total-cost">${totalCost}</strong> sats</span>
     </div>
-    <button class="dt-action-btn" id="chat-ci-broadcast" style="background:var(--dt-accent,#0AC18E);width:100%">Broadcast to Contacts</button>
+    <div id="chat-ci-warning" style="display:${hasEnough ? 'none' : 'block'};padding:10px;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-radius:8px;margin:8px 0;font-size:11px;color:#dc2626;text-align:center">
+      ⚠ Insufficient funds to notify all contacts. Top up your chat balance or uncheck some contacts.
+    </div>
+    <div style="padding:12px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:8px;margin:8px 0;font-size:11px;color:#92400e;line-height:1.6;text-align:center">
+      This action is irreversible. A BCH TX will be sent to each selected contact (~${costPerContact} sat each). They will update your address automatically.
+    </div>
+    <button class="dt-action-btn" id="chat-ci-broadcast" style="background:var(--dt-accent,#0AC18E);width:100%;${hasEnough ? '' : 'opacity:.5;pointer-events:none'}">${hasEnough ? 'Broadcast to Contacts' : 'Insufficient Funds — Top Up First'}</button>
     <div id="chat-ci-done" style="display:none;text-align:center;padding:20px">
       <div style="font-size:32px;margin-bottom:12px">&#10003;</div>
       <div style="font-size:14px;font-weight:600;color:var(--dt-text)">Identity Updated</div>
       <div style="font-size:12px;color:var(--dt-text-secondary);margin-top:8px">New key active — Contacts notified — BCH transferred</div>
     </div>`;
+
+  // Recalculate on checkbox toggle
+  document.querySelectorAll('.ci-contact-cb').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const checked = document.querySelectorAll('.ci-contact-cb:checked').length;
+      const cost = checked * costPerContact + 1500;
+      const ok = balanceSats >= cost;
+      const costEl = document.getElementById('chat-ci-total-cost');
+      const warnEl = document.getElementById('chat-ci-warning');
+      const btn = document.getElementById('chat-ci-broadcast');
+      if (costEl) costEl.textContent = cost;
+      if (warnEl) warnEl.style.display = ok ? 'none' : 'block';
+      if (btn) {
+        btn.style.opacity = ok ? '' : '.5';
+        btn.style.pointerEvents = ok ? '' : 'none';
+        btn.textContent = ok ? 'Broadcast to Contacts' : 'Insufficient Funds — Top Up First';
+      }
+    });
+  });
 
   document.getElementById('chat-ci-broadcast')?.addEventListener('click', _ciDoBroadcast);
 }
@@ -1200,8 +1304,16 @@ async function _ciDoBroadcast() {
   const _addr = _ciNewBchAddr.replace('bitcoincash:', '');
   const payload = `${_addr}|${_pub64}`;
 
-  for (const c of _contacts) {
+  // Only notify checked contacts
+  const checkedIdxs = new Set([...document.querySelectorAll('.ci-contact-cb:checked')].map(cb => parseInt(cb.dataset.idx)));
+
+  for (let i = 0; i < _contacts.length; i++) {
+    const c = _contacts[i];
     const statusEl = document.querySelector(`.ci-status[data-pub="${c.pub_hex.slice(0, 8)}"]`);
+    if (!checkedIdxs.has(i)) {
+      if (statusEl) { statusEl.textContent = 'skipped'; statusEl.style.color = 'var(--dt-text-secondary)'; }
+      continue;
+    }
     try {
       await _sendCcshMsgV1(c, payload, 0x02);
       if (statusEl) { statusEl.textContent = 'sent'; statusEl.style.color = 'var(--dt-accent,#0AC18E)'; }
@@ -1299,19 +1411,59 @@ export async function mount(container) {
   /* Check auth — wallet must be unlocked */
   if (!auth.isUnlocked()) { navigate('auth'); return; }
 
-  /* Render the auth area or chat area */
+  /* Render loading state */
   container.innerHTML = `
     <div style="padding:24px 32px;height:calc(100vh - 48px);display:flex;flex-direction:column">
       <div class="dt-page-header" style="flex-shrink:0;margin-bottom:16px">
         <div class="dt-page-title-wrap">
-          <div class="dt-page-icon">💬</div>
+          <div class="dt-page-icon"><img src="icons/chat.png" style="width:28px;height:28px"></div>
           <div><div class="dt-page-title">Chat</div><div class="dt-page-sub">Split-Knowledge · BCH + Nostr</div></div>
         </div>
       </div>
       <div id="chat-auth-area" style="flex:1;display:flex;align-items:center;justify-content:center;background:var(--dt-surface,#fff);border:1px solid var(--dt-border);border-radius:16px;overflow:hidden"></div>
     </div>`;
 
-  /* Try auto-unlock */
+  /* Auto-derive chat identity from wallet HD keys */
+  const keys = auth.getKeys();
+  if (keys?.acctPriv && keys?.acctChain) {
+    try {
+      const { bip32Child } = await import('../core/hd.js');
+      const { x25519 } = await import('https://esm.sh/@noble/curves@1.8.1/ed25519');
+
+      // Derive chat key at m/44'/145'/0'/2/0
+      const chatBranch = bip32Child(keys.acctPriv, keys.acctChain, 2);
+      const chatNode = bip32Child(chatBranch.priv || chatBranch.pub, chatBranch.chain, 0);
+      const chatPriv = chatNode.priv;
+
+      // Derive X25519 key from chat private key (first 32 bytes = x25519 priv)
+      const x25519Priv = chatPriv.slice(0, 32);
+      const x25519Pub = x25519.getPublicKey(x25519Priv);
+
+      // Derive BCH address for chat funding
+      const { secp256k1 } = await import('https://esm.sh/@noble/curves@1.8.1/secp256k1');
+      const chatPub33 = secp256k1.getPublicKey(chatPriv, true);
+      const chatH160 = ripemd160(sha256(chatPub33));
+      const chatAddr = pubHashToCashAddr(chatH160);
+
+      _profile = {
+        x25519_priv_hex: b2h(x25519Priv),
+        x25519_pub_hex: b2h(x25519Pub),
+        bch_priv_hex: b2h(chatPriv),
+        bch_address: chatAddr,
+      };
+      _sessionPass = auth.getPassword();
+
+      // Also save as chat vault for compat
+      if (_sessionPass) {
+        try { localStorage.setItem('00chat_vault', await encryptVault(_profile, _sessionPass)); } catch {}
+      }
+
+      _bootIntoChat();
+      return;
+    } catch (e) { console.warn('[chat] HD derivation failed:', e.message); }
+  }
+
+  /* Fallback: try existing chat vault */
   const autoOk = await _tryAutoUnlock();
   if (autoOk) {
     _bootIntoChat();
@@ -1331,7 +1483,6 @@ export async function mount(container) {
           _profile = deriveProfileFromSeed(seed64);
           _sessionPass = pass;
           localStorage.setItem('00chat_vault', await encryptVault(_profile, pass));
-          localStorage.setItem('00chat_attempts', '0');
           _bootIntoChat();
           return;
         }

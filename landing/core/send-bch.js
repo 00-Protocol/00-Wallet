@@ -73,7 +73,7 @@ export function buildSignedTx(inputs, outputs, getKeyForInput) {
 }
 
 /* ── Full send flow: select UTXOs, build TX, sign, broadcast ── */
-export async function sendBch({ toAddress, amountSats, feeRate, utxos, privKey, pubKey, changeHash160, hdGetKey }) {
+export async function sendBch({ toAddress, amountSats, feeRate, utxos, privKey, pubKey, changeHash160, hdGetKey, opReturnData, ledgerSign }) {
   if (!toAddress) throw new Error('Recipient address required');
   if (amountSats < 546) throw new Error('Minimum 546 sats (dust limit)');
   if (!utxos || !utxos.length) throw new Error('No UTXOs available');
@@ -83,6 +83,19 @@ export async function sendBch({ toAddress, amountSats, feeRate, utxos, privKey, 
   const toHash160 = cashAddrToHash20(toAddress);
   const toScript = p2pkhScript(toHash160);
 
+  // OP_RETURN output for stealth ephPub or other data
+  let opReturnOutput = null;
+  if (opReturnData && opReturnData.length > 0) {
+    const data = opReturnData instanceof Uint8Array ? opReturnData : h2b(opReturnData);
+    // OP_RETURN script: 0x6a (OP_RETURN) + push length + data
+    const pushLen = data.length < 0x4c ? [data.length] : [0x4c, data.length];
+    const script = new Uint8Array([0x6a, ...pushLen, ...data]);
+    opReturnOutput = { value: 0, script };
+  }
+
+  // Count extra outputs for fee calculation
+  const extraOutputs = opReturnOutput ? 1 : 0;
+
   // Select UTXOs (largest first)
   const sorted = [...utxos].sort((a, b) => b.value - a.value);
   const selected = [];
@@ -90,13 +103,13 @@ export async function sendBch({ toAddress, amountSats, feeRate, utxos, privKey, 
   for (const u of sorted) {
     selected.push(u);
     total += u.value;
-    const fee = Math.ceil(estimateTxSize(selected.length, 2) * feeRate);
+    const fee = Math.ceil(estimateTxSize(selected.length, 2 + extraOutputs) * feeRate);
     if (total >= amountSats + fee) break;
   }
 
-  // Calculate fee (1 output if no change, 2 outputs if change)
-  const feeNoChange = Math.ceil(estimateTxSize(selected.length, 1) * feeRate);
-  const fee2Out = Math.ceil(estimateTxSize(selected.length, 2) * feeRate);
+  // Calculate fee (account for OP_RETURN output)
+  const feeNoChange = Math.ceil(estimateTxSize(selected.length, 1 + extraOutputs) * feeRate);
+  const fee2Out = Math.ceil(estimateTxSize(selected.length, 2 + extraOutputs) * feeRate);
   const changeWith2 = total - amountSats - fee2Out;
   const fee = changeWith2 >= 546 ? fee2Out : feeNoChange;
 
@@ -104,21 +117,29 @@ export async function sendBch({ toAddress, amountSats, feeRate, utxos, privKey, 
 
   const change = total - amountSats - fee;
   const outputs = [{ value: amountSats, script: toScript }];
+  if (opReturnOutput) outputs.push(opReturnOutput);
   if (change >= 546) {
     const changeScript = p2pkhScript(changeHash160);
     outputs.push({ value: change, script: changeScript });
   }
 
-  // Build and sign
-  const rawHex = buildSignedTx(selected, outputs, (u, i) => {
-    // HD wallet: each UTXO may have its own key
-    if (hdGetKey && u.addr) {
-      const k = hdGetKey(u.addr);
-      if (k) return { priv: k, pub: secp256k1.getPublicKey(k, true) };
-    }
-    // Fallback: main key
-    return { priv: privKey, pub: pubKey };
-  });
+  // Build and sign — Ledger or software
+  let rawHex;
+  if (ledgerSign) {
+    // Ledger hardware wallet signing
+    rawHex = await ledgerSign(selected, outputs);
+  } else {
+    // Software signing
+    rawHex = buildSignedTx(selected, outputs, (u, i) => {
+      // HD wallet: each UTXO may have its own key
+      if (hdGetKey && u.addr) {
+        const k = hdGetKey(u.addr);
+        if (k) return { priv: k, pub: secp256k1.getPublicKey(k, true) };
+      }
+      // Fallback: main key
+      return { priv: privKey, pub: pubKey };
+    });
+  }
 
   // Broadcast via Fulcrum
   if (!window._fvCall) throw new Error('Not connected to Fulcrum');

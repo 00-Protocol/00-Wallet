@@ -75,13 +75,11 @@ function _privToAddr(priv) {
 export async function scan(keys) {
   if (_running) return;
   if (!keys.acctPriv || !keys.acctChain) {
-    console.log('[hd-scanner] no HD tree, skip');
     return;
   }
 
   _running = true;
   _hdAddresses = [];
-  console.log('[hd-scanner] starting...');
 
   await _loadCrypto();
 
@@ -148,7 +146,10 @@ export async function scan(keys) {
   localStorage.setItem('00_hd_paths', JSON.stringify(_hdAddresses.map(a => a.path)));
 
   _running = false;
-  console.log(`[hd-scanner] done: ${_hdAddresses.length} addresses (${_hdAddresses.filter(a=>a.branch==='receive').length} receive, ${_hdAddresses.filter(a=>a.branch==='change').length} change)`);
+
+  // Expose scriptHashes to chains.js for HD-aware balance scanning
+  window._hdGetAllScriptHashes = getAllScriptHashes;
+
 }
 
 /* ── Public API ── */
@@ -162,3 +163,15 @@ export function getBranchForAddr(addr) { return _hdAddresses.find(a => a.addr ==
 export function getAllAddrs() { return _hdAddresses.map(a => a.addr); }
 export function getReceiveAddrs() { return _hdAddresses.filter(a => a.branch === 'receive').map(a => a.addr); }
 export function getChangeAddrs() { return _hdAddresses.filter(a => a.branch === 'change').map(a => a.addr); }
+export function getAllScriptHashes() {
+  if (!_sha256 || !_cashAddrToHash20 || _hdAddresses.length === 0) return [];
+  const b2h = bytes => Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+  return _hdAddresses.map(a => {
+    try {
+      const h = _cashAddrToHash20(a.addr);
+      const script = new Uint8Array([0x76, 0xa9, 0x14, ...h, 0x88, 0xac]);
+      const hash = _sha256(script);
+      return b2h(Array.from(hash).reverse());
+    } catch { return null; }
+  }).filter(Boolean);
+}

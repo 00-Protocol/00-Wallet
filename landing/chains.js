@@ -14,9 +14,12 @@ window.CHAINS = Object.freeze({
   xmr:  { name:'Monero',        ticker:'XMR',  decimals:12, color:'#FF6600', icon:'icons/xmr.png',  apiType:'xmr' },
   usdc: { name:'USD Coin',      ticker:'USDC', decimals:6,  color:'#2775CA', icon:'icons/usdc.png', apiType:'erc20', contract:'0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' },
   usdt: { name:'Tether',        ticker:'USDT', decimals:6,  color:'#26A17B', icon:'icons/usdt.png', apiType:'erc20', contract:'0xdAC17F958D2ee523a2206206994597C13D831ec7' },
-  ltc:  { name:'Litecoin',      ticker:'LTC',  decimals:8,  color:'#BFBBBB', icon:'icons/ltc.png',  apiType:'ltc',   rpc:'https://litecoinspace.org/api' },
+  ltc:  { name:'Litecoin',      ticker:'LTC',  decimals:8,  color:'#BFBBBB', icon:'icons/ltc.png',  apiType:'ltc',   rpc:'/ltc-api' },
   bnb:  { name:'BNB',           ticker:'BNB',  decimals:18, color:'#F0B90B', icon:'icons/bnb.png',  apiType:'evm',   rpc:'https://bsc-rpc.publicnode.com' },
   avax: { name:'Avalanche',     ticker:'AVAX', decimals:18, color:'#E84142', icon:'icons/avax.png', apiType:'evm',   rpc:'/avax-rpc/' },
+  matic:{ name:'Polygon',       ticker:'POL',  decimals:18, color:'#8247E5', icon:'icons/matic.png',apiType:'evm',   rpc:'/polygon-rpc/' },
+  usdc_polygon: { name:'USDC (Polygon)', ticker:'USDC', decimals:6, color:'#2775CA', icon:'icons/usdc.png', apiType:'erc20_polygon', contract:'0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359' },
+  usdce_polygon:{ name:'USDC.e (Polygon)',ticker:'USDC.e',decimals:6,color:'#2775CA', icon:'icons/usdc.png', apiType:'erc20_polygon', contract:'0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174' },
   sol:  { name:'Solana',        ticker:'SOL',  decimals:9,  color:'#9945FF', icon:'icons/sol.png',  apiType:'sol',   rpc:'/sol-rpc/' },
   trx:  { name:'TRON',          ticker:'TRX',  decimals:6,  color:'#FF0013', icon:'icons/trx.png',  apiType:'trx',   rpc:'https://api.trongrid.io' },
   xrp:  { name:'XRP',           ticker:'XRP',  decimals:6,  color:'#0085C0', icon:'icons/xrp.png',  apiType:'xrp',   rpc:'wss://xrplcluster.com' },
@@ -28,8 +31,9 @@ function _ep(chain) {
   // AVAX and SOL must use nginx proxy (CORS blocked on direct URLs)
   if (chain === 'avax' || chain === 'sol') return CHAINS[chain]?.rpc || '';
   const ep = window._00ep || {};
-  const map = { eth:'eth_rpc', bnb:'bnb_rpc', trx:'trx_rpc', xrp:'xrp_rpc', xlm:'xlm_rpc', ltc:'ltc_rpc' };
-  return (map[chain] && ep[map[chain]]) || CHAINS[chain]?.rpc || '';
+  const map = { eth:'eth_rpc', bnb:'bnb_rpc', matic:'polygon_rpc', trx:'trx_rpc', xrp:'xrp_rpc', xlm:'xlm_rpc', ltc:'ltc_rpc' };
+  const custom = map[chain] && ep[map[chain]];
+  return (custom && custom !== 'undefined' && custom !== 'null') ? custom : (CHAINS[chain]?.rpc || '');
 }
 
 /* ── Generic JSON-RPC helper ── */
@@ -59,6 +63,15 @@ async function _evmBalance(chain, addr) {
 /* ── ERC-20: USDC, USDT ── */
 async function _erc20Balance(chain, addr) {
   const rpc = _ep('eth');
+  const contract = CHAINS[chain].contract;
+  const data = '0x70a08231' + addr.replace('0x','').toLowerCase().padStart(64,'0');
+  const hex = await _jsonRpc(rpc, 'eth_call', [{ to: contract, data }, 'latest']);
+  return { balance: parseInt(hex, 16) || 0, loaded: true };
+}
+
+/* ── Polygon ERC20 (USDC, USDC.e) ── */
+async function _erc20PolygonBalance(chain, addr) {
+  const rpc = _ep('matic') || '/polygon-rpc/';
   const contract = CHAINS[chain].contract;
   const data = '0x70a08231' + addr.replace('0x','').toLowerCase().padStart(64,'0');
   const hex = await _jsonRpc(rpc, 'eth_call', [{ to: contract, data }, 'latest']);
@@ -142,9 +155,25 @@ async function _electrumBalance(chain, scriptHash) {
   const caller = chain === 'bch' ? window._fvCall : window._btcCall;
   if (!caller) return { balance: 0, loaded: false };
   try {
-    const utxos = await caller('blockchain.scripthash.listunspent', [scriptHash]);
-    const bal = utxos.reduce((s, u) => s + (u.value || 0), 0);
-    return { balance: bal, loaded: true, utxos };
+    let allUtxos = [];
+    // For BCH: scan ALL HD addresses (receive + change) for complete balance
+    if (chain === 'bch' && window._hdGetAllScriptHashes) {
+      const scriptHashes = window._hdGetAllScriptHashes();
+      if (scriptHashes.length > 0) {
+        const results = await Promise.all(
+          scriptHashes.map(sh => caller('blockchain.scripthash.listunspent', [sh]).catch(() => []))
+        );
+        for (const utxos of results) {
+          if (Array.isArray(utxos)) allUtxos.push(...utxos);
+        }
+      } else {
+        allUtxos = await caller('blockchain.scripthash.listunspent', [scriptHash]) || [];
+      }
+    } else {
+      allUtxos = await caller('blockchain.scripthash.listunspent', [scriptHash]) || [];
+    }
+    const bal = allUtxos.reduce((s, u) => s + (u.value || 0), 0);
+    return { balance: bal, loaded: true, utxos: allUtxos };
   } catch { return { balance: 0, loaded: false }; }
 }
 
@@ -170,6 +199,7 @@ window.chainsRefreshOne = async function(chain, addr) {
     switch (meta.apiType) {
       case 'evm':      return await _evmBalance(chain, addr);
       case 'erc20':    return await _erc20Balance(chain, addr);
+      case 'erc20_polygon': return await _erc20PolygonBalance(chain, addr);
       case 'sol':      return await _solBalance(addr);
       case 'trx':      return await _trxBalance(addr);
       case 'xlm':      return await _xlmBalance(addr);
@@ -270,7 +300,7 @@ window.chainsGetPrices = async function() {
 
   // CryptoCompare (BNB, AVAX — not on Kraken)
   try {
-    const r = await fetch('https://min-api.cryptocompare.com/data/pricemultifull?fsyms=BNB,AVAX&tsyms=USD');
+    const r = await fetch('https://min-api.cryptocompare.com/data/pricemultifull?fsyms=BNB,AVAX,MATIC&tsyms=USD');
     if (r.ok) {
       const j = await r.json();
       const raw = j.RAW || {};
@@ -302,12 +332,13 @@ async function _trxHistory(addr, limit) {
   const r = await fetch(`${rpc}/v1/accounts/${addr}/transactions?limit=${limit}&order_by=block_timestamp,desc`);
   const j = await r.json();
   if (!j.data) return [];
+  // Decode base58 address to hex for comparison
+  const myHex = _trxBase58ToHex(addr);
   return j.data.map(tx => {
     const contract = tx.raw_data?.contract?.[0];
     const param = contract?.parameter?.value || {};
-    const ownerHex = param.owner_address || '';
-    const isOut = ownerHex.toLowerCase() === addr.replace(/^T/, '41').toLowerCase() ||
-                  ownerHex.toLowerCase() === addr.toLowerCase();
+    const ownerHex = (param.owner_address || '').toLowerCase();
+    const isOut = ownerHex === myHex;
     return {
       txid: tx.txID,
       chain: 'trx',
@@ -317,6 +348,16 @@ async function _trxHistory(addr, limit) {
       timestamp: Math.floor((tx.block_timestamp || 0) / 1000),
     };
   }).filter(tx => tx.amount > 0);
+}
+function _trxBase58ToHex(addr) {
+  const ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+  let n = 0n;
+  for (const c of addr) { const i = ALPHABET.indexOf(c); if (i < 0) return ''; n = n * 58n + BigInt(i); }
+  let hex = n.toString(16);
+  if (hex.length % 2) hex = '0' + hex;
+  let leading = 0; for (const c of addr) { if (c === '1') leading++; else break; }
+  hex = '00'.repeat(leading) + hex;
+  return hex.slice(0, -8).toLowerCase(); // strip 4-byte checksum
 }
 
 /* ── XLM History ── */
@@ -370,6 +411,7 @@ async function _evmHistory(chain, addr, limit) {
     eth: 'https://eth.blockscout.com/api',
     bnb: 'https://api.bscscan.com/api',
     avax: 'https://api.routescan.io/v2/network/mainnet/evm/43114/etherscan/api',
+    matic: 'https://api.polygonscan.com/api',
   };
   const base = endpoints[chain];
   if (!base) return [];
@@ -460,7 +502,7 @@ window.chainsGetHistory = async function(chain, addr, limit = 20) {
       case 'trx':  return await _trxHistory(addr, limit);
       case 'xlm':  return await _xlmHistory(addr, limit);
       case 'ltc':  return await _ltcHistory(addr, limit);
-      case 'eth': case 'bnb': case 'avax': return await _evmHistory(chain, addr, limit);
+      case 'eth': case 'bnb': case 'avax': case 'matic': return await _evmHistory(chain, addr, limit);
       case 'sol':  return await _solHistory(addr, limit);
       case 'xrp':  return await _xrpHistory(addr, limit);
       // BCH, BTC, XMR — handled by wallet.html (complex parsing, SharedWorker)
@@ -573,4 +615,3 @@ window.chainsFormatAmount = function(chain, rawAmount) {
   return val.toFixed(meta.decimals).replace(/0+$/, '') + ' ' + meta.ticker;
 };
 
-console.log('[chains] Module loaded —', Object.keys(CHAINS).length, 'chains registered');

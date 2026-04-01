@@ -1,3 +1,56 @@
-indexer/node_modules/
-indexer/start9/node_modules/
-indexer/start9/javascript/
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# venv
+.venv/
+venv/
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+
+# Claude Code
+.claude/
+
+# Project-generated (simnet / logs)
+simnet/**/processed*
+*.log
+
+# Internal notes (ideas, roadmap, private docs)
+notes/
+
+# Internal tools & docs (not for public release)
+landing/internal/
+landing/internal_tests.html
+landing/internaldoc.html
+
+# Cache & generated data
+landing/.elon-cache.json
+landing/api/
+
+# Internal scrapers & views
+landing/elon-scraper.js
+landing/views/elon.js
+
+# Server-side infrastructure (not part of the browser wallet)
+nonce-scanner.js
+pubkey-indexer.js
+evm-indexer.js
+relay.js
+clob-tor-proxy.js
+btc-testnet-proxy.js
+build-monero.js
+monero-browser-wrapper.js
+Dockerfile.indexer
+config.indexer.yaml
+backup/
+
+# Node
+node_modules/
+package-lock.json

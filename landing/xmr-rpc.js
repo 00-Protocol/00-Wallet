@@ -61,7 +61,7 @@ async function daemonRpc(method, params = {}) {
   };
 
   const ac = new AbortController();
-  const t = setTimeout(() => ac.abort(), 10000);
+  const t = setTimeout(() => ac.abort(), 30000);
   const resp = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -84,7 +84,7 @@ async function daemonOther(endpoint, params = {}) {
   const url = _activeNode.url + '/' + endpoint;
 
   const ac = new AbortController();
-  const t = setTimeout(() => ac.abort(), 15000);
+  const t = setTimeout(() => ac.abort(), 45000);
   const resp = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

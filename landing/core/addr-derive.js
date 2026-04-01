@@ -94,15 +94,16 @@ export function xlmAddr(priv32) {
   return _base32Encode(full);
 }
 
-/* ── Derive all addresses from auth keys ── */
+/* ══════════════════════════════════════════
+   Derive ALL addresses from auth keys.
+   Returns clean, display-ready addresses.
+   Token addresses share their base chain.
+   ══════════════════════════════════════════ */
 export function deriveAllAddresses(keys) {
   const addrs = { bch: keys.bchAddr };
   if (!keys.acctPriv || !keys.acctChain) return addrs;
 
-  const { bip32Child } = { bip32Child: null };  // will be passed
-
   try {
-    // We need bip32Child — import from keys object
     const acctPriv = keys.acctPriv;
     const acctChain = keys.acctChain;
 
@@ -110,35 +111,106 @@ export function deriveAllAddresses(keys) {
     const btcPub = _childPub(acctPriv, acctChain, 3);
     if (btcPub) addrs.btc = btcAddr(btcPub);
 
-    // ETH: /4/0 (also BNB, AVAX)
+    // ETH: /4/0 → also BNB, AVAX, Polygon (all EVM share same address)
     const ethPub = _childPub(acctPriv, acctChain, 4);
-    if (ethPub) { addrs.eth = ethAddr(ethPub); addrs.bnb = addrs.eth; addrs.avax = addrs.eth; }
+    if (ethPub) {
+      const evmAddr = ethAddr(ethPub);
+      addrs.eth = evmAddr;
+      addrs.bnb = evmAddr;
+      addrs.avax = evmAddr;
+      addrs.matic = evmAddr;    // Polygon (chains.js uses 'matic' key)
+      addrs.polygon = evmAddr;  // Alias for display
+      // ERC-20 tokens share base chain address
+      addrs.usdc_eth = evmAddr;
+      addrs.usdt_eth = evmAddr;
+      addrs.usdc_polygon = evmAddr;
+      addrs.usdce_polygon = evmAddr;
+      addrs.usdc_bsc = evmAddr;
+      addrs.usdt_bsc = evmAddr;
+      addrs.usdt_avax = evmAddr;
+      addrs.usdc_avax = evmAddr;
+    }
 
     // LTC: /6/0
     const ltcPub = _childPub(acctPriv, acctChain, 6);
     if (ltcPub) addrs.ltc = ltcAddr(ltcPub);
 
-    // XRP: /7/0
-    const xrpPub = _childPub(acctPriv, acctChain, 7);
-    if (xrpPub) addrs.xrp = xrpAddr(xrpPub);
+    // XRP: /7/0 (need priv for signing)
+    const xrpPriv = _childPriv(acctPriv, acctChain, 7);
+    const xrpPub = xrpPriv ? secp256k1.getPublicKey(xrpPriv, true) : null;
+    if (xrpPub) { addrs.xrp = xrpAddr(xrpPub); addrs.rlusd_xrp = addrs.xrp; }
 
     // SOL: /8/0
     const solPriv = _childPriv(acctPriv, acctChain, 8);
-    if (solPriv) addrs.sol = solAddr(solPriv);
+    if (solPriv) { addrs.sol = solAddr(solPriv); addrs.usdc_sol = addrs.sol; addrs.usdt_sol = addrs.sol; }
 
-    // TRX: /9/0
-    const trxPub = _childPub(acctPriv, acctChain, 9);
-    if (trxPub) addrs.trx = tronAddr(trxPub);
+    // TRX: /9/0 (need priv for signing)
+    const trxPriv = _childPriv(acctPriv, acctChain, 9);
+    const trxPub = trxPriv ? secp256k1.getPublicKey(trxPriv, true) : null;
+    if (trxPub) { addrs.trx = tronAddr(trxPub); addrs.usdt_trx = addrs.trx; }
 
     // XLM: /10/0
     const xlmPriv = _childPriv(acctPriv, acctChain, 10);
     if (xlmPriv) addrs.xlm = xlmAddr(xlmPriv);
+
+    // XMR: address from auth keys (if available)
+    if (keys.xmrPrimaryAddress) addrs.xmr = keys.xmrPrimaryAddress;
+    else if (keys.xmr?.addr) addrs.xmr = keys.xmr.addr;
+
+    // Stealth BCH: same as BCH (scanning is separate)
+    addrs.sbch = addrs.bch;
 
   } catch (e) {
     console.warn('[addr-derive] error:', e.message);
   }
 
   return addrs;
+}
+
+/* ══════════════════════════════════════════
+   Derive EVM private key for Polygon/ETH TX signing.
+   Returns hex string (no 0x prefix).
+   ONLY call when needed (signing), never store in state.
+   ══════════════════════════════════════════ */
+export function deriveEvmPrivKey(keys) {
+  if (!keys?.acctPriv || !keys?.acctChain) return null;
+  try {
+    const priv = _childPriv(keys.acctPriv, keys.acctChain, 4); // ETH = /4/0
+    return b2h(priv);
+  } catch (e) {
+    console.warn('[addr-derive] EVM key derivation error:', e.message);
+    return null;
+  }
+}
+
+export function deriveTrxPrivKey(keys) {
+  if (!keys?.acctPriv || !keys?.acctChain) return null;
+  try {
+    const priv = _childPriv(keys.acctPriv, keys.acctChain, 9); // TRX = /9/0
+    return b2h(priv);
+  } catch { return null; }
+}
+
+export function deriveXrpPrivKey(keys) {
+  if (!keys?.acctPriv || !keys?.acctChain) return null;
+  try {
+    const priv = _childPriv(keys.acctPriv, keys.acctChain, 7); // XRP = /7/0
+    return priv; // raw 32 bytes
+  } catch { return null; }
+}
+
+export function deriveSolPrivKey(keys) {
+  if (!keys?.acctPriv || !keys?.acctChain) return null;
+  try {
+    return _childPriv(keys.acctPriv, keys.acctChain, 8); // SOL = /8/0, returns raw 32 bytes (ed25519 seed)
+  } catch { return null; }
+}
+
+export function deriveXlmPrivKey(keys) {
+  if (!keys?.acctPriv || !keys?.acctChain) return null;
+  try {
+    return _childPriv(keys.acctPriv, keys.acctChain, 10); // XLM = /10/0, returns raw 32 bytes
+  } catch { return null; }
 }
 
 /* ── HD child helpers (inline to avoid circular import) ── */

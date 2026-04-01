@@ -16,7 +16,7 @@ import * as hdScanner from './services/hd-scanner.js';
 
 /* ── Route registry (all lazy-loaded) ── */
 /* Bump _V on deploy to bust browser module cache */
-const _V = '?v=10';
+const _V = '?v=53';
 const ROUTES = {
   'auth':       () => import('./views/auth.js' + _V),
   'dashboard':  () => import('./views/dashboard.js' + _V),
@@ -34,11 +34,12 @@ const ROUTES = {
   'id':         () => import('./views/id.js' + _V),
   'mesh':       () => import('./views/mesh.js' + _V),
   'config':     () => import('./views/config.js' + _V),
+  'bet':        () => import('./views/bet.js' + _V),
+  'elon':       () => import('./views/elon.js' + _V),
 };
 
 /* ── Boot sequence ── */
 async function boot() {
-  console.log('[00] booting SPA...');
 
   // 1. Initialize state store (hydrate from localStorage)
   state.init();
@@ -76,7 +77,6 @@ async function boot() {
   // 5. Initialize Nostr connection pool
   const relays = (window._00ep && window._00ep.relays) ||
     ['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.primal.net'];
-  console.log('[00] nostrInit called with', relays.length, 'relays, fn=', typeof nostrInit);
   if (nostrInit) {
     nostrInit(relays);
   } else {
@@ -89,10 +89,28 @@ async function boot() {
   if (auth.isConnected()) {
     unlocked = await auth.tryAutoUnlock();
     if (unlocked) {
-      console.log('[00] auto-unlocked from session');
       balanceService.start(auth.getKeys());
       hdScanner.scan(auth.getKeys()); // background — don't await
+      // Start XMR scanner if keys available
+      const keys = auth.getKeys();
+      if (keys?.xmr) {
+        import('./services/xmr-scanner.js').then(xmr => {
+          xmr.init(keys.xmr);
+          xmr.startAutoScan(60000); // scan every 60s
+        }).catch(e => console.warn('[00] XMR scanner init failed:', e.message));
+      }
     }
+  }
+
+  // 6b. Try restore WalletConnect session
+  if (!unlocked && localStorage.getItem('00_wc_session')) {
+    try {
+      const restored = await auth.restoreWcSession();
+      if (restored) {
+        unlocked = true;
+        balanceService.start(auth.getKeys());
+      }
+    } catch (e) { console.warn('[00] WC restore failed:', e.message); }
   }
 
   // 7. Start router (processes initial hash)
@@ -111,10 +129,15 @@ async function boot() {
     if (event === 'unlock' && keys) {
       balanceService.start(keys);
       hdScanner.scan(keys);
+      if (window._shellRefreshAuth) window._shellRefreshAuth();
     } else if (event === 'lock' || event === 'disconnect') {
       balanceService.stop();
+      if (window._shellRefreshAuth) window._shellRefreshAuth();
     }
   });
+
+  // Also refresh sidebar now (in case shell rendered before auto-unlock)
+  if (unlocked && window._shellRefreshAuth) window._shellRefreshAuth();
 
   // 9. Refresh session on user activity
   let _activityTimer;
@@ -123,7 +146,6 @@ async function boot() {
     _activityTimer = setTimeout(() => auth.refreshSession(), 1000);
   }, { passive: true });
 
-  console.log('[00] SPA ready');
 }
 
 /* ── Start ── */

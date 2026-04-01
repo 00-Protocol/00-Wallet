@@ -14,7 +14,7 @@ function _template() {
   const pubHex = keys?.pubKey ? Array.from(keys.pubKey, b => b.toString(16).padStart(2, '0')).join('') : '—';
   return `<div class="dt-inner" style="padding:32px 40px">
     <div class="dt-page-header">
-      <div class="dt-page-title-wrap"><div class="dt-page-icon">🔐</div><div><div class="dt-page-title">Vault</div><div class="dt-page-sub">Stealth Multisig · MuSig2</div></div></div>
+      <div class="dt-page-title-wrap"><div class="dt-page-icon"><img src="icons/vault.png" style="width:28px;height:28px"></div><div><div class="dt-page-title">Vault</div><div class="dt-page-sub">Stealth Multisig · MuSig2</div></div></div>
       <div class="dt-page-actions">${statusDotsHtml(['nostr'])}</div>
     </div>
     <div class="dt-tabs" id="dt-vault-tabs">

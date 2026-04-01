@@ -52,7 +52,7 @@ async function encryptVault(profile, password) {
 }
 
 /* ── Key derivation from profile ── */
-function _deriveKeys(profile) {
+async function _deriveKeys(profile) {
   let privKey, acctPriv, acctChain;
 
   // Support both v1 (seedHex) and v2 (seed) profile formats
@@ -100,6 +100,15 @@ function _deriveKeys(profile) {
     stealthCode = 'stealth:' + b2h(stealth.scanPub) + b2h(stealth.spendPub);
   }
 
+  // XMR keys (derived at m/44'/145'/0'/5/0)
+  let xmrKeys = null;
+  if (acctPriv && acctChain) {
+    try {
+      const { deriveXmrKeys } = await import('./xmr-keys.js');
+      xmrKeys = deriveXmrKeys(acctPriv, acctChain, bip32Child);
+    } catch (e) { console.warn('[auth] XMR key derivation failed:', e.message); }
+  }
+
   return {
     privKey,
     pubKey,
@@ -114,6 +123,7 @@ function _deriveKeys(profile) {
     stealthScanPriv,
     stealthScanPub,
     stealthCode,
+    xmr: xmrKeys,
   };
 }
 
@@ -141,7 +151,7 @@ export async function unlock(password) {
   const profile = await decryptVault(vault, password);
   _profile = profile;
   _password = password;
-  _keys = _deriveKeys(profile);
+  _keys = await _deriveKeys(profile);
 
   if (!_keys) throw new Error('Failed to derive keys from profile');
 
@@ -195,6 +205,252 @@ export function getPassword() {
   return _password;
 }
 
+/* ══════════════════════════════════════════
+   LEDGER HARDWARE WALLET SUPPORT
+   ══════════════════════════════════════════
+   Uses ledger.js (loaded as a <script> in v2.html)
+   which exposes window.Ledger.
+   Scan addresses, set keys without private key.
+   ══════════════════════════════════════════ */
+
+let _ledgerDevice = null;
+let _ledgerAddresses = [];    // [{pubKey, addr, path5}]
+let _ledgerChangePath = null;
+let _ledgerChangeHash160 = null;
+let _ledgerChangePub33 = null;
+
+export function isLedger() { return !!_ledgerDevice; }
+export function getLedgerDevice() { return _ledgerDevice; }
+export function getLedgerAddresses() { return _ledgerAddresses; }
+export function getLedgerChangePath() { return _ledgerChangePath; }
+export function getLedgerChangeHash160() { return _ledgerChangeHash160; }
+
+/**
+ * Connect to Ledger, scan addresses, set up wallet.
+ * @param {function} onProgress - callback(message) for UI status updates
+ * @returns {Promise<{addr: string, addressCount: number}>}
+ */
+export async function connectLedger(onProgress) {
+  if (!window.Ledger) throw new Error('Ledger module not loaded');
+  const L = window.Ledger;
+
+  onProgress?.('Connecting to Ledger...');
+  const device = await L.connectLedger();
+
+  onProgress?.('Reading account xpub...');
+  const { pubKey: rawAcct, chainCode: acctChain } = await L.getLedgerPubKey(device, L.ACCOUNT_PATH);
+
+  // Compress pubkey if needed (Ledger may return uncompressed 65-byte key)
+  const acctPub = rawAcct.length === 65
+    ? new Uint8Array([rawAcct[64] & 1 ? 0x03 : 0x02, ...rawAcct.slice(1, 33)])
+    : rawAcct;
+
+  _ledgerDevice = device;
+  _ledgerAddresses = [];
+
+  onProgress?.('Scanning addresses...');
+
+  // Scan receive (change=0) and change (change=1) branches, gap limit 20, max 50 per branch
+  for (const changeIdx of [0, 1]) {
+    const changeKey = bip32Child(acctPub, acctChain, changeIdx);
+    let gap = 0;
+    for (let i = 0; i < 50 && gap < 20; i++) {
+      const child = bip32Child(changeKey.pub, changeKey.chain, i);
+      const h160 = ripemd160(sha256(child.pub));
+      const addr = pubHashToCashAddr(h160);
+
+      // Check if address has been used
+      const script = new Uint8Array([0x76, 0xa9, 0x14, ...h160, 0x88, 0xac]);
+      const sh = Array.from(sha256(script)).reverse().map(b => b.toString(16).padStart(2, '0')).join('');
+      try {
+        const hist = await window._fvCall('blockchain.scripthash.get_history', [sh]) || [];
+        const utxos = await window._fvCall('blockchain.scripthash.listunspent', [sh]) || [];
+        const path5 = _ledgerPath(changeIdx, i);
+        if (hist.length > 0 || utxos.length > 0) {
+          _ledgerAddresses.push({ pubKey: child.pub, addr, path5 });
+          gap = 0;
+        } else {
+          gap++;
+        }
+      } catch { gap++; }
+    }
+  }
+
+  // If no addresses found, add the first receive address
+  if (_ledgerAddresses.length === 0) {
+    const firstChild = bip32Child(bip32Child(acctPub, acctChain, 0).pub, bip32Child(acctPub, acctChain, 0).chain, 0);
+    const h160 = ripemd160(sha256(firstChild.pub));
+    _ledgerAddresses.push({
+      pubKey: firstChild.pub,
+      addr: pubHashToCashAddr(h160),
+      path5: _ledgerPath(0, 0),
+    });
+  }
+
+  // Primary address = first receive address (or one with most value)
+  const primary = _ledgerAddresses.find(a => a.path5[3] === 0) || _ledgerAddresses[0];
+
+  // Setup change address: next unused internal (change=1) index
+  const usedChg1 = _ledgerAddresses.filter(a => a.path5[3] === 1);
+  const nextChgIdx = usedChg1.length > 0 ? Math.max(...usedChg1.map(a => a.path5[4])) + 1 : 0;
+  const chgLvl = bip32Child(acctPub, acctChain, 1);
+  const chgChild = bip32Child(chgLvl.pub, chgLvl.chain, nextChgIdx);
+  const chgH160 = ripemd160(sha256(chgChild.pub));
+  const chgPath = _ledgerPath(1, nextChgIdx);
+  _ledgerChangeHash160 = chgH160;
+  _ledgerChangePub33 = chgChild.pub;
+  _ledgerChangePath = chgPath;
+
+  // Set keys (no private key — Ledger signs on device)
+  _keys = {
+    privKey: null,           // No private key — Ledger signs
+    pubKey: primary.pubKey,
+    hash160: ripemd160(sha256(primary.pubKey)),
+    bchAddr: primary.addr,
+    acctPriv: null,
+    acctChain: acctChain,
+    sessionPriv: rand(32),
+    sessionPub: b2h(secp256k1.getPublicKey(rand(32), true)),
+    stealthSpendPriv: null,
+    stealthSpendPub: null,
+    stealthScanPriv: null,
+    stealthScanPub: null,
+    stealthCode: null,
+    ledger: true,            // Flag for send flow
+  };
+  _profile = { type: 'ledger' };
+
+  // Store Ledger addresses for HD scanner / balance service
+  const { set } = await import('./state.js');
+  set('hdAddresses', _ledgerAddresses.map(a => ({ addr: a.addr, branch: a.path5[3], index: a.path5[4] })));
+  set('hdChangeAddr', pubHashToCashAddr(chgH160));
+
+  _notifyListeners();
+
+  onProgress?.(`Connected — ${_ledgerAddresses.length} addresses found`);
+
+  return { addr: primary.addr, addressCount: _ledgerAddresses.length };
+}
+
+/**
+ * Sign a TX using the connected Ledger device.
+ * @param {Array} utxos - [{txid, vout, value, addr?}]
+ * @param {Array} outputs - [{value, script}]
+ * @returns {Promise<string>} raw signed TX hex
+ */
+export async function ledgerSignTx(utxos, outputs) {
+  if (!_ledgerDevice) throw new Error('No Ledger connected');
+  const L = window.Ledger;
+
+  // Build per-input scripts and paths
+  const scripts = utxos.map(u => {
+    const la = _ledgerAddresses.find(a => a.addr === u.addr);
+    if (!la) {
+      // Fallback: use first address script
+      const h = ripemd160(sha256(_ledgerAddresses[0].pubKey));
+      return new Uint8Array([0x76, 0xa9, 0x14, ...h, 0x88, 0xac]);
+    }
+    const h = ripemd160(sha256(la.pubKey));
+    return new Uint8Array([0x76, 0xa9, 0x14, ...h, 0x88, 0xac]);
+  });
+  const paths = utxos.map(u => {
+    const la = _ledgerAddresses.find(a => a.addr === u.addr);
+    return la ? la.path5 : L.BCH_PATH;
+  });
+  const pubKeys = utxos.map(u => {
+    const la = _ledgerAddresses.find(a => a.addr === u.addr);
+    return la ? la.pubKey : _ledgerAddresses[0].pubKey;
+  });
+
+  // Sign on device
+  const sigs = await L.signLedgerTx(_ledgerDevice, utxos, outputs, scripts, paths);
+
+  // Build raw TX
+  return L.buildLedgerTx(utxos, sigs, pubKeys, outputs);
+}
+
+function _ledgerPath(changeIdx, addrIdx) {
+  return [0x8000002c, 0x80000091, 0x80000000, changeIdx, addrIdx];
+}
+
+/* ══════════════════════════════════════════
+   WALLETCONNECT v2 SUPPORT
+   ══════════════════════════════════════════ */
+
+let _wcClient = null, _wcSession = null;
+const WC_PROJECT_ID = '082bda1ddb7c62dc3aee194b5e8dc8f9';
+
+export function isWalletConnect() { return !!_wcSession; }
+export function getWcClient() { return _wcClient; }
+export function getWcSession() { return _wcSession; }
+
+async function _initWC() {
+  if (_wcClient) return _wcClient;
+  const mod = await import('https://esm.sh/@walletconnect/sign-client@2.17.5');
+  const SC = mod.SignClient || mod.default;
+  _wcClient = await SC.init({
+    projectId: WC_PROJECT_ID,
+    metadata: { name: '0penw0rld', description: 'BCH Self-Custody', url: 'https://0penw0rld.com', icons: ['https://0penw0rld.com/icons/icon-180.png'] },
+  });
+  return _wcClient;
+}
+
+export async function connectWalletConnect(onUri, onProgress) {
+  onProgress?.('Loading WalletConnect SDK...');
+  const client = await _initWC();
+  onProgress?.('Pairing...');
+  const { uri, approval } = await client.connect({
+    requiredNamespaces: {
+      bch: { chains: ['bch:bitcoincash'], methods: ['bch_getAddresses', 'bch_signTransaction', 'bch_signMessage'], events: ['addressesChanged'] },
+    },
+  });
+  if (uri) onUri?.(uri);
+  _wcSession = await approval();
+  const addresses = await client.request({ chainId: 'bch:bitcoincash', topic: _wcSession.topic, request: { method: 'bch_getAddresses', params: {} } });
+  const bchAddr = addresses[0];
+  _wcSubEvents(client);
+  localStorage.setItem('00_wc_session', 'true');
+  const sp = rand(32);
+  _keys = { privKey: null, pubKey: null, hash160: cashAddrToHash20(bchAddr), bchAddr, acctPriv: null, acctChain: null, sessionPriv: sp, sessionPub: b2h(secp256k1.getPublicKey(sp, true)), stealthSpendPriv: null, stealthSpendPub: null, stealthScanPriv: null, stealthScanPub: null, stealthCode: null, walletConnect: true };
+  _profile = { type: 'walletconnect' };
+  _notifyListeners();
+  return { addr: bchAddr };
+}
+
+export async function restoreWcSession() {
+  if (!localStorage.getItem('00_wc_session')) return false;
+  try {
+    const client = await _initWC();
+    if (!client.session.length) { localStorage.removeItem('00_wc_session'); return false; }
+    const key = client.session.keys[client.session.keys.length - 1];
+    _wcSession = client.session.get(key);
+    const addrs = await client.request({ chainId: 'bch:bitcoincash', topic: _wcSession.topic, request: { method: 'bch_getAddresses', params: {} } });
+    const bchAddr = addrs[0]; const sp = rand(32);
+    _keys = { privKey: null, pubKey: null, hash160: cashAddrToHash20(bchAddr), bchAddr, acctPriv: null, acctChain: null, sessionPriv: sp, sessionPub: b2h(secp256k1.getPublicKey(sp, true)), stealthSpendPriv: null, stealthSpendPub: null, stealthScanPriv: null, stealthScanPub: null, stealthCode: null, walletConnect: true };
+    _profile = { type: 'walletconnect' };
+    _wcSubEvents(client); _notifyListeners();
+    return true;
+  } catch { localStorage.removeItem('00_wc_session'); return false; }
+}
+
+export async function wcSignTx(unsignedHex, sourceOutputs, userPrompt) {
+  if (!_wcClient || !_wcSession) throw new Error('WalletConnect not connected');
+  const r = await _wcClient.request({ chainId: 'bch:bitcoincash', topic: _wcSession.topic, request: { method: 'bch_signTransaction', params: { transaction: unsignedHex, sourceOutputs, broadcast: false, userPrompt } } });
+  if (!r?.signedTransaction) throw new Error('Signing rejected');
+  return r.signedTransaction;
+}
+
+export async function wcDisconnect() {
+  if (_wcClient && _wcSession) { try { await _wcClient.disconnect({ topic: _wcSession.topic, reason: { code: 6000, message: 'USER_DISCONNECTED' } }); } catch {} }
+  _wcSession = null; _wcClient = null; _keys = null; _profile = null;
+  localStorage.removeItem('00_wc_session'); _notifyListeners();
+}
+
+function _wcSubEvents(client) {
+  client.on('session_delete', () => { _wcSession = null; _keys = null; _profile = null; localStorage.removeItem('00_wc_session'); _notifyListeners(); });
+  client.on('session_event', (args) => { if (args.params?.event?.name === 'addressesChanged' && _keys) { _keys.bchAddr = args.params.event.data[0]; _keys.hash160 = cashAddrToHash20(_keys.bchAddr); _notifyListeners(); } });
+}
+
 export function lock() {
   _keys = null;
   _profile = null;
@@ -232,7 +488,7 @@ export async function createVault(profile, password) {
   localStorage.setItem('00_session_auth', JSON.stringify({ p: btoa(password), ts: Date.now() }));
   _profile = profile;
   _password = password;
-  _keys = _deriveKeys(profile);
+  _keys = await _deriveKeys(profile);
   for (const cb of _listeners) {
     try { cb('unlock', _keys); } catch (e) {}
   }
