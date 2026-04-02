@@ -17,74 +17,72 @@
     @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Inter:wght@400;500;600;700&display=swap');
   </style>
 
-  <!-- Mobile shell styles (hacker theme) -->
+  <!-- App base styles — clean design system, no matrix -->
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --green: #00ff41; --green-dim: #00c832; --green-dark: #003d0f; --accent-rgb: 0,255,65;
-      --black: #020a03; --grey: #0a110a; --panel: #060e06;
-      --red: #ff4040; --gold: #f0a500;
-    }
-    html, body { width:100%; height:100%; background:var(--black); font-family:'Share Tech Mono',monospace; display:flex; align-items:center; justify-content:center; overflow:hidden; }
 
-    /* Mobile decorations */
-    #rain { position:fixed; inset:0; z-index:0; pointer-events:none; opacity:.12; }
-    .scanlines { position:fixed; inset:0; z-index:1; pointer-events:none; background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.12) 2px,rgba(0,0,0,.12) 4px); }
-    .vignette { position:fixed; inset:0; z-index:1; pointer-events:none; background:radial-gradient(ellipse at center,transparent 30%,rgba(0,0,0,.9) 100%); }
-
-    /* Phone mockup (mobile) */
-    .phone-wrap { position:relative; z-index:2; }
-    .phone {
-      width: 375px; max-height: 812px; height: 95vh;
-      background: var(--black);
-      border-radius: 40px;
-      border: 2px solid rgba(var(--accent-rgb),.15);
+    html, body {
+      width: 100%; height: 100%;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--dt-bg, #f5f6f8);
+      color: var(--dt-text, #1a1a2e);
       overflow: hidden;
-      display: flex; flex-direction: column;
-      box-shadow: 0 0 30px rgba(var(--accent-rgb),.08), inset 0 0 30px rgba(0,0,0,.5);
-      position: relative;
     }
 
-    /* View container */
+    /* Matrix decorations — hidden everywhere (kept in DOM for JS compat) */
+    #rain, .scanlines, .vignette { display: none !important; }
+
+    /* Phone wrap → full-screen layout on mobile */
+    .phone-wrap {
+      position: fixed; inset: 0; z-index: 2;
+      display: flex; flex-direction: column;
+      background: var(--dt-bg, #f5f6f8);
+    }
+    .phone {
+      flex: 1; display: flex; flex-direction: column;
+      background: var(--dt-bg, #f5f6f8);
+      overflow: hidden;
+      border-radius: 0; border: none; box-shadow: none;
+    }
+    .notch, .notch-cam, .notch-speaker, .status-bar, .home-indicator { display: none !important; }
+
+    /* Content area */
     #view-container {
-      flex: 1;
-      overflow-y: auto;
-      overflow-x: hidden;
+      flex: 1; overflow-y: auto; overflow-x: hidden;
       -webkit-overflow-scrolling: touch;
       scrollbar-width: thin;
-      scrollbar-color: rgba(var(--accent-rgb),.2) transparent;
+      scrollbar-color: rgba(10,193,142,.2) transparent;
+      background: var(--dt-bg, #f5f6f8);
     }
     #view-container.loading {
       display: flex; align-items: center; justify-content: center;
     }
     #view-container.loading::after {
       content: ''; width: 24px; height: 24px;
-      border: 2px solid rgba(var(--accent-rgb),.2);
-      border-top-color: var(--green);
+      border: 2px solid var(--dt-border, #e2e8f0);
+      border-top-color: var(--dt-accent, #0AC18E);
       border-radius: 50%;
       animation: spin .6s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* Toast notifications */
+    /* Toast notifications — above bottom nav */
     .app-toast {
-      position: fixed; right: 20px; z-index: 10000;
-      padding: 10px 18px; border-radius: 8px;
-      font-size: 12px; font-weight: 600;
-      background: var(--green); color: var(--black);
-      box-shadow: 0 4px 12px rgba(0,0,0,.3);
-      animation: toastIn .3s ease;
-      pointer-events: none;
+      position: fixed; right: 16px; bottom: 80px; z-index: 10000;
+      padding: 10px 18px; border-radius: 10px;
+      font-size: 13px; font-weight: 600; font-family: 'Inter', sans-serif;
+      background: var(--dt-accent, #0AC18E); color: #fff;
+      box-shadow: 0 4px 16px rgba(0,0,0,.15);
+      animation: toastIn .3s ease; pointer-events: none;
     }
-    .app-toast.error { background: var(--red); color: #fff; }
-    .app-toast.warning { background: var(--gold); color: var(--black); }
+    .app-toast.error { background: var(--dt-danger, #ef4444); }
+    .app-toast.warning { background: var(--dt-warning, #f59e0b); color: #1a1a2e; }
     @keyframes toastIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
 
-    /* Desktop: hide mobile shell, show SPA layout */
+    /* Desktop: sidebar layout takes over, phone-wrap hidden */
     @media (min-width: 900px) {
-      #rain, .scanlines, .vignette { display: none !important; }
       .phone-wrap { display: none !important; }
-      body { background: var(--black); overflow: auto; display: block; }
+      body { overflow: auto; display: block; }
     }
   </style>
 
@@ -112,7 +110,7 @@
   <script src="chains.js?v=11"></script>
   <script src="ledger.js"></script>
   <script src="wizardconnect.js"></script>
-  <script src="shell.js?v=10"></script>
+  <script src="shell.js?v=11"></script>
 
   <!-- SPA bootstrap (ES module) -->
   <script type="module" src="app.js?v=10"></script>

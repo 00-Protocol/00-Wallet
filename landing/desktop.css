@@ -5402,3 +5402,89 @@ select.dt-form-input {
   cursor: pointer; transition: .2s; font-family: inherit;
 }
 .net-close:hover { border-color: var(--dt-accent); color: var(--dt-accent); }
+
+/* ═══════════════════════════════════════════════════════════════
+   MOBILE LAYOUT — max-width: 899px
+   Same --dt- design system, bottom tab navigation
+   ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 899px) {
+
+  html, body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+    background: var(--dt-bg) !important;
+    color: var(--dt-text) !important;
+  }
+
+  /* Pad content above bottom nav */
+  #view-container { padding-bottom: 68px; }
+
+  /* ── Bottom navigation ── */
+  #mob-nav {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    height: 60px;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: var(--dt-surface);
+    border-top: 1px solid var(--dt-border);
+    display: flex; align-items: stretch;
+    z-index: 500;
+  }
+  .mob-tab {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 2px;
+    border: none; background: none; cursor: pointer;
+    color: var(--dt-text-secondary);
+    font-family: 'Inter', sans-serif; font-size: 10px; font-weight: 600;
+    -webkit-tap-highlight-color: transparent; transition: color .15s;
+    text-decoration: none; padding: 6px 4px;
+  }
+  .mob-tab.active { color: var(--dt-accent); }
+  .mob-tab-icon { font-size: 22px; line-height: 1; }
+
+  /* ── More drawer ── */
+  #mob-drawer {
+    position: fixed; bottom: 60px; left: 0; right: 0;
+    background: var(--dt-surface);
+    border-top: 1px solid var(--dt-border);
+    border-radius: 16px 16px 0 0;
+    padding: 20px 16px 32px;
+    z-index: 490;
+    transform: translateY(100%);
+    transition: transform .25s ease;
+    box-shadow: 0 -4px 24px rgba(0,0,0,.1);
+    max-height: 70vh; overflow-y: auto;
+  }
+  #mob-drawer.open { transform: translateY(0); }
+  #mob-drawer-bg {
+    display: none; position: fixed; inset: 0; z-index: 489;
+    background: var(--dt-overlay, rgba(0,0,0,.4));
+  }
+  #mob-drawer-bg.open { display: block; }
+  .mob-drawer-title {
+    font-size: 11px; font-weight: 700; color: var(--dt-text-secondary);
+    letter-spacing: 1px; text-transform: uppercase; margin-bottom: 14px;
+    font-family: 'Inter', sans-serif;
+  }
+  .mob-drawer-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+  }
+  .mob-drawer-item {
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+    padding: 12px 6px; border-radius: 12px; border: none;
+    background: var(--dt-bg); cursor: pointer;
+    color: var(--dt-text); font-family: 'Inter', sans-serif;
+    font-size: 10px; font-weight: 600; text-align: center;
+    -webkit-tap-highlight-color: transparent; transition: background .15s, color .15s;
+    text-decoration: none;
+  }
+  .mob-drawer-item:active { background: var(--dt-accent-soft); color: var(--dt-accent); }
+  .mob-drawer-item-icon { font-size: 22px; line-height: 1; }
+
+  /* ── View content mobile tweaks ── */
+  .dt-inner { padding: 16px !important; }
+  .dt-page-header { flex-wrap: wrap; gap: 12px; }
+  .dt-page-actions { flex-wrap: wrap; }
+  .dt-card { margin-bottom: 12px; }
+
+  /* Shell hacker controls → hidden on mobile */
+  .shell-controls { display: none !important; }
+}

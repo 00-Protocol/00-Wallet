@@ -80,8 +80,8 @@ function setTheme(theme) {
   }
 }
 
-// Apply theme immediately on desktop
-if (IS_DESKTOP) setTheme(getTheme());
+// Apply theme on all viewports
+setTheme(getTheme());
 
 const LANGS = ['EN', 'FR', 'ES', 'CN'];
 
@@ -674,6 +674,93 @@ function openNetworks() {
   _networksOverlay.classList.add('open');
 }
 
+// ── Mobile bottom navigation ───────────────────────────────────
+function _injectMobileNav() {
+  if (document.getElementById('mob-nav')) return;
+
+  const TABS = [
+    { icon: '⌂',  label: 'Home',   hash: '#/dashboard' },
+    { icon: '💳', label: 'Wallet', hash: '#/wallet'    },
+    { icon: '⚗',  label: 'Fusion', hash: '#/fusion'   },
+    { icon: '⇄',  label: 'Swap',   hash: '#/swap'     },
+    { icon: '···', label: 'More',  hash: null           },
+  ];
+
+  const DRAWER_ITEMS = [
+    { icon: '💬', label: 'Chat',    hash: '#/chat'    },
+    { icon: '🧅', label: 'Onion',   hash: '#/onion'   },
+    { icon: '📊', label: 'DEX',     hash: '#/dex'     },
+    { icon: '💸', label: 'Pay',     hash: '#/pay'     },
+    { icon: '🏦', label: 'Loan',    hash: '#/loan'    },
+    { icon: '🔐', label: 'Vault',   hash: '#/vault'   },
+    { icon: '🎲', label: 'Bet',     hash: '#/bet'     },
+    { icon: '◉',  label: 'ID',      hash: '#/id'      },
+    { icon: '⬡',  label: 'Mesh',    hash: '#/mesh'    },
+    { icon: '📋', label: 'Sub',     hash: '#/sub'     },
+    { icon: '⚙',  label: 'Settings',hash: '#/config'  },
+    { icon: '🔑', label: 'Auth',    hash: '#/auth'    },
+  ];
+
+  // Drawer backdrop
+  const bg = document.createElement('div');
+  bg.id = 'mob-drawer-bg';
+
+  // Drawer
+  const drawer = document.createElement('div');
+  drawer.id = 'mob-drawer';
+  const drawerGrid = document.createElement('div');
+  drawerGrid.className = 'mob-drawer-grid';
+  const drawerTitle = document.createElement('div');
+  drawerTitle.className = 'mob-drawer-title';
+  drawerTitle.textContent = 'More';
+  drawer.appendChild(drawerTitle);
+  for (const item of DRAWER_ITEMS) {
+    const a = document.createElement('a');
+    a.className = 'mob-drawer-item';
+    a.href = item.hash;
+    a.innerHTML = `<span class="mob-drawer-item-icon">${item.icon}</span><span>${item.label}</span>`;
+    a.addEventListener('click', () => { drawer.classList.remove('open'); bg.classList.remove('open'); });
+    drawerGrid.appendChild(a);
+  }
+  drawer.appendChild(drawerGrid);
+
+  // Nav bar
+  const nav = document.createElement('nav');
+  nav.id = 'mob-nav';
+  for (const tab of TABS) {
+    const el = tab.hash ? document.createElement('a') : document.createElement('button');
+    el.className = 'mob-tab';
+    if (tab.hash) el.href = tab.hash;
+    el.innerHTML = `<span class="mob-tab-icon">${tab.icon}</span><span>${tab.label}</span>`;
+    if (!tab.hash) {
+      el.addEventListener('click', () => {
+        const isOpen = drawer.classList.contains('open');
+        drawer.classList.toggle('open', !isOpen);
+        bg.classList.toggle('open', !isOpen);
+      });
+    }
+    nav.appendChild(el);
+  }
+
+  bg.addEventListener('click', () => { drawer.classList.remove('open'); bg.classList.remove('open'); });
+
+  document.body.appendChild(bg);
+  document.body.appendChild(drawer);
+  document.body.appendChild(nav);
+
+  // Update active tab on navigation
+  function _syncActive() {
+    const hash = window.location.hash;
+    document.querySelectorAll('#mob-nav .mob-tab').forEach(t => {
+      t.classList.toggle('active', !!t.getAttribute('href') && t.getAttribute('href') === hash);
+    });
+    drawer.classList.remove('open');
+    bg.classList.remove('open');
+  }
+  window.addEventListener('hashchange', _syncActive);
+  _syncActive();
+}
+
 // ── Build controls ─────────────────────────────────────────────
 function buildControls(showApps) {
   const cur  = window.location.pathname.split('/').pop() || 'index.html';
@@ -938,18 +1025,9 @@ function inject() {
     }
   }
 
-  // ── Mobile / tablet: original behavior ──
-  if (!IS_DESKTOP) {
-    if (isLanding) {
-      // Landing page: no overlay needed
-    } else if (isDocs) {
-      // Docs has its own top-bar layout — skip shell controls
-    } else {
-      const phone = document.querySelector('.phone');
-      if (phone) {
-        phone.appendChild(buildHomeIndicator());
-      }
-    }
+  // ── Mobile: inject bottom nav ──
+  if (!IS_DESKTOP && !isDocs) {
+    _injectMobileNav();
   }
 
   // Docs: skip shell controls — docs has its own top-bar layout
@@ -969,15 +1047,10 @@ _desktopMQ.addEventListener('change', (e) => {
       if (path !== 'docs.html') document.body.prepend(buildDesktopSidebar());
     }
   } else {
-    // Restore hacker theme for mobile
-    document.documentElement.removeAttribute('data-theme');
-    const r = document.documentElement.style;
-    r.removeProperty('--green');
-    r.removeProperty('--green-dim');
-    r.removeProperty('--green-dark');
-    r.removeProperty('--accent-rgb');
+    // Keep --dt- theme on mobile, remove sidebar, inject bottom nav
     const sb = document.getElementById('desktop-sidebar');
     if (sb) sb.remove();
+    if (!document.getElementById('mob-nav')) _injectMobileNav();
   }
 });
 
