@@ -34,19 +34,22 @@ It ships a suite of privacy primitives on top of a standard HD wallet — stealt
 
 ## Privacy Architecture
 
-### Stealth Payments
-Each payment derives a unique, unlinkable P2PKH address via ECDH on secp256k1:
+### Stealth Payments (BIP352 aggregated ECDH)
+Each payment derives a unique, unlinkable P2PKH address. The receiver performs **1 ECDH per TX** regardless of input count (5–10× faster than per-input scanning):
 
 ```
-Sender:   sharedSecret = ECDH(senderPriv, recipientScanPub)
-          tweak c      = sha256(sha256(sharedX) || senderPub)
-          outputAddr   = P2PKH(spendPub + c·G)
+Sender:   a_sum        = Σ input_privkeys  mod N
+          A_sum        = a_sum × G
+          input_hash   = SHA256(smallest_outpoint || A_sum)
+          shared       = (a_sum × input_hash) × B_scan
+          t            = SHA256(sharedX || ser32(k))
+          outputAddr   = P2PKH(B_spend + t·G)
 
-Receiver: sharedSecret = ECDH(scanPriv, senderPub)
-          → same tweak c → same address
+Receiver: shared       = (b_scan × input_hash) × A_sum   ← same value
+          → same t → same address
 ```
 
-No OP_RETURN, no notification transaction. Outputs look like ordinary P2PKH.
+No OP_RETURN, no notification transaction. Outputs are indistinguishable from standard P2PKH.
 
 **Paycode format:**
 ```
@@ -160,9 +163,7 @@ landing/
 
 ## Roadmap
 
-- [ ] BIP352 aggregated ECDH for stealth scanning (5–10× faster)
 - [ ] Atomic swap UX improvements
-- [ ] Hardware wallet (Ledger) full integration
 - [ ] Mobile layout
 - [ ] v1.0.0-beta — full test coverage
 
