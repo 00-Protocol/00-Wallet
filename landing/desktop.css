@@ -6,9 +6,11 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-/* ── Force-hide phone UI at ALL viewports (logic still runs in DOM) ── */
-.phone-wrap, .phone-wrap * { visibility: hidden !important; pointer-events: none !important; }
-.phone-wrap { position: fixed !important; height: 0 !important; overflow: hidden !important; opacity: 0 !important; z-index: -1 !important; }
+/* ── Phone wrap: hidden on desktop, full-screen on mobile ── */
+@media (min-width: 900px) {
+  .phone-wrap, .phone-wrap * { visibility: hidden !important; pointer-events: none !important; }
+  .phone-wrap { position: fixed !important; height: 0 !important; overflow: hidden !important; opacity: 0 !important; z-index: -1 !important; }
+}
 
 /* ── Theme Variables ─────────────────────────────────────────── */
 :root[data-theme="light"],
@@ -123,51 +125,53 @@ html {
   --accent-rgb: 10,193,142 !important;
 }
 
-/* ── Phone frame → hidden (logic still runs in DOM) ───────── */
-.phone-wrap {
-  position: fixed !important;
-  top: 0 !important;
-  left: 240px !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  display: block !important;
-  visibility: hidden !important;
-  pointer-events: none !important;
-  height: 0 !important;
-  overflow: hidden !important;
-  z-index: 1 !important;
-  transition: left .2s ease;
-  width: auto !important;
-  height: auto !important;
-  align-items: stretch !important;
-  justify-content: stretch !important;
-}
-.phone {
-  width: 100% !important;
-  height: auto !important;
-  min-height: 100%;
-  background: var(--dt-bg) !important;
-  border-radius: 0 !important;
-  border: none !important;
-  box-shadow: none !important;
-  margin: 0 !important;
-  overflow-x: hidden;
-  overflow-y: visible !important;
-}
-.notch,
-.notch-cam,
-.notch-speaker {
-  display: none !important;
-}
-.status-bar {
-  display: none !important;
-}
-.home-indicator {
-  display: none !important;
-}
-/* Hide mobile shell controls (moved to sidebar) */
-.shell-controls {
-  display: none !important;
+/* ── Phone frame → desktop only (hidden on desktop, visible on mobile) ── */
+@media (min-width: 900px) {
+  .phone-wrap {
+    position: fixed !important;
+    top: 0 !important;
+    left: 240px !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    display: block !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    height: 0 !important;
+    overflow: hidden !important;
+    z-index: 1 !important;
+    transition: left .2s ease;
+    width: auto !important;
+    height: auto !important;
+    align-items: stretch !important;
+    justify-content: stretch !important;
+  }
+  .phone {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 100%;
+    background: var(--dt-bg) !important;
+    border-radius: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    overflow-x: hidden;
+    overflow-y: visible !important;
+  }
+  .notch,
+  .notch-cam,
+  .notch-speaker {
+    display: none !important;
+  }
+  .status-bar {
+    display: none !important;
+  }
+  .home-indicator {
+    display: none !important;
+  }
+  /* Hide mobile shell controls (moved to sidebar) */
+  .shell-controls {
+    display: none !important;
+  }
 }
 
 /* ── Loading overlay ───────────────────────────────────────── */
