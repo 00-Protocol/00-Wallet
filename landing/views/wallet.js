@@ -313,7 +313,7 @@ function renderCoinDetail(coinId) {
           <div class="cd-copy-row">
             <button class="cd-copy-btn" id="cd-copy-stealth" style="background:#BF5AF2;color:#fff;border-color:#BF5AF2">📋 COPY STEALTH CODE</button>
           </div>
-          <div class="cd-path-info">// ECDH STEALTH · SCAN + SPEND PUBKEYS</div>
+          <div class="cd-path-info">// BIP352 STEALTH · SCAN + SPEND PUBKEYS</div>
         </div>` : ''}
       </div>
     </div>
@@ -1133,7 +1133,8 @@ async function _doStealthScan(coinId, quick) {
     const resp = await fetch(`${indexerUrl}/pubkeys?from=${fromBlock}&to=${toBlock}`);
     if (!resp.ok) throw new Error('Indexer error: ' + resp.status);
     const data = await resp.json();
-    const pubkeys = data?.pubkeys || (Array.isArray(data) ? data : []);
+    // Indexer returns { from, to, entries: [...] }
+    const pubkeys = data?.entries || data?.pubkeys || (Array.isArray(data) ? data : []);
 
     if (!pubkeys?.length) {
       if (statusEl) statusEl.textContent = `No pubkeys found in range ${fromBlock}-${toBlock}`;
@@ -1186,31 +1187,17 @@ async function _doStealthCheckTx(coinId) {
     const rawHex = await window._fvCall('blockchain.transaction.get', [txid]);
     if (!rawHex) throw new Error('TX not found');
 
-    // Extract input pubkeys from raw TX
-    const { extractInputPubkeys } = await import('../core/stealth.js');
-    let pubkeys;
-    if (typeof extractInputPubkeys === 'function') {
-      pubkeys = extractInputPubkeys(rawHex);
-    } else {
-      // Manual extraction: parse scriptSigs for compressed pubkeys (33 bytes starting with 02/03)
-      const txBytes = new Uint8Array(rawHex.match(/.{2}/g).map(b => parseInt(b, 16)));
-      pubkeys = [];
-      for (let i = 0; i < txBytes.length - 33; i++) {
-        if ((txBytes[i] === 0x02 || txBytes[i] === 0x03) && i > 0 && txBytes[i-1] === 0x21) {
-          const pk = Array.from(txBytes.slice(i, i + 33)).map(b => b.toString(16).padStart(2, '0')).join('');
-          pubkeys.push({ pubkey: pk, txid });
-        }
-      }
-    }
+    // Parse input pubkeys + outpoints from raw TX hex (needed for BIP352 aggregation)
+    const { parseRawTxInputs, scanForStealthPayments } = await import('../core/stealth.js');
+    const pubkeys = parseRawTxInputs(rawHex, txid);
 
     if (!pubkeys.length) {
-      if (statusEl) statusEl.textContent = 'No pubkeys found in TX inputs';
+      if (statusEl) statusEl.textContent = 'No P2PKH pubkeys found in TX inputs';
       return;
     }
 
-    if (statusEl) statusEl.textContent = `Found ${pubkeys.length} input pubkey(s), checking ECDH...`;
+    if (statusEl) statusEl.textContent = `Found ${pubkeys.length} input pubkey(s), checking BIP352 ECDH...`;
 
-    const { scanForStealthPayments } = await import('../core/stealth.js');
     const found = await scanForStealthPayments(keys, pubkeys);
 
     if (found.length > 0) {
@@ -2128,25 +2115,32 @@ async function _doStealthSend(coinId) {
     }
     if (!utxos.length) throw new Error('No UTXOs available');
 
-    // Get the private key of the FIRST UTXO — this is the key whose pubkey will
-    // appear in the TX input and be used by the receiver's scanner for ECDH
     let hdGetKey = null;
     try { const { getPrivForAddr } = await import('../services/hd-scanner.js'); hdGetKey = getPrivForAddr; } catch {}
 
-    // For stealth sends, sort UTXOs so the biggest one is first (will be the first input).
-    // Then use that UTXO's private key for ECDH stealth derivation.
-    // This ensures inputPubkey matches the key used for derivation.
-    utxos.sort((a, b) => b.value - a.value);
-
-    let firstInputPriv = keys.privKey; // fallback to main key
-    if (hdGetKey && utxos[0]?.addr) {
-      const hdPriv = hdGetKey(utxos[0].addr);
-      if (hdPriv) firstInputPriv = hdPriv;
+    // ── BIP352 aggregated ECDH ───────────────────────────────────────────────
+    // Replicate sendBch's UTXO selection (largest-first, stop when amount+fee covered)
+    // so we aggregate exactly the keys that will sign the TX.
+    // estimateTxSize(nIn, 2) = 10 + nIn * 148 + 68 = 78 + nIn * 148
+    const sortedUtxos = [...utxos].sort((a, b) => b.value - a.value);
+    const selectedForDerive = [];
+    let runningTotal = 0;
+    for (const u of sortedUtxos) {
+      selectedForDerive.push(u);
+      runningTotal += u.value;
+      const estimatedFee = 78 + selectedForDerive.length * 148; // feeRate=1 sat/byte, 2 outputs
+      if (runningTotal >= amtSats + estimatedFee) break;
     }
 
-    // Derive stealth address using the FIRST INPUT's private key
+    // Collect all selected input privkeys + outpoints for BIP352 aggregation
+    const allPrivKeys = selectedForDerive.map(u => {
+      if (hdGetKey && u.addr) { const p = hdGetKey(u.addr); if (p) return p; }
+      return keys.privKey;
+    });
+    const allOutpoints = selectedForDerive.map(u => ({ txid: u.txid, vout: u.vout }));
+
     const { deriveStealthSendAddr } = await import('../core/stealth.js');
-    const { addr: stealthAddr, senderPub } = deriveStealthSendAddr(scanPub, spendPub, firstInputPriv);
+    const { addr: stealthAddr } = deriveStealthSendAddr(scanPub, spendPub, allPrivKeys, allOutpoints);
 
     const { sendBch } = await import('../core/send-bch.js');
     const changeAddr = state.get('hdChangeAddr');

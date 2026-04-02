@@ -1,0 +1,81 @@
+name: Stealth BIP352 Tests
+
+on:
+  push:
+    branches: ['**']
+    paths:
+      - 'sdk/src/stealth/**'
+      - 'sdk/test/**'
+      - 'landing/core/stealth.js'
+      - 'landing/views/wallet.js'
+      - '.github/workflows/stealth-tests.yml'
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 1 — Unit tests (no network, runs on every push/PR, ~5 seconds)
+  # ─────────────────────────────────────────────────────────────────────────────
+  unit-tests:
+    name: Unit Tests (no network)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: sdk/package.json
+
+      - name: Install SDK dependencies
+        run: npm install
+        working-directory: sdk
+
+      - name: 🧪 SDK — BIP352 stealth unit tests
+        run: node test/stealth.test.js
+        working-directory: sdk
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 2 — Chipnet e2e (real BCH testnet, only on push to main)
+  #
+  # Required GitHub secrets (Settings → Secrets → Actions):
+  #   CHIPNET_SENDER_PRIV   — WIF or 32-byte hex privkey of funded chipnet wallet
+  #   CHIPNET_SCAN_PRIV     — Recipient stealth scan privkey (hex)
+  #   CHIPNET_SPEND_PRIV    — Recipient stealth spend privkey (hex)
+  #
+  # Get free chipnet BCH: https://tbch.googol.cash  or ask in #chipnet on BCH Discord
+  # ─────────────────────────────────────────────────────────────────────────────
+  chipnet-e2e:
+    name: Chipnet E2E (real BCH testnet)
+    runs-on: ubuntu-latest
+    # Only on push to main (secrets not available on PRs from forks)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: sdk/package.json
+
+      - name: Install SDK dependencies
+        run: npm install
+        working-directory: sdk
+
+      - name: 🌐 Chipnet — BIP352 stealth e2e test
+        run: node test/stealth.chipnet.test.js
+        working-directory: sdk
+        timeout-minutes: 3
+        env:
+          CHIPNET_SENDER_PRIV: ${{ secrets.CHIPNET_SENDER_PRIV }}
+          CHIPNET_SCAN_PRIV:   ${{ secrets.CHIPNET_SCAN_PRIV }}
+          CHIPNET_SPEND_PRIV:  ${{ secrets.CHIPNET_SPEND_PRIV }}
+          CHIPNET_FULCRUM:     'wss://chipnet.imaginary.cash:50004'

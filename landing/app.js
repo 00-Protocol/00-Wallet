@@ -16,7 +16,7 @@ import * as hdScanner from './services/hd-scanner.js';
 
 /* ── Route registry (all lazy-loaded) ── */
 /* Bump _V on deploy to bust browser module cache */
-const _V = '?v=53';
+const _V = '?v=54';
 const ROUTES = {
   'auth':       () => import('./views/auth.js' + _V),
   'dashboard':  () => import('./views/dashboard.js' + _V),

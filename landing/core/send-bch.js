@@ -83,7 +83,7 @@ export async function sendBch({ toAddress, amountSats, feeRate, utxos, privKey, 
   const toHash160 = cashAddrToHash20(toAddress);
   const toScript = p2pkhScript(toHash160);
 
-  // OP_RETURN output for stealth ephPub or other data
+  // OP_RETURN output (optional, for arbitrary on-chain data — NOT used by BIP352 stealth)
   let opReturnOutput = null;
   if (opReturnData && opReturnData.length > 0) {
     const data = opReturnData instanceof Uint8Array ? opReturnData : h2b(opReturnData);

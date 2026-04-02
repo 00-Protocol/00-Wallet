@@ -630,7 +630,7 @@ async function _startInputRegistration() {
   const ioEl = document.getElementById('dt-mix-io-info');
   if (ioEl) ioEl.textContent = nInputs + ' inputs -> ' + nOutputs + ' stealth outputs';
 
-  // Send inputs + output_count via relay
+  // Broadcast inputs + output_count to all peers (P2P)
   await _broadcastToPeers({
     round_id: m.roundId, step: 'inputs',
     inputs: selected.map(u => ({ txid: u.tx_hash, vout: u.tx_pos, value: u.value })),
@@ -1277,7 +1277,7 @@ function _template() {
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
           <div style="display:flex;align-items:center;gap:8px">
             <div class="dt-card-title" style="margin:0">Joiner</div>
-            ${infoBtn('The Silent Joiner creates CoinJoin transactions via onion-encrypted relay. Your inputs and outputs are mixed with other participants \u2014 nobody can link them. Each round uses ephemeral keys.')}
+            ${infoBtn('The Silent Joiner creates CoinJoin transactions peer-to-peer via Nostr. Your inputs and outputs are mixed with other participants \u2014 nobody can link them. Each round uses ephemeral keys — no relay coordinator needed.')}
           </div>
           <div style="display:flex;gap:8px">
             <button class="dt-action-btn" id="dt-fus-join" style="width:auto;padding:8px 20px;background:var(--dt-accent)">\u2697 Join Round</button>
@@ -1288,8 +1288,8 @@ function _template() {
         <div id="dt-fus-relays">
           <div class="dt-empty">
             <div class="dt-empty-icon">\u2697</div>
-            <div class="dt-empty-text">Searching for relays...</div>
-            <div style="font-size:11px;color:var(--dt-text-secondary);margin-top:4px">Waiting for relay announcements on Nostr</div>
+            <div class="dt-empty-text">No peers in pool</div>
+            <div style="font-size:11px;color:var(--dt-text-secondary);margin-top:4px">Click "Join Round" to enter the mixing pool</div>
           </div>
         </div>
       </div>
@@ -1423,7 +1423,7 @@ export async function mount(container) {
     await _refreshBalance();
   }
 
-  // Subscribe to relay announcements (skip if already subscribed from previous mount)
+  // Subscribe to peer pool events (skip if already subscribed from previous mount)
   if (!_poolSub) await _subscribePool();
   _renderPool();
 
