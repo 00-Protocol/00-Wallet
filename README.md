@@ -6,7 +6,7 @@
 
 ---
 
-## What it is
+## What it is 
 
 00 Wallet is a browser-native PWA built without any framework or build step. Every key is generated locally, every cryptographic operation happens client-side. No analytics, no tracking, no KYC, no backend.
 
