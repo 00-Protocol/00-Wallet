@@ -8,9 +8,9 @@
     "relay:indexer-only": "node relay.js --indexer-only",
     "indexer": "node pubkey-indexer.js --mode serve",
     "scan": "node pubkey-indexer.js --mode scan",
-    "desktop:build:win": "cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win nsis --x64 --arm64",
-    "desktop:build:linux": "cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --linux AppImage --x64 --arm64",
-    "desktop:build:mac": "cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac zip --x64 --arm64",
+    "desktop:build:win": "cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win nsis --x64 --arm64 --publish=never",
+    "desktop:build:linux": "cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --linux AppImage --x64 --arm64 --publish=never",
+    "desktop:build:mac": "cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac zip --x64 --arm64 --publish=never",
     "android:build": "node scripts/build-android.mjs"
   },
   "build": {
