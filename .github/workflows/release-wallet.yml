@@ -52,7 +52,11 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
-          path: dist/desktop/**/*
+          path: |
+            dist/desktop/*.AppImage
+            dist/desktop/*.exe
+            dist/desktop/*.zip
+            dist/desktop/*.dmg
           if-no-files-found: error
 
   build-android:
@@ -107,6 +111,6 @@ jobs:
         with:
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
           files: release-assets/**/*
-          overwrite: true
+          overwrite_files: true
           fail_on_unmatched_files: true
           generate_release_notes: true
