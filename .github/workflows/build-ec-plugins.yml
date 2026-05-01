@@ -14,6 +14,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout 00-Wallet
@@ -54,9 +56,8 @@ jobs:
           files: |
             dist/ec-plugins/stealth-ec-plugin.zip
             dist/ec-plugins/rpa-ec-plugin.zip
-          overwrite: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          overwrite_files: true
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish to CyberAshven/00-Wallet
         uses: softprops/action-gh-release@v2
@@ -71,6 +72,6 @@ jobs:
           files: |
             dist/ec-plugins/stealth-ec-plugin.zip
             dist/ec-plugins/rpa-ec-plugin.zip
-          overwrite: true
+          overwrite_files: true
           repository: CyberAshven/00-Wallet
           token: ${{ secrets.CYBERASHVEN_TOKEN }}
