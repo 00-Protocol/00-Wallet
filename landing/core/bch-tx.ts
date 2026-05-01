@@ -142,6 +142,27 @@ export function estimateTxSize(numInputs: number, numOutputs: number): number {
   return 10 + (numInputs * 148) + (numOutputs * 34);
 }
 
+/* ── Build an unsigned TX hex (empty scriptSigs) for WalletConnect signing ── */
+export function serializeUnsignedTx(utxos: Array<{ txid: string; vout: number; value: number }>, outputs: TxOutput[]): string {
+  return b2h(concat(
+    u32LE(2),
+    writeVarint(utxos.length),
+    ...utxos.flatMap(u => [
+      h2b(u.txid).reverse() as Uint8Array,
+      u32LE(u.vout),
+      new Uint8Array([0]),         // empty scriptSig (varint 0 = no script)
+      u32LE(0xffffffff),           // sequence
+    ]),
+    writeVarint(outputs.length),
+    ...outputs.flatMap(o => [
+      u64LE(o.value),
+      writeVarint(o.script.length),
+      o.script,
+    ]),
+    u32LE(0),                      // locktime
+  ));
+}
+
 /* ── UTXO selection (simple largest-first) ── */
 export function selectUtxos(utxos: Utxo[], targetSats: number, feePerByte: number = 1): UtxoSelection | null {
   const sorted = [...utxos].sort((a, b) => b.value - a.value);

@@ -1013,7 +1013,7 @@ async function _doTopUp() {
   try {
     if (!_profile?.bch_address) throw new Error('Chat address not available');
     const walletKeys = auth.getKeys();
-    if (!walletKeys?.privKey) throw new Error('Wallet not unlocked');
+    if (!walletKeys) throw new Error('Wallet not unlocked');
 
     // Use sendBch from core
     const { sendBch } = await import('../core/send-bch.js');
@@ -1021,7 +1021,7 @@ async function _doTopUp() {
     const { secp256k1 } = await import('../lib/noble-curves.js');
     const { cashAddrToHash20 } = await import('../core/cashaddr.js');
 
-    // Fetch wallet UTXOs
+    // Fetch wallet UTXOs (HD addresses)
     const hdAddrs = (await import('../core/state.js')).get('hdAddresses') || [];
     let utxos = [];
     const { getPrivForAddr } = await import('../services/hd-scanner.js');
@@ -1034,11 +1034,43 @@ async function _doTopUp() {
         for (const u of raw) utxos.push({ txid: u.tx_hash, vout: u.tx_pos, value: u.value, addr: hd.addr });
       } catch {}
     }
+    // Fallback: single address (WalletConnect / Ledger)
+    if (!utxos.length && walletKeys.bchAddr) {
+      try {
+        const h = cashAddrToHash20(walletKeys.bchAddr);
+        const script = new Uint8Array([0x76, 0xa9, 0x14, ...h, 0x88, 0xac]);
+        const sh = Array.from(sha(script)).reverse().map(b => b.toString(16).padStart(2, '0')).join('');
+        const raw = await window._fvCall('blockchain.scripthash.listunspent', [sh]) || [];
+        for (const u of raw) utxos.push({ txid: u.tx_hash, vout: u.tx_pos, value: u.value, addr: walletKeys.bchAddr });
+      } catch {}
+    }
     if (!utxos.length) throw new Error('No wallet UTXOs available');
 
     // Change address
     const changeAddr = (await import('../core/state.js')).get('hdChangeAddr');
-    const changeH160 = changeAddr ? cashAddrToHash20(changeAddr) : ripemd160(sha256(secp256k1.getPublicKey(walletKeys.privKey, true)));
+    const changeH160 = changeAddr
+      ? cashAddrToHash20(changeAddr)
+      : walletKeys.hash160 || ripemd160(sha256(secp256k1.getPublicKey(walletKeys.privKey!, true)));
+
+    // WalletConnect: build unsigned TX, request remote signing
+    let wcSignFn = null;
+    if (walletKeys.walletConnect) {
+      const { wcSignTx } = await import('../core/auth.js');
+      const { serializeUnsignedTx, p2pkhScript: _p2pkh } = await import('../core/bch-tx.js');
+      const { b2h: _b2h, h2b: _h2b } = await import('../core/utils.js');
+      wcSignFn = async (sel, outs) => {
+        const unsignedHex = serializeUnsignedTx(sel.map(u => ({ txid: u.txid, vout: u.vout, value: u.value })), outs);
+        const sourceOutputs = sel.map(u => ({
+          valueSatoshis: '<bigint: ' + u.value + 'n>',
+          lockingBytecode: '<Uint8Array: 0x' + _b2h(_p2pkh(walletKeys.hash160)) + '>',
+          outpointTransactionHash: '<Uint8Array: 0x' + _b2h(_h2b(u.txid).reverse()) + '>',
+          outpointIndex: u.vout,
+          sequenceNumber: 4294967295,
+          unlockingBytecode: '<Uint8Array: 0x>',
+        }));
+        return wcSignTx(unsignedHex, sourceOutputs, 'Top up chat address');
+      };
+    }
 
     const result = await sendBch({
       toAddress: _profile.bch_address,
@@ -1046,9 +1078,10 @@ async function _doTopUp() {
       feeRate: 1,
       utxos,
       privKey: walletKeys.privKey,
-      pubKey: secp256k1.getPublicKey(walletKeys.privKey, true),
+      pubKey: walletKeys.privKey ? secp256k1.getPublicKey(walletKeys.privKey, true) : undefined,
       changeHash160: changeH160,
-      hdGetKey: getPrivForAddr,
+      hdGetKey: walletKeys.walletConnect ? undefined : getPrivForAddr,
+      ledgerSign: wcSignFn,
     });
 
     if (btn) { btn.textContent = '✓ Sent ' + topUpAmount + ' sats'; btn.disabled = false; }

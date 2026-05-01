@@ -118,6 +118,28 @@ function pubToHash160(pub) {
 function estimateTxSize(numInputs, numOutputs) {
   return 10 + numInputs * 148 + numOutputs * 34;
 }
+function serializeUnsignedTx(utxos, outputs) {
+  return b2h(concat(
+    u32LE(2),
+    writeVarint(utxos.length),
+    ...utxos.flatMap((u) => [
+      h2b(u.txid).reverse(),
+      u32LE(u.vout),
+      new Uint8Array([0]),
+      // empty scriptSig (varint 0 = no script)
+      u32LE(4294967295)
+      // sequence
+    ]),
+    writeVarint(outputs.length),
+    ...outputs.flatMap((o) => [
+      u64LE(o.value),
+      writeVarint(o.script.length),
+      o.script
+    ]),
+    u32LE(0)
+    // locktime
+  ));
+}
 function selectUtxos(utxos, targetSats, feePerByte = 1) {
   const sorted = [...utxos].sort((a, b) => b.value - a.value);
   const selected = [];
@@ -142,6 +164,7 @@ export {
   pubToHash160,
   selectUtxos,
   serializeTx,
+  serializeUnsignedTx,
   signInput,
   txidFromRaw
 };
