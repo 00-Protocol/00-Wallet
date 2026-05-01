@@ -5,11 +5,11 @@
    Master seed → account nodes → child keys.
    ══════════════════════════════════════════ */
 
-import { secp256k1 } from 'https://esm.sh/@noble/curves@1.8.1/secp256k1';
-import { sha256 } from 'https://esm.sh/@noble/hashes@1.7.1/sha256';
-import { sha512 } from 'https://esm.sh/@noble/hashes@1.7.1/sha512';
-import { hmac } from 'https://esm.sh/@noble/hashes@1.7.1/hmac';
-import { ripemd160 } from 'https://esm.sh/@noble/hashes@1.7.1/ripemd160';
+import { secp256k1 } from '../lib/noble-curves.js';
+import { sha256 } from '../lib/noble-hashes.js';
+import { sha512 } from '../lib/noble-hashes.js';
+import { hmac } from '../lib/noble-hashes.js';
+import { ripemd160 } from '../lib/noble-hashes.js';
 import { concat, b2h, h2b, utf8, rand } from './utils.js';
 import { pubHashToCashAddr } from './cashaddr.js';
 
@@ -163,3 +163,6 @@ export async function validateMnemonic(words: string): Promise<boolean> {
 /* ── Re-exports for convenience ── */
 export { secp256k1, sha256, ripemd160, hmac };
 export { N_SECP };
+
+
+

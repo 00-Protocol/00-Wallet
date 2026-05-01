@@ -6,7 +6,7 @@
    chat.html, vault.html, sub.html, pay.html, etc.
    ══════════════════════════════════════════ */
 
-import { sha256 } from 'https://esm.sh/@noble/hashes@1.7.1/sha256';
+import { sha256 } from '../lib/noble-hashes.js';
 
 /* ── DOM helpers ── */
 export const $  = (s: string): Element | null => document.querySelector(s);
@@ -96,3 +96,6 @@ export function showToast(msg: string, type: 'info' | 'success' | 'error' | 'war
 /* ── Hex/buffer conversions ── */
 export function bufToHex(buf: ArrayBuffer): string { return b2h(new Uint8Array(buf)); }
 export function hexToBuf(hex: string): ArrayBuffer { return h2b(hex).buffer as ArrayBuffer; }
+
+
+

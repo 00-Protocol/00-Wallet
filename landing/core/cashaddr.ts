@@ -54,7 +54,7 @@ export function cashAddrToHash20(addr: string): Uint8Array {
 }
 
 /* ── Base58Check (for BTC legacy and WIF) ── */
-import { sha256 } from 'https://esm.sh/@noble/hashes@1.7.1/sha256';
+import { sha256 } from '../lib/noble-hashes.js';
 import { concat } from './utils.js';
 
 const B58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
@@ -91,3 +91,5 @@ export function base58Decode(str: string): Uint8Array {
   if (!expected.every((b, i) => b === checksum[i])) throw new Error('bad checksum');
   return payload;
 }
+
+

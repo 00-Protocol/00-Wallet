@@ -59,7 +59,7 @@ function cashAddrToHash20(addr) {
   }
   return new Uint8Array(bytes.slice(1, 21));
 }
-import { sha256 } from "https://esm.sh/@noble/hashes@1.7.1/sha256";
+import { sha256 } from "../lib/noble-hashes.js";
 import { concat } from "./utils.js";
 const B58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 function dsha256(d) {
