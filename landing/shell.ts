@@ -885,7 +885,7 @@ function buildDesktopSidebar() {
   const logo = document.createElement('a');
   logo.className = 'sidebar-logo';
   logo.href = IS_SPA ? '#/dashboard' : '/';
-  logo.innerHTML = '<span class="sidebar-logo-icon">00</span><span class="sidebar-logo-text sidebar-label">Protocol</span><span class="sidebar-label" style="font-size:9px;color:var(--dt-text-secondary,#94a3b8);margin-left:6px;font-weight:400;opacity:.7;cursor:pointer" title="Click to force reload" onclick="event.preventDefault();event.stopPropagation();location.reload(true)">v0.25</span>';
+  logo.innerHTML = '<span class="sidebar-logo-icon">00</span><span class="sidebar-logo-text sidebar-label">BCH Stealth Wallet</span>';
   sb.appendChild(logo);
 
   // Nav sections

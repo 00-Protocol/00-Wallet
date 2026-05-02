@@ -73,10 +73,10 @@ async function boot() {
       console.warn("[00] auto-unlock failed:", e?.message || e);
     }
   }
-  if (!unlocked && localStorage.getItem("00_wc_session")) {
+  if (!unlocked && (localStorage.getItem("00_wc_session") || localStorage.getItem("00_wiz_session"))) {
     try {
       const restored = await Promise.race([
-        auth.restoreWcSession(),
+        auth.restoreExternalSession(),
         new Promise((resolve) => setTimeout(() => resolve(false), 6e3))
       ]);
       if (restored) {

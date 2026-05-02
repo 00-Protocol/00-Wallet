@@ -126,7 +126,11 @@ function _decodeNpub(npub) {
   return d8.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 function _template(keys) {
-  const sp = keys?.sessionPub || "", ba = keys?.bchAddr || "", sc = keys?.stealthCode || "", np = sp ? _npub(sp) : "";
+  const isExternal = !!(keys?.walletConnect || keys?.wizardConnect || keys?.ledger || keys?.trezor);
+  const sp = keys?.sessionPub || "";
+  const ba = keys?.bchAddr || (keys?.walletConnect || keys?.wizardConnect ? "External wallet session" : "");
+  const sc = keys?.stealthCode || (isExternal ? "Not exposed by external wallet" : "");
+  const np = sp ? _npub(sp) : "";
   return `<div class="dt-inner" style="padding:32px 40px;max-width:560px;margin:0 auto">
   <div class="dt-page-header"><div class="dt-page-title-wrap"><div class="dt-page-icon">\u25C9</div><div><div class="dt-page-title">Identity</div><div class="dt-page-sub">Decentralized Identity \xB7 Nostr</div></div></div></div>
   <div class="dt-tabs" id="dt-id-tabs"><button class="dt-tab active" data-tab="card">Card</button><button class="dt-tab" data-tab="edit">Edit</button><button class="dt-tab" data-tab="share">Share</button><button class="dt-tab" data-tab="lookup">Lookup</button></div>

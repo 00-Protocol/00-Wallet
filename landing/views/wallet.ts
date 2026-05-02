@@ -78,6 +78,13 @@ function pk(id) {
 }
 function getC(id) { return CHAINS.find(c => c.id === id); }
 
+function _isUsableReceiveValue(v) {
+  const t = String(v || '').trim().toLowerCase();
+  if (!t || t === '—' || t === 'n/a' || t === 'loading...') return false;
+  if (t.includes('unavailable') || t.includes('not exposed') || t.includes('hd wallet required')) return false;
+  return true;
+}
+
 /* ══════════════════════════════════════════
    COIN LIST
    ══════════════════════════════════════════ */
@@ -337,15 +344,33 @@ function renderCoinDetail(coinId) {
   // Bind COPY buttons
   document.getElementById('cd-copy-full')?.addEventListener('click', async () => {
     const addr = document.getElementById('cd-recv-addr')?.textContent;
-    if (addr) { await navigator.clipboard.writeText(addr); const b = document.getElementById('cd-copy-full'); if (b) { b.textContent = '✓ Copied!'; setTimeout(() => b.textContent = '📋 COPY FULL', 1500); } }
+    const b = document.getElementById('cd-copy-full');
+    if (!_isUsableReceiveValue(addr)) {
+      if (b) { b.textContent = 'Unavailable'; setTimeout(() => b.textContent = '📋 COPY FULL', 1200); }
+      return;
+    }
+    await navigator.clipboard.writeText(addr);
+    if (b) { b.textContent = '✓ Copied!'; setTimeout(() => b.textContent = '📋 COPY FULL', 1500); }
   });
   document.getElementById('cd-copy-short')?.addEventListener('click', async () => {
     const addr = document.getElementById('cd-recv-addr')?.textContent;
-    if (addr) { await navigator.clipboard.writeText(addr.slice(0, 25) + '...'); const b = document.getElementById('cd-copy-short'); if (b) { b.textContent = '✓ Copied!'; setTimeout(() => b.textContent = 'COPY SHORT', 1500); } }
+    const b = document.getElementById('cd-copy-short');
+    if (!_isUsableReceiveValue(addr)) {
+      if (b) { b.textContent = 'Unavailable'; setTimeout(() => b.textContent = 'COPY SHORT', 1200); }
+      return;
+    }
+    await navigator.clipboard.writeText(addr.slice(0, 25) + '...');
+    if (b) { b.textContent = '✓ Copied!'; setTimeout(() => b.textContent = 'COPY SHORT', 1500); }
   });
   document.getElementById('cd-copy-stealth')?.addEventListener('click', async () => {
     const code = document.getElementById('cd-recv-stealth-code')?.textContent;
-    if (code) { await navigator.clipboard.writeText(code); const b = document.getElementById('cd-copy-stealth'); if (b) { b.textContent = '✓ Copied!'; setTimeout(() => b.textContent = '📋 COPY STEALTH CODE', 1500); } }
+    const b = document.getElementById('cd-copy-stealth');
+    if (!_isUsableReceiveValue(code)) {
+      if (b) { b.textContent = 'Unavailable'; setTimeout(() => b.textContent = '📋 COPY STEALTH CODE', 1200); }
+      return;
+    }
+    await navigator.clipboard.writeText(code);
+    if (b) { b.textContent = '✓ Copied!'; setTimeout(() => b.textContent = '📋 COPY STEALTH CODE', 1500); }
   });
 
   // Bind tab switching (Transactions / UTXOs / Stealth)
@@ -624,12 +649,13 @@ async function _loadReceiveAddr(coinId) {
   const keys = auth.getKeys();
   const el = document.getElementById('cd-recv-addr');
   if (!el || !keys) return;
+  const isExternal = !!(keys.walletConnect || keys.wizardConnect || keys.ledger || keys.trezor);
 
   let addr = '';
   if (coinId === 'sbch') {
-    addr = keys.stealthCode || 'No stealth code — HD wallet required';
+    addr = keys.stealthCode || (isExternal ? 'Stealth receive not exposed by external wallet' : 'No stealth code — HD wallet required');
   } else if (coinId === 'bch') {
-    addr = keys.bchAddr || '—';
+    addr = keys.bchAddr || (isExternal ? 'External wallet session address unavailable' : '—');
   } else {
     try {
       const { deriveAllAddresses } = await import('../core/addr-derive.js');
@@ -642,13 +668,19 @@ async function _loadReceiveAddr(coinId) {
   const pathEl = document.getElementById('cd-path-info');
   if (pathEl) {
     const pathMap = {bch:"m/44'/145'/0'/0/0",btc:"m/44'/145'/0'/3/0",eth:"m/44'/145'/0'/4/0",ltc:"m/44'/145'/0'/6/0"};
-    pathEl.textContent = pathMap[coinId] ? '// ' + pathMap[coinId] : '';
+    if (coinId === 'bch' && !_isUsableReceiveValue(addr)) {
+      pathEl.textContent = '// address not provided by connected wallet';
+    } else {
+      pathEl.textContent = pathMap[coinId] ? '// ' + pathMap[coinId] : '';
+    }
   }
 
   // Stealth code (BCH + sBCH)
-  if ((coinId === 'bch' || coinId === 'sbch') && keys.stealthCode) {
+  if (coinId === 'bch' || coinId === 'sbch') {
     const stEl = document.getElementById('cd-recv-stealth-code');
-    if (stEl) stEl.textContent = keys.stealthCode;
+    if (stEl) {
+      stEl.textContent = keys.stealthCode || (isExternal ? 'Stealth receive not exposed by external wallet' : 'No stealth code — HD wallet required');
+    }
   }
 
   // Generate QR
@@ -669,7 +701,13 @@ async function _loadReceiveAddr(coinId) {
 let _QRLib = null;
 async function _generateQR(canvasId, text, color) {
   const canvas = document.getElementById(canvasId);
-  if (!canvas || !text || text === '—' || text === 'N/A' || text === 'Loading...') return;
+  if (!canvas || !_isUsableReceiveValue(text)) {
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+    return;
+  }
   try {
     if (!_QRLib) {
       const mod = await import('../lib/qrcode.js');
@@ -747,10 +785,13 @@ async function _loadTransactions(coinId) {
     const scanCooldown = 60000; // 60s — don't re-scan more than once per minute
     const needsScan = (Date.now() - lastScanTs > scanCooldown);
 
-    if (needsScan && (coinId === 'bch' || coinId === 'sbch') && window._fvCall && keys.bchAddr) {
+    if (coinId === 'bch' && window._fvCall && keys.bchAddr) {
       try {
         const sh = await _addrToSH(keys.bchAddr);
         const hist = await window._fvCall('blockchain.scripthash.get_history', [sh]) || [];
+        const histTxids = new Set(hist.map((h) => h.tx_hash));
+        // Keep only transactions that belong to the currently connected BCH address.
+        allTxs = allTxs.filter((t) => histTxids.has(t.txid));
         const knownTxids = new Set(allTxs.map(t => t.txid));
 
         // Add missing tx (direction unknown from history alone — try to enrich)

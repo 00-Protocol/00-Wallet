@@ -332,8 +332,19 @@ async function doWizardConnect() {
       await QRCode.toCanvas(document.getElementById('wiz-qr-canvas'), conn.qrUri, { width: 240, margin: 2 });
 
       wizWalletMgr.startListening();
-      wizWalletMgr.onConnect((dappName) => {
-        document.getElementById('wiz-wallet-status').innerHTML = '<span style="color:#0AC18E">✓ Connected to ' + (dappName || 'Dapp') + '</span>';
+      wizWalletMgr.onConnect((meta) => {
+        const dappName = (typeof meta === 'string' ? meta : meta?.name) || 'Dapp';
+        const wcAddr = (typeof meta === 'object' ? (meta?.bchAddr || '') : '') || '';
+        document.getElementById('wiz-wallet-status').innerHTML = '<span style="color:#0AC18E">✓ Connected to ' + dappName + '</span>';
+        try {
+          const wk = auth.getKeys();
+          auth.connectWizardSession({ label: dappName || 'WizardConnect', bchAddr: wcAddr || wk?.bchAddr || '' });
+        } catch {}
+        // Mirror WalletConnect behavior: once external wallet handshake succeeds,
+        // move into the wallet dashboard state.
+        try { import('../services/balance-service.js').then((bs) => bs.start(auth.getKeys())).catch(() => {}); } catch {}
+        modal.style.display = 'none';
+        navigate('dashboard');
       });
       wizWalletMgr.onSignRequest((req) => { _showSignModal(req); });
       wizWalletMgr.onDisconnect(() => {

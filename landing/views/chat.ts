@@ -1576,7 +1576,7 @@ export async function mount(container) {
 
   /* Auto-derive chat identity from wallet HD keys */
   const keys = auth.getKeys();
-  _externalWalletConnected = !!(auth.isUnlocked() && (keys?.walletConnect || keys?.ledger || keys?.trezor));
+  _externalWalletConnected = !!(auth.isUnlocked() && (keys?.walletConnect || keys?.wizardConnect || keys?.ledger || keys?.trezor));
   if (auth.isUnlocked() && keys?.acctPriv && keys?.acctChain) {
     try {
       const { bip32Child } = await import('../core/hd.js');

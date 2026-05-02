@@ -1566,7 +1566,7 @@ async function mount(container) {
       <div id="chat-auth-area" style="flex:1;display:flex;align-items:center;justify-content:center;background:var(--dt-surface,#fff);border:1px solid var(--dt-border);border-radius:16px;overflow:hidden"></div>
     </div>`;
   const keys = auth.getKeys();
-  _externalWalletConnected = !!(auth.isUnlocked() && (keys?.walletConnect || keys?.ledger || keys?.trezor));
+  _externalWalletConnected = !!(auth.isUnlocked() && (keys?.walletConnect || keys?.wizardConnect || keys?.ledger || keys?.trezor));
   if (auth.isUnlocked() && keys?.acctPriv && keys?.acctChain) {
     try {
       const { bip32Child } = await import("../core/hd.js");

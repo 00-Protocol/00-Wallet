@@ -108,11 +108,11 @@ async function boot() {
     }
   }
 
-  // 7b. Try restore WalletConnect session (bounded timeout to avoid blank/stall)
-  if (!unlocked && localStorage.getItem('00_wc_session')) {
+  // 7b. Try restore external wallet session (WalletConnect/WizardConnect)
+  if (!unlocked && (localStorage.getItem('00_wc_session') || localStorage.getItem('00_wiz_session'))) {
     try {
       const restored = await Promise.race<boolean>([
-        auth.restoreWcSession(),
+        auth.restoreExternalSession(),
         new Promise<boolean>(resolve => setTimeout(() => resolve(false), 6000)),
       ]);
       if (restored) {

@@ -64,6 +64,7 @@ interface AuthKeys {
   xmr?: unknown;
   ledger?: boolean;
   walletConnect?: boolean;
+  wizardConnect?: boolean;
   trezor?: boolean;
 }
 
@@ -243,6 +244,7 @@ export function isConnected() {
     localStorage.getItem('00_ledger') ||
     localStorage.getItem('00wallet_vault') ||
     localStorage.getItem('00_wc_session') ||
+    localStorage.getItem('00_wiz_session') ||
     localStorage.getItem('00_session_auth')
   );
 }
@@ -493,6 +495,7 @@ const WC_REQUIRED_NAMESPACES = {
 };
 
 export function isWalletConnect() { return !!_wcSession; }
+export function isWizardConnect() { return !!_keys?.wizardConnect || !!localStorage.getItem('00_wiz_session'); }
 export function getWcClient() { return _wcClient; }
 export function getWcSession() { return _wcSession; }
 
@@ -567,6 +570,73 @@ export async function restoreWcSession() {
   } catch { localStorage.removeItem('00_wc_session'); return false; }
 }
 
+export function connectWizardSession(meta?: { bchAddr?: string; label?: string }) {
+  const persistedRaw = localStorage.getItem('00_wiz_session') || '{}';
+  let persistedAddr = '';
+  try { persistedAddr = (JSON.parse(persistedRaw)?.bchAddr || '').trim(); } catch {}
+  const bchAddr = (meta?.bchAddr || _keys?.bchAddr || persistedAddr || '').trim();
+  const sp = rand(32);
+  let hash160: Uint8Array | null = null;
+  if (bchAddr) {
+    try { hash160 = _cashAddrToHash20Safe(bchAddr); } catch { hash160 = null; }
+  }
+  if (_keys) {
+    _keys = {
+      ..._keys,
+      hash160: _keys.hash160 || hash160,
+      bchAddr: _keys.bchAddr || bchAddr,
+      sessionPriv: _keys.sessionPriv || sp,
+      sessionPub: _keys.sessionPub || b2h(secp256k1.getPublicKey(sp, true)),
+      wizardConnect: true,
+    };
+  } else {
+    _keys = {
+      privKey: null,
+      pubKey: null,
+      hash160,
+      bchAddr,
+      acctPriv: null,
+      acctChain: null,
+      sessionPriv: sp,
+      sessionPub: b2h(secp256k1.getPublicKey(sp, true)),
+      stealthSpendPriv: null,
+      stealthSpendPub: null,
+      stealthScanPriv: null,
+      stealthScanPub: null,
+      stealthCode: null,
+      stealthSpendXpub: null,
+      stealthScanXpub: null,
+      wizardConnect: true,
+    };
+    _profile = { type: 'wizardconnect' };
+  }
+  localStorage.setItem('00_wiz_session', JSON.stringify({
+    bchAddr: _keys.bchAddr || bchAddr,
+    label: meta?.label || '',
+    ts: Date.now(),
+  }));
+  _notifyListeners();
+  return { addr: _keys.bchAddr || bchAddr };
+}
+
+export function restoreExternalSession() {
+  // Prefer WalletConnect restore if marker exists.
+  if (localStorage.getItem('00_wc_session')) {
+    return restoreWcSession();
+  }
+  // WizardConnect session restore (address may be unavailable; still treat as unlocked session).
+  const raw = localStorage.getItem('00_wiz_session');
+  if (!raw) return Promise.resolve(false);
+  try {
+    const meta = JSON.parse(raw || '{}');
+    connectWizardSession({ bchAddr: meta?.bchAddr || '', label: meta?.label || '' });
+    return Promise.resolve(true);
+  } catch {
+    localStorage.removeItem('00_wiz_session');
+    return Promise.resolve(false);
+  }
+}
+
 export async function wcSignTx(unsignedHex: string, sourceOutputs: unknown, userPrompt?: string): Promise<string> {
   if (!_wcClient || !_wcSession) throw new Error('WalletConnect not connected');
   const r = await _wcClient.request({ chainId: 'bch:bitcoincash', topic: _wcSession.topic, request: { method: 'bch_signTransaction', params: { transaction: unsignedHex, sourceOutputs, broadcast: false, userPrompt } } });
@@ -578,6 +648,15 @@ export async function wcDisconnect() {
   if (_wcClient && _wcSession) { try { await _wcClient.disconnect({ topic: _wcSession.topic, reason: { code: 6000, message: 'USER_DISCONNECTED' } }); } catch {} }
   _wcSession = null; _wcClient = null; _keys = null; _profile = null;
   localStorage.removeItem('00_wc_session'); _notifyListeners();
+}
+
+export function wizDisconnect() {
+  localStorage.removeItem('00_wiz_session');
+  if (_keys?.wizardConnect) {
+    _keys = null;
+    _profile = null;
+    _notifyListeners();
+  }
 }
 
 /* ══════════════════════════════════════════

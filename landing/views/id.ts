@@ -38,7 +38,12 @@ function _npub(pubHex){const CH='qpzry9x8gf2tvdw0s3jn54khce6mua7l';function pm(v
 
 function _decodeNpub(npub){const CH='qpzry9x8gf2tvdw0s3jn54khce6mua7l';const d5=[];for(const c of npub.slice(5))d5.push(CH.indexOf(c));const d8=[];let ac=0,bi=0;for(const v of d5.slice(0,-6)){ac=(ac<<5)|v;bi+=5;while(bi>=8){bi-=8;d8.push((ac>>bi)&0xff);}}return d8.map(b=>b.toString(16).padStart(2,'0')).join('');}
 
-function _template(keys){const sp=keys?.sessionPub||'',ba=keys?.bchAddr||'',sc=keys?.stealthCode||'',np=sp?_npub(sp):'';
+function _template(keys){
+const isExternal = !!(keys?.walletConnect || keys?.wizardConnect || keys?.ledger || keys?.trezor);
+const sp=keys?.sessionPub||'';
+const ba=keys?.bchAddr||((keys?.walletConnect||keys?.wizardConnect)?'External wallet session':'');
+const sc=keys?.stealthCode||(isExternal?'Not exposed by external wallet':'');
+const np=sp?_npub(sp):'';
 return `<div class="dt-inner" style="padding:32px 40px;max-width:560px;margin:0 auto">
   <div class="dt-page-header"><div class="dt-page-title-wrap"><div class="dt-page-icon">◉</div><div><div class="dt-page-title">Identity</div><div class="dt-page-sub">Decentralized Identity · Nostr</div></div></div></div>
   <div class="dt-tabs" id="dt-id-tabs"><button class="dt-tab active" data-tab="card">Card</button><button class="dt-tab" data-tab="edit">Edit</button><button class="dt-tab" data-tab="share">Share</button><button class="dt-tab" data-tab="lookup">Lookup</button></div>

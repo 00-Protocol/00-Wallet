@@ -95,12 +95,19 @@ function _updateWizStatus() {
   const dotEl = document.getElementById("wiz-status-dot");
   const secEl = document.getElementById("wiz-status-section");
   if (!secEl) return;
-  if (_wizConnectedDapp) {
+  const wizMetaRaw = localStorage.getItem("00_wiz_session") || "";
+  let wizLabel = _wizConnectedDapp || "";
+  try {
+    wizLabel = wizLabel || (JSON.parse(wizMetaRaw || "{}")?.label || "");
+  } catch {
+  }
+  const connected = !!wizLabel || !!auth.isWizardConnect?.();
+  if (connected) {
     if (dotEl) {
       dotEl.style.background = "#0AC18E";
       dotEl.title = "Connected";
     }
-    if (nameEl) nameEl.textContent = _wizConnectedDapp;
+    if (nameEl) nameEl.textContent = wizLabel || "Session connected";
     secEl.style.borderColor = "#0AC18E44";
   } else {
     if (dotEl) {

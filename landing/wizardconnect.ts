@@ -11,7 +11,7 @@
   'use strict';
 
   /* â”€â”€ Relay list â”€â”€ */
-  const RELAYS = ['wss://relay.riften.net', 'wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.snort.social'];
+  const RELAYS = ['wss://relay.riften.net', 'wss://relay.cauldron.quest', 'wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.snort.social'];
   const WIZ_KIND = 24133;
 
   /* â”€â”€ Byte helpers â”€â”€ */
@@ -120,10 +120,27 @@
     return s;
   }
 
+  let _wcSdkPromise: Promise<any> | null = null;
+  function _wcSdk() {
+    if (!_wcSdkPromise) _wcSdkPromise = import('./lib/wizardconnect-stack.js');
+    return _wcSdkPromise;
+  }
+
   /* â”€â”€ SHA-256 via Web Crypto (no import needed) â”€â”€ */
   async function _sha256bytes(str) {
     const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
     return new Uint8Array(buf);
+  }
+
+  async function _pubToCashAddr(pub33: Uint8Array): Promise<string> {
+    try {
+      const h = await import('./lib/noble-hashes.js');
+      const ca = await import('./core/cashaddr.js');
+      const hash160 = h.ripemd160(h.sha256(pub33));
+      return ca.pubHashToCashAddr(hash160);
+    } catch {
+      return '';
+    }
   }
 
   /* â”€â”€ Lazy noble-curves secp256k1 import â”€â”€ */
@@ -223,11 +240,13 @@
     _relays: WebSocket[];
     _subId: string | null;
     _dappName: string | null;
-    _onConnect: ((name: string) => void) | null;
+    _onConnect: ((meta: { name: string; bchAddr?: string }) => void) | null;
     _onSignReq: ((payload: any) => void) | null;
     _onDisconnect: (() => void) | null;
     _stealthSpendXpub: string | null;
     _stealthScanXpub: string | null;
+    _sdkRelay: any;
+    _sdkDappMgr: any;
 
     constructor() {
       this._priv = null; this._xonlyHex = null; this._pubHex = null;
@@ -235,6 +254,7 @@
       this._relays = []; this._subId = null; this._dappName = null;
       this._onConnect = null; this._onSignReq = null; this._onDisconnect = null;
       this._stealthSpendXpub = null; this._stealthScanXpub = null;
+      this._sdkRelay = null; this._sdkDappMgr = null;
     }
 
     /** Set stealth xpubs for WizardConnect hdwalletv1 capability advertisement. Call after wallet unlock. */
@@ -244,6 +264,62 @@
 
     /** Generate a new wiz:// URI and QR code data. Call before startListening(). */
     async generateConnection() {
+      try {
+        if (this._sdkRelay?.cleanup) {
+          try { this._sdkRelay.cleanup(); } catch {}
+        }
+        const sdk = await _wcSdk();
+        const relay = sdk.initiateDappRelay((payload: any) => {
+          try { this._sdkDappMgr?.updateConnection(payload.client, payload.status); } catch {}
+        }, { explicitRelayUrls: RELAYS });
+        const mgr = new sdk.DappConnectionManager('00 Wallet', '');
+        mgr.attachRelay(relay);
+        mgr.on('walletready', async (msg: any) => {
+          const walletName = msg?.wallet_name || msg?.name || 'Wallet';
+          const directAddr = String(msg?.bchAddr || msg?.address || msg?.bch_address || '').trim();
+          const nsAddr = String(msg?.session?.addresses?.bch || '').trim();
+          const listAddr = Array.isArray(msg?.addresses) && msg.addresses.length ? String(msg.addresses[0] || '').trim() : '';
+
+          // Some wallets use non-canonical path names/casing; normalize to hdwalletv1 well-known names.
+          try {
+            const rawPaths = Array.isArray(mgr.getSessionPaths?.()) ? mgr.getSessionPaths() : [];
+            if (rawPaths.length) {
+              const normName = (name: any) => {
+                const n = String(name || '').trim().toLowerCase();
+                if (n === '0' || n.includes('receive') || n.includes('external')) return 'receive';
+                if (n === '1' || n.includes('change') || n.includes('internal')) return 'change';
+                if (n === '7' || n.includes('defi') || n.includes('cauldron')) return 'defi';
+                return n;
+              };
+              const normalized = rawPaths
+                .filter((p: any) => p && typeof p.xpub === 'string' && p.xpub.length > 8)
+                .map((p: any) => ({ ...p, name: normName(p.name) }));
+              if (normalized.length) {
+                try { mgr.restoreSessionPaths?.(normalized); } catch {}
+              }
+            }
+          } catch {}
+
+          let derivedAddr = '';
+          try {
+            const pub = mgr.getPubkey?.(0, 0n) || mgr.pubkeyState?.getPubkey?.(0, 0n);
+            if (pub && pub.length === 33) derivedAddr = await _pubToCashAddr(pub);
+          } catch {}
+          const bchAddr = directAddr || nsAddr || listAddr || derivedAddr || '';
+          this._dappName = walletName;
+          this._onConnect?.({ name: walletName, bchAddr });
+        });
+        mgr.on('disconnect', (_reason: any, message: any) => {
+          this._onDisconnect?.();
+          if (message) console.warn('[WizardConnect] disconnect:', message);
+        });
+        this._sdkRelay = relay;
+        this._sdkDappMgr = mgr;
+        return { uri: relay.uri, qrUri: relay.qrUri || relay.uri };
+      } catch {
+        // Fallback to legacy transport if SDK bundle cannot be loaded.
+      }
+
       const kp = await _genKeypair();
       this._priv = kp.priv; this._xonlyHex = kp.xonlyHex; this._pubHex = kp.pubHex;
       this._sessionId = _hex(_rand(8));
@@ -256,6 +332,7 @@
 
     /** Open relay connections and wait for a dapp to connect. */
     startListening() {
+      if (this._sdkRelay) return;
       if (!this._sessionId) return;
       const sid = this._sessionId;
       this._subId = 'wiz-' + _hex(_rand(8));
@@ -274,13 +351,15 @@
         let payload;
         try { payload = await _decrypt(this._sharedKey, ev.content); } catch { return; }
 
-        const isConnect = payload?.type === 'connect' || payload?.action === 'connect_request';
+         const isConnect = payload?.type === 'connect'
+           || payload?.action === 'connect_request'
+           || payload?.action === 'dapp_ready';
         const isSignReq = payload?.type === 'sign_req' || payload?.action === 'sign_transaction_request' || payload?.action === 'sign_request';
         const isDisconnect = payload?.type === 'disconnect' || payload?.action === 'disconnect_request' || payload?.action === 'disconnect';
 
         if (isConnect) {
-          this._dappName = payload.name || 'Dapp';
-          this._onConnect?.(this._dappName);
+          this._dappName = payload.dapp_name || payload.name || 'Dapp';
+          this._onConnect?.({ name: this._dappName || 'Dapp' });
           // Build hdwalletv1 session with stealth capability advertisement if available
           const paths: any[] = [];
           const extensions: Record<string, unknown> = {};
@@ -292,19 +371,23 @@
               scan_path:  "m/352'/145'/0'/1'"
             };
           }
-          const session = paths.length
-            ? { hdwalletv1: { paths, ...(Object.keys(extensions).length ? { extensions } : {}) } }
-            : undefined;
+          const hdwalletv1 = { paths, ...(Object.keys(extensions).length ? { extensions } : {}) };
+          const session = { hdwalletv1 };
+          const dappSaysSeenWallet = !!payload?.wallet_discovered;
           const respPayload: any = {
             type: 'wallet_ready',
             action: 'wallet_ready',
             time: Math.floor(Date.now() / 1000),
             name: '00 Wallet',
             icon: '',
+            wallet_name: '00 Wallet',
+            wallet_icon: '',
+            supported_protocols: ['hdwalletv1'],
+            dapp_discovered: dappSaysSeenWallet,
+            session,
             public_key: this._xonlyHex,
             secret: this._sessionId,
           };
-          if (session) respPayload.session = session;
           const resp = await _encrypt(this._sharedKey, respPayload);
           const ev2 = await _makeNostrEvent(this._priv, this._xonlyHex, WIZ_KIND,
             [['s', sid], ['p', ev.pubkey]], resp);
@@ -368,7 +451,14 @@
       _publish(this._relays, ev);
     }
 
-    destroy() { for (const ws of this._relays) try { ws.close(); } catch {} this._relays = []; }
+    destroy() {
+      for (const ws of this._relays) try { ws.close(); } catch {}
+      this._relays = [];
+      try { this._sdkRelay?.cleanup?.(); } catch {}
+      try { this._sdkDappMgr?.destroy?.(); } catch {}
+      this._sdkRelay = null;
+      this._sdkDappMgr = null;
+    }
   }
 
   /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -453,7 +543,34 @@
         try { payload = await _decrypt(this._sharedKey, ev.content); } catch { return; }
         if (payload.type === 'connected' || payload.type === 'wallet_ready' || payload.action === 'wallet_ready') {
           if (payload?.secret && String(payload.secret).toLowerCase() !== String(sessionId).toLowerCase()) return;
-          this._onConnect?.(payload.name || 'Wallet', payload.icon || '', payload.session?.hdwalletv1?.paths || payload.paths || []);
+          const walletProtocols = Array.isArray(payload?.supported_protocols) ? payload.supported_protocols : [];
+          if (walletProtocols.length && !walletProtocols.includes('hdwalletv1')) {
+            this._onDisconnect?.('Protocol mismatch');
+            return;
+          }
+          try {
+            const selected = walletProtocols.includes('hdwalletv1') ? 'hdwalletv1' : undefined;
+            const dappReadyAck = await _encrypt(this._sharedKey, {
+              action: 'dapp_ready',
+              type: 'connect',
+              supported_protocols: ['hdwalletv1'],
+              selected_protocol: selected,
+              wallet_discovered: true,
+              dapp_name: this._name,
+              dapp_icon: this._icon,
+              time: Math.floor(Date.now() / 1000),
+              name: this._name,
+              icon: this._icon
+            });
+            const evAck = await _makeNostrEvent(kp.priv, kp.xonlyHex, WIZ_KIND,
+              [['s', sessionId], ['p', walletPub.slice(2)]], dappReadyAck);
+            _publish(this._relays, evAck);
+          } catch {}
+          this._onConnect?.(
+            payload.wallet_name || payload.name || 'Wallet',
+            payload.wallet_icon || payload.icon || '',
+            payload.session?.hdwalletv1?.paths || payload.paths || []
+          );
         } else if (payload.type === 'disconnect' || payload.action === 'disconnect' || payload.action === 'disconnect_response') {
           this._onDisconnect?.(payload.reason || 'Disconnected');
         }
@@ -463,10 +580,25 @@
       for (const url of relayList) {
         const ws = _openRelay(url, onEvent, async (ws) => {
           _subscribe(ws, this._subId, [{ kinds: [WIZ_KIND], '#s': [sessionId] }]);
-          // Send connect request
+          // Send both legacy connect_request and spec dapp_ready for interoperability.
           const content = await _encrypt(this._sharedKey, {
             type: 'connect',
             action: 'connect_request',
+            supported_protocols: ['hdwalletv1'],
+            wallet_discovered: false,
+            dapp_name: this._name,
+            dapp_icon: this._icon,
+            time: Math.floor(Date.now() / 1000),
+            name: this._name,
+            icon: this._icon
+          });
+          const dappReady = await _encrypt(this._sharedKey, {
+            action: 'dapp_ready',
+            type: 'connect',
+            supported_protocols: ['hdwalletv1'],
+            wallet_discovered: false,
+            dapp_name: this._name,
+            dapp_icon: this._icon,
             time: Math.floor(Date.now() / 1000),
             name: this._name,
             icon: this._icon
@@ -474,7 +606,10 @@
           const walletXonly = walletPub.slice(2); // strip 02/03 prefix for Nostr p-tag
           const ev = await _makeNostrEvent(kp.priv, kp.xonlyHex, WIZ_KIND,
             [['s', sessionId], ['p', walletXonly]], content);
+          const evReady = await _makeNostrEvent(kp.priv, kp.xonlyHex, WIZ_KIND,
+            [['s', sessionId], ['p', walletXonly]], dappReady);
           if (ws.readyState === 1) ws.send(JSON.stringify(['EVENT', ev]));
+          if (ws.readyState === 1) ws.send(JSON.stringify(['EVENT', evReady]));
         });
         if (ws) this._relays.push(ws);
       }

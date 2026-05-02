@@ -20,6 +20,9 @@ const DIRS = [
   join(root, 'landing', 'services'),
 ];
 
+const WC_STACK_ENTRY = join(root, 'scripts', 'wizardconnect-stack-entry.ts');
+const WC_STACK_OUT = join(root, 'landing', 'lib', 'wizardconnect-stack.js');
+
 // Files that should NOT be compiled
 // Files that need non-ESM output format (service workers, web workers)
 const IIFE_FILES = new Set(['sw.ts', 'monero.worker.ts']);
@@ -64,6 +67,23 @@ for (const dir of DIRS) {
       process.stderr.write(`✗ ${file}: ${err.message?.split('\n')[0]}\n`);
     }
   }
+}
+
+try {
+  await build({
+    entryPoints: [WC_STACK_ENTRY],
+    outfile: WC_STACK_OUT,
+    bundle: true,
+    format: 'esm',
+    platform: 'browser',
+    target: 'esnext',
+    logLevel: 'silent',
+  });
+  compiled++;
+  process.stdout.write('✓ wizardconnect-stack\n');
+} catch (err) {
+  errors.push({ file: 'wizardconnect-stack-entry.ts', err });
+  process.stderr.write(`✗ wizardconnect-stack: ${err.message?.split('\n')[0]}\n`);
 }
 
 console.log(`\nCompiled: ${compiled}, Skipped: ${skipped}, Errors: ${errors.length}`);

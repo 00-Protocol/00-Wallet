@@ -162,7 +162,7 @@ async function _deriveKeys(profile) {
   };
 }
 function isConnected() {
-  return !!(localStorage.getItem("00_wif") || localStorage.getItem("00_pub") || localStorage.getItem("00_ledger") || localStorage.getItem("00wallet_vault") || localStorage.getItem("00_wc_session") || localStorage.getItem("00_session_auth"));
+  return !!(localStorage.getItem("00_wif") || localStorage.getItem("00_pub") || localStorage.getItem("00_ledger") || localStorage.getItem("00wallet_vault") || localStorage.getItem("00_wc_session") || localStorage.getItem("00_wiz_session") || localStorage.getItem("00_session_auth"));
 }
 function isUnlocked() {
   return _keys !== null;
@@ -356,6 +356,9 @@ const WC_REQUIRED_NAMESPACES = {
 function isWalletConnect() {
   return !!_wcSession;
 }
+function isWizardConnect() {
+  return !!_keys?.wizardConnect || !!localStorage.getItem("00_wiz_session");
+}
 function getWcClient() {
   return _wcClient;
 }
@@ -436,6 +439,76 @@ async function restoreWcSession() {
     return false;
   }
 }
+function connectWizardSession(meta) {
+  const persistedRaw = localStorage.getItem("00_wiz_session") || "{}";
+  let persistedAddr = "";
+  try {
+    persistedAddr = (JSON.parse(persistedRaw)?.bchAddr || "").trim();
+  } catch {
+  }
+  const bchAddr = (meta?.bchAddr || _keys?.bchAddr || persistedAddr || "").trim();
+  const sp = rand(32);
+  let hash160 = null;
+  if (bchAddr) {
+    try {
+      hash160 = _cashAddrToHash20Safe(bchAddr);
+    } catch {
+      hash160 = null;
+    }
+  }
+  if (_keys) {
+    _keys = {
+      ..._keys,
+      hash160: _keys.hash160 || hash160,
+      bchAddr: _keys.bchAddr || bchAddr,
+      sessionPriv: _keys.sessionPriv || sp,
+      sessionPub: _keys.sessionPub || b2h(secp256k1.getPublicKey(sp, true)),
+      wizardConnect: true
+    };
+  } else {
+    _keys = {
+      privKey: null,
+      pubKey: null,
+      hash160,
+      bchAddr,
+      acctPriv: null,
+      acctChain: null,
+      sessionPriv: sp,
+      sessionPub: b2h(secp256k1.getPublicKey(sp, true)),
+      stealthSpendPriv: null,
+      stealthSpendPub: null,
+      stealthScanPriv: null,
+      stealthScanPub: null,
+      stealthCode: null,
+      stealthSpendXpub: null,
+      stealthScanXpub: null,
+      wizardConnect: true
+    };
+    _profile = { type: "wizardconnect" };
+  }
+  localStorage.setItem("00_wiz_session", JSON.stringify({
+    bchAddr: _keys.bchAddr || bchAddr,
+    label: meta?.label || "",
+    ts: Date.now()
+  }));
+  _notifyListeners();
+  return { addr: _keys.bchAddr || bchAddr };
+}
+function restoreExternalSession() {
+  if (localStorage.getItem("00_wc_session")) {
+    return restoreWcSession();
+  }
+  const raw = localStorage.getItem("00_wiz_session");
+  if (!raw) return Promise.resolve(false);
+  try {
+    const meta = JSON.parse(raw || "{}");
+    connectWizardSession({ bchAddr: meta?.bchAddr || "", label: meta?.label || "" });
+    return Promise.resolve(true);
+  } catch {
+    localStorage.removeItem("00_wiz_session");
+    return Promise.resolve(false);
+  }
+}
 async function wcSignTx(unsignedHex, sourceOutputs, userPrompt) {
   if (!_wcClient || !_wcSession) throw new Error("WalletConnect not connected");
   const r = await _wcClient.request({ chainId: "bch:bitcoincash", topic: _wcSession.topic, request: { method: "bch_signTransaction", params: { transaction: unsignedHex, sourceOutputs, broadcast: false, userPrompt } } });
@@ -455,6 +528,14 @@ async function wcDisconnect() {
   _profile = null;
   localStorage.removeItem("00_wc_session");
   _notifyListeners();
+}
+function wizDisconnect() {
+  localStorage.removeItem("00_wiz_session");
+  if (_keys?.wizardConnect) {
+    _keys = null;
+    _profile = null;
+    _notifyListeners();
+  }
 }
 async function connectTrezor(onProgress) {
   onProgress?.("Loading Trezor SDK...");
@@ -583,6 +664,7 @@ export {
   connectTrezor,
   connectWalletConnect,
   connectWalletConnectWithUri,
+  connectWizardSession,
   createVault,
   decryptVault,
   disconnect,
@@ -600,13 +682,16 @@ export {
   isLedger,
   isUnlocked,
   isWalletConnect,
+  isWizardConnect,
   ledgerSignTx,
   lock,
   onAuth,
   refreshSession,
+  restoreExternalSession,
   restoreWcSession,
   tryAutoUnlock,
   unlock,
   wcDisconnect,
-  wcSignTx
+  wcSignTx,
+  wizDisconnect
 };
