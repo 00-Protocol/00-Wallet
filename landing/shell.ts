@@ -93,7 +93,7 @@ const T = {
 };
 
 function isConnected() {
-  return !!(localStorage.getItem('00_wif') || localStorage.getItem('00_pub') || localStorage.getItem('00_ledger') || localStorage.getItem('00wallet_vault') || localStorage.getItem('00_wc_session') || localStorage.getItem('00_session_auth'));
+  return !!(localStorage.getItem('00_wif') || localStorage.getItem('00_pub') || localStorage.getItem('00_ledger') || localStorage.getItem('00wallet_vault') || localStorage.getItem('00_wc_session') || localStorage.getItem('00_session_auth') || localStorage.getItem('00_wiz_session'));
 }
 
 // â”€â”€ Endpoint defaults & config â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -191,6 +191,7 @@ function disconnect() {
       }
       try { if (window._ledgerDevice) await window._ledgerDevice.close(); } catch (e) {}
       try { if (window.wcDisconnect) await window.wcDisconnect(); } catch (e) {}
+      try { if (window.wizDisconnect) await window.wizDisconnect(); } catch (e) {}
       if (IS_SPA) {
         window.location.hash = '#/auth';
         window.location.reload();

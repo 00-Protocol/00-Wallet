@@ -101,7 +101,7 @@
     CN: { disc: "\u65AD\u5F00\u8FDE\u63A5", apps: "\u5E94\u7528", confirm: "\u6E05\u9664\u6570\u636E\u5E76\u65AD\u5F00\u8FDE\u63A5\uFF1F", connect: "\u8FDE\u63A5" }
   };
   function isConnected() {
-    return !!(localStorage.getItem("00_wif") || localStorage.getItem("00_pub") || localStorage.getItem("00_ledger") || localStorage.getItem("00wallet_vault") || localStorage.getItem("00_wc_session") || localStorage.getItem("00_session_auth"));
+    return !!(localStorage.getItem("00_wif") || localStorage.getItem("00_pub") || localStorage.getItem("00_ledger") || localStorage.getItem("00wallet_vault") || localStorage.getItem("00_wc_session") || localStorage.getItem("00_session_auth") || localStorage.getItem("00_wiz_session"));
   }
   const EP_DEFAULTS = {
     fulcrum: ["wss://bch.imaginary.cash:50004", "wss://electrum.imaginary.cash:50004", "wss://bch.loping.net:50004", "wss://bch.soul-dev.com:50004", "wss://electron.jochen-hoenicke.de:51004", "wss://electrumx-bch.cryptonermal.net:50004", "wss://cashnode.bch.ninja:50004", "wss://electroncash.dk:50004"],
@@ -235,6 +235,10 @@
         }
         try {
           if (window.wcDisconnect) await window.wcDisconnect();
+        } catch (e) {
+        }
+        try {
+          if (window.wizDisconnect) await window.wizDisconnect();
         } catch (e) {
         }
         if (IS_SPA) {

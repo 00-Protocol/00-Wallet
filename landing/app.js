@@ -105,6 +105,7 @@ async function boot() {
     }
   });
   if (unlocked && window._shellRefreshAuth) window._shellRefreshAuth();
+  window.wizDisconnect = () => auth.wizDisconnect?.();
   let _activityTimer;
   document.addEventListener("click", () => {
     clearTimeout(_activityTimer);

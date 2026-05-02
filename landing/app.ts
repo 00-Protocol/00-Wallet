@@ -146,6 +146,9 @@ async function boot() {
   // Also refresh sidebar now (in case shell rendered before auto-unlock)
   if (unlocked && window._shellRefreshAuth) window._shellRefreshAuth();
 
+  // Expose wizDisconnect so shell disconnect handler can wipe in-memory wizard state
+  (window as any).wizDisconnect = () => auth.wizDisconnect?.();
+
   // 9. Refresh session on user activity
   let _activityTimer;
   document.addEventListener('click', () => {
