@@ -1,0 +1,79 @@
+name: Sync Counterpart Release
+
+on:
+  release:
+    types: [published, edited, prereleased, released]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to sync
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  sync-release:
+    runs-on: ubuntu-latest
+    if: ${{ vars.SYNC_TARGET_REPO != '' && secrets.SYNC_TOKEN != '' }}
+    steps:
+      - name: Resolve release tag
+        id: meta
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${{ github.event.release.tag_name }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Sync release metadata and assets
+        env:
+          SYNC_TOKEN: ${{ secrets.SYNC_TOKEN }}
+          SOURCE_REPO: ${{ github.repository }}
+          TARGET_REPO: ${{ vars.SYNC_TARGET_REPO }}
+          TAG: ${{ steps.meta.outputs.tag }}
+        run: |
+          set -euo pipefail
+
+          if [ "$SOURCE_REPO" = "$TARGET_REPO" ]; then
+            echo "SYNC_TARGET_REPO points to this repository. Nothing to do."
+            exit 0
+          fi
+
+          mkdir -p .sync-release
+
+          GH_TOKEN="$SYNC_TOKEN" gh api "repos/${SOURCE_REPO}/releases/tags/${TAG}" > .sync-release/src.json
+
+          TITLE=$(jq -r '.name // .tag_name' .sync-release/src.json)
+          BODY_FILE=.sync-release/body.md
+          jq -r '.body // ""' .sync-release/src.json > "$BODY_FILE"
+          TARGET_COMMIT=$(jq -r '.target_commitish // "main"' .sync-release/src.json)
+          IS_DRAFT=$(jq -r '.draft' .sync-release/src.json)
+          IS_PRE=$(jq -r '.prerelease' .sync-release/src.json)
+
+          if GH_TOKEN="$SYNC_TOKEN" gh release view "$TAG" --repo "$TARGET_REPO" >/dev/null 2>&1; then
+            GH_TOKEN="$SYNC_TOKEN" gh release edit "$TAG" --repo "$TARGET_REPO" --title "$TITLE" --notes-file "$BODY_FILE" --target "$TARGET_COMMIT"
+          else
+            CREATE_ARGS=(--repo "$TARGET_REPO" --title "$TITLE" --notes-file "$BODY_FILE" --target "$TARGET_COMMIT")
+            if [ "$IS_DRAFT" = "true" ]; then CREATE_ARGS+=(--draft); fi
+            if [ "$IS_PRE" = "true" ]; then CREATE_ARGS+=(--prerelease); fi
+            GH_TOKEN="$SYNC_TOKEN" gh release create "$TAG" "${CREATE_ARGS[@]}"
+          fi
+
+          jq -r '.assets[] | @base64' .sync-release/src.json | while read -r encoded; do
+            row=$(echo "$encoded" | base64 --decode)
+            name=$(echo "$row" | jq -r '.name')
+            api_url=$(echo "$row" | jq -r '.url')
+            out=".sync-release/${name}"
+
+            curl -sSL -H "Authorization: Bearer ${SYNC_TOKEN}" -H "Accept: application/octet-stream" "$api_url" -o "$out"
+            GH_TOKEN="$SYNC_TOKEN" gh release upload "$TAG" "$out" --repo "$TARGET_REPO" --clobber
+          done
+
+      - name: Summary
+        run: |
+          echo "Synced release $TAG to $SYNC_TARGET_REPO."
+        env:
+          TAG: ${{ steps.meta.outputs.tag }}
+          SYNC_TARGET_REPO: ${{ vars.SYNC_TARGET_REPO }}

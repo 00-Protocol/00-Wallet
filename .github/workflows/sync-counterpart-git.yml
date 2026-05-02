@@ -1,0 +1,52 @@
+name: Sync Counterpart Git Refs
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - '*'
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Optional ref to sync (defaults to current main + all tags)
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    if: ${{ vars.SYNC_TARGET_REPO != '' && secrets.SYNC_TOKEN != '' }}
+    steps:
+      - name: Mirror main branch and tags to counterpart
+        env:
+          SYNC_TOKEN: ${{ secrets.SYNC_TOKEN }}
+          SOURCE_REPO: ${{ github.repository }}
+          TARGET_REPO: ${{ vars.SYNC_TARGET_REPO }}
+          INPUT_REF: ${{ github.event.inputs.ref }}
+        run: |
+          set -euo pipefail
+
+          if [ "$SOURCE_REPO" = "$TARGET_REPO" ]; then
+            echo "SYNC_TARGET_REPO points to this repository. Nothing to do."
+            exit 0
+          fi
+
+          git clone --mirror "https://x-access-token:${SYNC_TOKEN}@github.com/${SOURCE_REPO}.git" repo.git
+          cd repo.git
+
+          if [ -n "${INPUT_REF}" ]; then
+            git push "https://x-access-token:${SYNC_TOKEN}@github.com/${TARGET_REPO}.git" "${INPUT_REF}:${INPUT_REF}"
+          else
+            git push "https://x-access-token:${SYNC_TOKEN}@github.com/${TARGET_REPO}.git" "refs/heads/main:refs/heads/main"
+            git push "https://x-access-token:${SYNC_TOKEN}@github.com/${TARGET_REPO}.git" --tags
+          fi
+
+      - name: Summary
+        run: |
+          echo "Synced git refs to ${SYNC_TARGET_REPO}."
+        env:
+          SYNC_TARGET_REPO: ${{ vars.SYNC_TARGET_REPO }}
