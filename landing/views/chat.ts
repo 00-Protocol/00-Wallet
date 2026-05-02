@@ -31,7 +31,6 @@ import {
 
 import * as auth from '../core/auth.js';
 import { pubHashToCashAddr } from '../core/cashaddr.js';
-import { navigate } from '../router.js';
 
 /* ── Module exports ── */
 export const id = 'chat';
@@ -1442,9 +1441,6 @@ async function _sendMsg() {
 export async function mount(container) {
   _container = container;
 
-  /* Check auth — wallet must be unlocked */
-  if (!auth.isUnlocked()) { navigate('auth'); return; }
-
   /* Render loading state */
   container.innerHTML = `
     <div style="padding:24px 32px;height:calc(100vh - 48px);display:flex;flex-direction:column">
@@ -1459,7 +1455,7 @@ export async function mount(container) {
 
   /* Auto-derive chat identity from wallet HD keys */
   const keys = auth.getKeys();
-  if (keys?.acctPriv && keys?.acctChain) {
+  if (auth.isUnlocked() && keys?.acctPriv && keys?.acctChain) {
     try {
       const { bip32Child } = await import('../core/hd.js');
       const { x25519 } = await import('../lib/noble-curves.js');

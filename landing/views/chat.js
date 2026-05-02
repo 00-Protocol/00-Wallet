@@ -37,7 +37,6 @@ import {
 } from "../core/ccsh-crypto.js";
 import * as auth from "../core/auth.js";
 import { pubHashToCashAddr } from "../core/cashaddr.js";
-import { navigate } from "../router.js";
 const id = "chat";
 const title = "00 Chat";
 const icon = "\u{1F4AC}";
@@ -1445,10 +1444,6 @@ async function _sendMsg() {
 }
 async function mount(container) {
   _container = container;
-  if (!auth.isUnlocked()) {
-    navigate("auth");
-    return;
-  }
   container.innerHTML = `
     <div style="padding:24px 32px;height:calc(100vh - 48px);display:flex;flex-direction:column">
       <div class="dt-page-header" style="flex-shrink:0;margin-bottom:16px">
@@ -1460,7 +1455,7 @@ async function mount(container) {
       <div id="chat-auth-area" style="flex:1;display:flex;align-items:center;justify-content:center;background:var(--dt-surface,#fff);border:1px solid var(--dt-border);border-radius:16px;overflow:hidden"></div>
     </div>`;
   const keys = auth.getKeys();
-  if (keys?.acctPriv && keys?.acctChain) {
+  if (auth.isUnlocked() && keys?.acctPriv && keys?.acctChain) {
     try {
       const { bip32Child } = await import("../core/hd.js");
       const { x25519: x255192 } = await import("../lib/noble-curves.js");

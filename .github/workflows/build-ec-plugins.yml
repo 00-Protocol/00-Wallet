@@ -1,15 +1,10 @@
-name: Build Electron Cash plugins
+﻿name: Build Electron Cash plugins
 
 on:
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Release tag (e.g. electron-cash-plugins-v1.0.0)'
-        required: true
-        default: 'electron-cash-plugins-v1.0.0'
   push:
-    tags:
-      - 'electron-cash-plugins-v*'
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
   build:
@@ -18,62 +13,35 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout 00-Wallet
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Clone BCH-Stealth-Protocol
-        run: |
-          git clone --depth 1 https://github.com/00-Protocol/BCH-Stealth-Protocol.git bch-stealth-src
-
-      - name: Zip plugin folders from source
+      - name: Zip plugin folders
         run: |
           mkdir -p dist/ec-plugins
-          cd bch-stealth-src
-          zip -r ../dist/ec-plugins/stealth-ec-plugin.zip stealth/
-          zip -r ../dist/ec-plugins/rpa-ec-plugin.zip rpa/
-          echo "Built from commit: $(git rev-parse --short HEAD)" > ../dist/ec-plugins/build-info.txt
-          cat ../dist/ec-plugins/build-info.txt
+          zip -r dist/ec-plugins/stealth-ec-plugin.zip stealth/
+          zip -r dist/ec-plugins/rpa-ec-plugin.zip rpa/
+          echo "Built from commit: $(git rev-parse --short HEAD)" > dist/ec-plugins/build-info.txt
+          cat dist/ec-plugins/build-info.txt
 
-      - name: Resolve tag name
-        id: tag
+      - name: Force-update rolling tag
         run: |
-          if [ "${{ github.event_name }}" = "push" ]; then
-            echo "name=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
-          else
-            echo "name=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
-          fi
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git tag -f electron-cash-plugins-latest
+          git push origin -f electron-cash-plugins-latest
 
-      - name: Publish to 00-Protocol/00-Wallet
-        if: github.repository == '00-Protocol/00-Wallet'
+      - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.tag.outputs.name }}
-          name: ${{ steps.tag.outputs.name }}
+          tag_name: electron-cash-plugins-latest
+          name: Electron Cash Plugins (latest)
+          prerelease: true
           body: |
-            Electron Cash plugin bundles built from source at
-            https://github.com/00-Protocol/BCH-Stealth-Protocol
+            Electron Cash plugin bundles built from source.
 
-            Install in Electron Cash via Tools → Install plugin → select zip file.
+            Install in Electron Cash via Tools -> Install plugin -> select zip file.
           files: |
             dist/ec-plugins/stealth-ec-plugin.zip
             dist/ec-plugins/rpa-ec-plugin.zip
           overwrite_files: true
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Publish to CyberAshven/00-Wallet
-        if: github.repository == 'CyberAshven/00-Wallet'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.tag.outputs.name }}
-          name: ${{ steps.tag.outputs.name }}
-          body: |
-            Electron Cash plugin bundles built from source at
-            https://github.com/00-Protocol/BCH-Stealth-Protocol
-
-            Install in Electron Cash via Tools → Install plugin → select zip file.
-          files: |
-            dist/ec-plugins/stealth-ec-plugin.zip
-            dist/ec-plugins/rpa-ec-plugin.zip
-          overwrite_files: true
-          repository: CyberAshven/00-Wallet
-          token: ${{ github.token }}

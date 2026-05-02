@@ -1,6 +1,6 @@
 import { secp256k1, schnorr } from "./lib/noble-curves.js";
 import { sha256 } from "./lib/noble-hashes.js";
-import { extract as hkdfExtract, expand as hkdfExpand } from "./lib/noble-hashes.js";
+import { hkdfExtract, hkdfExpand } from "./lib/noble-hashes.js";
 import { hmac } from "./lib/noble-hashes.js";
 import { chacha20 } from "./lib/noble-ciphers.js";
 const b2h = (b) => [...b].map((x) => x.toString(16).padStart(2, "0")).join("");

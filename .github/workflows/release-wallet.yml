@@ -2,14 +2,9 @@ name: Build and release BCH Stealth Wallet
 
 on:
   push:
-    tags:
-      - BCH-Stealth-Wallet-v*
+    branches:
+      - main
   workflow_dispatch:
-    inputs:
-      tag:
-        description: Tag to build and release
-        required: true
-        default: BCH-Stealth-Wallet-v1.0.0
 
 permissions:
   contents: write
@@ -104,15 +99,27 @@ jobs:
     needs: [build-desktop, build-android]
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Force-update rolling tag
+        run: |
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git tag -f BCH-Stealth-Wallet-latest
+          git push origin -f BCH-Stealth-Wallet-latest
+
       - name: Download all build artifacts
         uses: actions/download-artifact@v4
         with:
           path: release-assets
 
-      - name: Create or update release assets
+      - name: Create or update release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          tag_name: BCH-Stealth-Wallet-latest
+          name: BCH Stealth Wallet (latest)
+          prerelease: true
           files: release-assets/**/*
           overwrite_files: true
           fail_on_unmatched_files: true
