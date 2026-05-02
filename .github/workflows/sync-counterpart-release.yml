@@ -15,7 +15,6 @@ permissions:
 jobs:
   sync-release:
     runs-on: ubuntu-latest
-    if: ${{ vars.SYNC_TARGET_REPO != '' && secrets.SYNC_TOKEN != '' }}
     steps:
       - name: Resolve release tag
         id: meta
@@ -35,6 +34,11 @@ jobs:
           TAG: ${{ steps.meta.outputs.tag }}
         run: |
           set -euo pipefail
+
+          if [ -z "${SYNC_TOKEN}" ] || [ -z "${TARGET_REPO}" ]; then
+            echo "SYNC_TOKEN or SYNC_TARGET_REPO is missing. Skipping release sync."
+            exit 0
+          fi
 
           if [ "$SOURCE_REPO" = "$TARGET_REPO" ]; then
             echo "SYNC_TARGET_REPO points to this repository. Nothing to do."
