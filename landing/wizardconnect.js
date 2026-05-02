@@ -1,6 +1,6 @@
 (function() {
   "use strict";
-  const RELAYS = ["wss://relay.damus.io", "wss://nos.lol", "wss://relay.snort.social"];
+  const RELAYS = ["wss://relay.riften.net", "wss://relay.damus.io", "wss://nos.lol", "wss://relay.snort.social"];
   const WIZ_KIND = 24133;
   function _hex(b) {
     return Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
@@ -12,6 +12,102 @@
   }
   function _rand(n) {
     return crypto.getRandomValues(new Uint8Array(n));
+  }
+  const _B32_CH = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
+  const _B32_GEN = [996825010, 642813549, 513874426, 1027748829, 705979059];
+  function _b32Polymod(values) {
+    let chk = 1;
+    for (const v of values) {
+      const top = chk >> 25;
+      chk = (chk & 33554431) << 5 ^ v;
+      for (let i = 0; i < 5; i++) if (top >> i & 1) chk ^= _B32_GEN[i];
+    }
+    return chk;
+  }
+  function _b32HrpExpand(hrp) {
+    const out = [];
+    for (let i = 0; i < hrp.length; i++) out.push(hrp.charCodeAt(i) >> 5);
+    out.push(0);
+    for (let i = 0; i < hrp.length; i++) out.push(hrp.charCodeAt(i) & 31);
+    return out;
+  }
+  function _b32CreateChecksum(hrp, data) {
+    const values = _b32HrpExpand(hrp).concat(data).concat([0, 0, 0, 0, 0, 0]);
+    const pm = _b32Polymod(values) ^ 1;
+    const out = [];
+    for (let i = 0; i < 6; i++) out.push(pm >> 5 * (5 - i) & 31);
+    return out;
+  }
+  function _convertBits(data, fromBits, toBits, pad) {
+    let acc = 0, bits = 0;
+    const out = [];
+    const maxv = (1 << toBits) - 1;
+    for (const value of data) {
+      if (value < 0 || value >> fromBits !== 0) return [];
+      acc = acc << fromBits | value;
+      bits += fromBits;
+      while (bits >= toBits) {
+        bits -= toBits;
+        out.push(acc >> bits & maxv);
+      }
+    }
+    if (pad) {
+      if (bits > 0) out.push(acc << toBits - bits & maxv);
+    } else if (bits >= fromBits || acc << toBits - bits & maxv) {
+      return [];
+    }
+    return out;
+  }
+  function _bech32Encode(hrp, bytes) {
+    const data = _convertBits(bytes, 8, 5, true);
+    const chk = _b32CreateChecksum(hrp, data);
+    return hrp + "1" + data.concat(chk).map((v) => _B32_CH[v]).join("");
+  }
+  function _bech32Decode(s) {
+    const str = String(s || "").trim().toLowerCase();
+    const pos = str.lastIndexOf("1");
+    if (pos < 1 || pos + 7 > str.length) return null;
+    const hrp = str.slice(0, pos);
+    const d = [];
+    for (const c of str.slice(pos + 1)) {
+      const i = _B32_CH.indexOf(c);
+      if (i < 0) return null;
+      d.push(i);
+    }
+    if (_b32Polymod(_b32HrpExpand(hrp).concat(d)) !== 1) return null;
+    const raw5 = d.slice(0, -6);
+    const raw8 = _convertBits(raw5, 5, 8, false);
+    return { hrp, data: new Uint8Array(raw8) };
+  }
+  function _b32PadEncode(bytes) {
+    return _convertBits(bytes, 8, 5, true).map((v) => _B32_CH[v]).join("");
+  }
+  function _b32PadDecode(s) {
+    const str = String(s || "").trim().toLowerCase();
+    if (!str) return null;
+    const d = [];
+    for (const c of str) {
+      const i = _B32_CH.indexOf(c);
+      if (i < 0) return null;
+      d.push(i);
+    }
+    const raw8 = _convertBits(d, 5, 8, false);
+    return raw8.length ? new Uint8Array(raw8) : null;
+  }
+  function _normalizeWizUriInput(uri) {
+    let s = String(uri || "").trim();
+    if (!s) return s;
+    if (!/^wiz:\/\//i.test(s)) {
+      try {
+        const dec = decodeURIComponent(s);
+        if (/^wiz:\/\//i.test(dec)) s = dec;
+      } catch {
+      }
+    }
+    if (!s.includes("?") && /%3f/i.test(s)) {
+      s = s.replace(/%3f/ig, "?").replace(/%3d/ig, "=").replace(/%26/ig, "&").replace(/^WIZ:\/\//, "wiz://");
+    }
+    return s;
   }
   async function _sha256bytes(str) {
     const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
@@ -133,9 +229,12 @@
       this._priv = kp.priv;
       this._xonlyHex = kp.xonlyHex;
       this._pubHex = kp.pubHex;
-      this._sessionId = _hex(_rand(16));
-      const uri = `wiz://?p=${kp.pubHex}&s=${this._sessionId}&r=${encodeURIComponent(RELAYS[0])}`;
-      return { uri, qrUri: uri };
+      this._sessionId = _hex(_rand(8));
+      const p = _b32PadEncode(kp.xonly);
+      const s = _b32PadEncode(_h2b(this._sessionId));
+      const uri = `wiz://?p=${p}&s=${s}`;
+      const qrUri = `WIZ://%3FP%3D${p.toUpperCase()}%26S%3D${s.toUpperCase()}`;
+      return { uri, qrUri };
     }
     /** Open relay connections and wait for a dapp to connect. */
     startListening() {
@@ -182,7 +281,9 @@
             action: "wallet_ready",
             time: Math.floor(Date.now() / 1e3),
             name: "00 Wallet",
-            icon: ""
+            icon: "",
+            public_key: this._xonlyHex,
+            secret: this._sessionId
           };
           if (session) respPayload.session = session;
           const resp = await _encrypt(this._sharedKey, respPayload);
@@ -296,25 +397,38 @@
     }
     /** Parse a wiz:// URI and connect to the wallet. */
     async connect(uri) {
-      const rawUri = String(uri || "").trim();
-      let wizUri = rawUri;
-      if (!/^wiz:\/\//i.test(wizUri)) {
-        try {
-          const decoded = decodeURIComponent(wizUri);
-          if (/^wiz:\/\//i.test(decoded)) wizUri = decoded;
-        } catch {
-        }
-      }
+      const wizUri = _normalizeWizUriInput(uri);
       let params;
+      let parsed;
       try {
-        params = new URL(wizUri.replace(/^wiz:\/\//i, "https://wiz.local/")).searchParams;
+        parsed = new URL(wizUri.replace(/^wiz:\/\//i, "https://wiz.local/"));
+        params = parsed.searchParams;
       } catch {
         throw new Error("Invalid wiz:// URI");
       }
-      let walletPub = (params.get("p") || "").trim().replace(/^0x/i, "");
-      const sessionId = params.get("s");
-      const relayUrl = (params.get("r") || "").trim() || RELAYS[0];
-      if (!walletPub || !sessionId) throw new Error("Missing p or s in wiz:// URI");
+      let walletPubRaw = (params.get("p") || params.get("ph") || "").trim();
+      let sessionRaw = (params.get("s") || params.get("sh") || "").trim();
+      const legacyRelay = (params.get("r") || "").trim();
+      const pr = (params.get("pr") || "").trim().toLowerCase() || "wss";
+      const hasAuthority = !!parsed.host && parsed.host !== "wiz.local";
+      const relayUrl = legacyRelay || (hasAuthority ? `${pr}://${parsed.host}` : RELAYS[0]);
+      if (!walletPubRaw || !sessionRaw) throw new Error("Missing p or s in wiz:// URI");
+      const pPad = _b32PadDecode(walletPubRaw);
+      if (pPad && pPad.length === 32) walletPubRaw = _hex(pPad);
+      const sPad = _b32PadDecode(sessionRaw);
+      if (sPad && sPad.length === 8) sessionRaw = _hex(sPad);
+      if (/^npub1/i.test(walletPubRaw)) {
+        const dec = _bech32Decode(walletPubRaw);
+        if (!dec || dec.hrp !== "npub") throw new Error("Invalid p in wiz:// URI");
+        walletPubRaw = _hex(dec.data);
+      }
+      if (/^nsec1/i.test(sessionRaw)) {
+        const dec = _bech32Decode(sessionRaw);
+        if (!dec || dec.hrp !== "nsec") throw new Error("Invalid s in wiz:// URI");
+        sessionRaw = _hex(dec.data);
+      }
+      let walletPub = walletPubRaw.replace(/^0x/i, "");
+      const sessionId = sessionRaw;
       if (walletPub.length === 64) walletPub = "02" + walletPub;
       if (walletPub.length !== 66) throw new Error("Invalid p in wiz:// URI");
       this._walletPubHex = walletPub;
@@ -334,6 +448,7 @@
           return;
         }
         if (payload.type === "connected" || payload.type === "wallet_ready" || payload.action === "wallet_ready") {
+          if (payload?.secret && String(payload.secret).toLowerCase() !== String(sessionId).toLowerCase()) return;
           this._onConnect?.(payload.name || "Wallet", payload.icon || "", payload.session?.hdwalletv1?.paths || payload.paths || []);
         } else if (payload.type === "disconnect" || payload.action === "disconnect" || payload.action === "disconnect_response") {
           this._onDisconnect?.(payload.reason || "Disconnected");
