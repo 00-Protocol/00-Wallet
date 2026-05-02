@@ -44,6 +44,7 @@ jobs:
           fi
 
       - name: Publish to 00-Protocol/00-Wallet
+        if: github.repository == '00-Protocol/00-Wallet'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.name }}
@@ -60,6 +61,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish to CyberAshven/00-Wallet
+        if: github.repository == 'CyberAshven/00-Wallet'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.name }}
